@@ -1,8 +1,8 @@
 import _ctypes
 import os
-from ctypes import cdll, byref
+from ctypes import cdll, byref, CFUNCTYPE
 from ctypes.wintypes import HWND
-from typing import Generator
+from typing import Generator, Callable
 
 import pythoncom
 import win32event
@@ -290,80 +290,106 @@ class JAB:
     def getEventsWaiting(self) -> c_int:
         return self._dll.getEventsWaiting()
 
-    # def setJavaShutdownFP(self, fp: AccessBridge_JavaShutdownFP):
-    #     pass
+    def setJavaShutdownFP(self, fp: Callable[[c_long], None]):
+        functype = CFUNCTYPE(None, c_long)
+        self._dll.setJavaShutdownFP(functype(fp))
 
-    # def setFocusGainedFP(self, fp: AccessBridge_FocusGainedFP):
-    #     pass
+    def setFocusGainedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setFocusGainedFP(functype(fp))
 
-    # def setFocusLostFP(self, fp: AccessBridge_FocusLostFP):
-    #     pass
+    def setFocusLostFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setFocusLostFP(functype(fp))
 
-    # def setCaretUpdateFP(self, fp: AccessBridge_CaretUpdateFP):
-    #     pass
+    def setCaretUpdateFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setCaretUpdateFP(functype(fp))
 
-    # def setMouseClickedFP(self, fp: AccessBridge_MouseClickedFP):
-    #     pass
+    def setMouseClickedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMouseClickedFP(functype(fp))
 
-    # def setMouseEnteredFP(self, fp: AccessBridge_MouseEnteredFP):
-    #     pass
+    def setMouseEnteredFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMouseEnteredFP(functype(fp))
 
-    # def setMouseExitedFP(self, fp: AccessBridge_MouseExitedFP):
-    #     pass
+    def setMouseExitedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMouseExitedFP(functype(fp))
 
-    # def setMousePressedFP(self, fp: AccessBridge_MousePressedFP):
-    #     pass
+    def setMousePressedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMousePressedFP(functype(fp))
 
-    # def setMouseReleasedFP(self, fp: AccessBridge_MouseReleasedFP):
-    #     pass
+    def setMouseReleasedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMouseReleasedFP(functype(fp))
 
-    # def setMenuCanceledFP(self, fp: AccessBridge_MenuCanceledFP):
-    #     pass
+    def setMenuCanceledFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMenuCanceledFP(functype(fp))
 
-    # def setMenuDeselectedFP(self, fp: AccessBridge_MenuDeselectedFP):
-    #     pass
+    def setMenuDeselectedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMenuDeselectedFP(functype(fp))
 
-    # def setMenuSelectedFP(self, fp: AccessBridge_MenuSelectedFP):
-    #     pass
+    def setMenuSelectedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setMenuSelectedFP(functype(fp))
 
-    # def setPopupMenuCanceledFP(self, fp: AccessBridge_PopupMenuCanceledFP):
-    #     pass
+    def setPopupMenuCanceledFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setPopupMenuCanceledFP(functype(fp))
 
-    # def setPopupMenuWillBecomeInvisibleFP(self, fp: AccessBridge_PopupMenuWillBecomeInvisibleFP):
-    #     pass
+    def setPopupMenuWillBecomeInvisibleFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setPopupMenuWillBecomeInvisibleFP(functype(fp))
 
-    # def setPopupMenuWillBecomeVisibleFP(self, fp: AccessBridge_PopupMenuWillBecomeVisibleFP):
-    #     pass
+    def setPopupMenuWillBecomeVisibleFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setPopupMenuWillBecomeVisibleFP(functype(fp))
 
-    # def setPropertyNameChangeFP(self, fp: AccessBridge_PropertyNameChangeFP):
-    #     pass
+    def setPropertyNameChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
+        self._dll.setPropertyNameChangeFP(functype(fp))
 
-    # def setPropertyDescriptionChangeFP(self, fp: AccessBridge_PropertyDescriptionChangeFP):
-    #     pass
+    def setPropertyDescriptionChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
+        self._dll.setPropertyDescriptionChangeFP(functype(fp))
 
-    # def setPropertyStateChangeFP(self, fp: AccessBridge_PropertyStateChangeFP):
-    #     pass
+    def setPropertyStateChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
+        self._dll.setPropertyStateChangeFP(functype(fp))
 
-    # def setPropertyValueChangeFP(self, fp: AccessBridge_PropertyValueChangeFP):
-    #     pass
+    def setPropertyValueChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
+        self._dll.setPropertyValueChangeFP(functype(fp))
 
-    # def setPropertySelectionChangeFP(self, fp: AccessBridge_PropertySelectionChangeFP):
-    #     pass
+    def setPropertySelectionChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setPropertySelectionChangeFP(functype(fp))
 
-    # def setPropertyTextChangeFP(self, fp: AccessBridge_PropertyTextChangeFP):
-    #     pass
+    def setPropertyTextChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setPropertyTextChangeFP(functype(fp))
 
-    # def setPropertyCaretChangeFP(self, fp: AccessBridge_PropertyCaretChangeFP):
-    #     pass
+    def setPropertyCaretChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, int, int], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, int, int)
+        self._dll.setPropertyCaretChangeFP(functype(fp))
 
-    # def setPropertyVisibleDataChangeFP(self, fp: AccessBridge_PropertyVisibleDataChangeFP):
-    #     pass
+    def setPropertyVisibleDataChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+        self._dll.setPropertyVisibleDataChangeFP(functype(fp))
 
-    # def setPropertyChildChangeFP(self, fp: AccessBridge_PropertyChildChangeFP):
-    #     pass
+    def setPropertyChildChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64)
+        self._dll.setPropertyChildChangeFP(functype(fp))
 
-    # def setPropertyActiveDescendentChangeFP(self, fp: AccessBridge_PropertyActiveDescendentChangeFP):
-    #     pass
+    def setPropertyActiveDescendentChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64)
+        self._dll.setPropertyActiveDescendentChangeFP(functype(fp))
 
-    # def setPropertyTableModelChangeFP(self, fp: AccessBridge_PropertyTableModelChangeFP):
-    #     pass
+    def setPropertyTableModelChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
+        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
+        self._dll.setPropertyTableModelChangeFP(functype(fp))
