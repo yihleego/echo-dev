@@ -110,8 +110,8 @@ class JAB:
     def getAccessibleContextInfo(self, vmID: c_long, ac: AccessibleContext, info: AccessibleContextInfo) -> BOOL:
         return self._dll.getAccessibleContextInfo(vmID, ac, byref(info))
 
-    def getAccessibleChildFromContext(self, vmID: c_long, ac: AccessibleContext, i: jint) -> AccessibleContext:
-        return self._dll.getAccessibleChildFromContext(vmID, ac, i)
+    def getAccessibleChildFromContext(self, vmID: c_long, ac: AccessibleContext, index: jint) -> AccessibleContext:
+        return self._dll.getAccessibleChildFromContext(vmID, ac, index)
 
     def getAccessibleParentFromContext(self, vmID: c_long, ac: AccessibleContext) -> AccessibleContext:
         return self._dll.getAccessibleParentFromContext(vmID, ac)
