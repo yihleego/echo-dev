@@ -5,13 +5,8 @@ from functools import wraps
 
 from pynput import mouse, keyboard
 
-
-class Key(keyboard.Key):
-    pass
-
-
-class Button(mouse.Button):
-    pass
+Key = keyboard.Key
+Button = mouse.Button
 
 
 class Event(str, Enum):
@@ -22,7 +17,7 @@ class Event(str, Enum):
     MOUSEDOWN = "mousedown"
     MOUSEUP = "mouseup"
     MOUSEMOVE = "mousemove"
-    MOUSESCROLL = "mousescroll"
+    SCROLL = "scroll"
 
 
 _keyboard_states: dict[Key, bool] = {}  # key -> pressed
@@ -36,6 +31,7 @@ _registrations: dict[Event, list] = {
     Event.MOUSEDOWN: [],
     Event.MOUSEUP: [],
     Event.MOUSEMOVE: [],
+    Event.SCROLL: [],
 }
 
 
@@ -68,7 +64,7 @@ def _on_move(x, y):
 def _on_scroll(x, y, dx, dy):
     global _mouse_position
     _mouse_position = (x, y)
-    _trigger(Event.MOUSESCROLL, x, y, dx, dy)
+    _trigger(Event.SCROLL, x, y, dx, dy)
 
 
 def _trigger(event, *args):
@@ -94,7 +90,7 @@ def _trigger(event, *args):
 
 def _run():
     with keyboard.Listener(on_press=_on_press, on_release=_on_release) as k_listener, \
-            mouse.Listener(on_click=_on_click, on_move=_on_move, on_scroll=None) as m_listener:
+            mouse.Listener(on_click=_on_click, on_move=_on_move, on_scroll=_on_scroll) as m_listener:
         k_listener.join()
         m_listener.join()
 
@@ -150,6 +146,11 @@ if __name__ == '__main__':
     @listener(Event.MOUSEMOVE, Key.ctrl)
     def on_mousemove(x, y):
         print('on_mousemove', x, y)
+
+
+    @listener(Event.SCROLL)
+    def on_scroll(x, y, dx, dy):
+        print('on_scroll', x, y, dx, dy)
 
 
     asyncio.run(main())
