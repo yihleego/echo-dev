@@ -1,4 +1,4 @@
-from ctypes import c_bool, c_char, c_int, c_float, c_long, c_short, Structure
+from ctypes import c_bool, c_char, c_int, c_float, c_long, c_short, Structure, c_int64
 from ctypes.wintypes import WCHAR, BOOL
 
 # AccessBridge versioning
@@ -37,7 +37,7 @@ jfloat = c_float
 jshort = c_short
 wchar_t = WCHAR
 ABHWND64 = jlong
-JOBJECT64 = jlong
+JOBJECT64 = c_int64
 AccessibleContext = JOBJECT64
 AccessibleText = JOBJECT64
 AccessibleValue = JOBJECT64
