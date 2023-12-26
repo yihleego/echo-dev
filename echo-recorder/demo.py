@@ -11,8 +11,7 @@ import pywinauto
 import win32gui
 from pywinauto import win32defines, win32structures, win32functions
 
-from jab.call import JAB
-from jab.packages import AccessibleContext, AccessibleContextInfo, VisibleChildrenInfo, AccessibleTextInfo, AccessibleActions, AccessibleActionsToDo, jint
+from jab import JAB, AccessibleContext, AccessibleContextInfo, VisibleChildrenInfo, AccessibleTextInfo, AccessibleActions, AccessibleActionsToDo
 from utils.input import listener, Event, Key, main
 
 OS_ARCH = platform.architecture()[0][:2]  # 32 or 64
@@ -145,7 +144,7 @@ def on_click(x, y, button):
                             aatd = AccessibleActionsToDo()
                             aatd.actions[0].name = '单击'
                             aatd.actionsCount = 1
-                            failure = jint()
+                            failure = ctypes.c_int(0)
                             dll.doAccessibleActions(vmid, ac, aatd, failure)
                             print(f"{'-' * depth} clicked")
 
