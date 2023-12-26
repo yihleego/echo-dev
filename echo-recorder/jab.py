@@ -46,7 +46,7 @@ def print_tree(depth, ac):
         return
 
     for idx in range(vci.returnedChildrenCount):
-        child = ctypes.c_longlong(vci.children[idx])
+        child = AccessibleContext(vci.children[idx])
         print_tree(depth + 1, child)
         # print('getVisibleChildren', idx, bool(res), vci)
 

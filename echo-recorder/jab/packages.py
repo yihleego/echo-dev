@@ -36,7 +36,6 @@ jlong = c_long
 jfloat = c_float
 jshort = c_short
 wchar_t = WCHAR
-ABHWND64 = jlong
 JOBJECT64 = c_int64
 AccessibleContext = JOBJECT64
 AccessibleText = JOBJECT64
