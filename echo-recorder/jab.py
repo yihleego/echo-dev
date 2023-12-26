@@ -89,4 +89,4 @@ while True:
 
 dll.releaseJavaObject(vmid, accessible_context)
 
-dll.free()
+dll.close()

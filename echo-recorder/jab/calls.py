@@ -8,60 +8,16 @@ import pythoncom
 import win32event
 
 from jab.packages import *
-from utils.singleton import singleton
-
-
-@singleton
-class Win32Utils(object):
-    stop_event = win32event.CreateEvent(None, 0, 0, None)
-    other_event = win32event.CreateEvent(None, 0, 0, None)
-
-    def setup_msg_pump(self) -> Generator:
-        waitables = self.stop_event, self.other_event
-        while True:
-            rc = win32event.MsgWaitForMultipleObjects(
-                waitables,
-                0,  # Wait for all = false, so it waits for anyone
-                200,  # Timeout, ms (or win32event.INFINITE)
-                win32event.QS_ALLEVENTS,  # Accepts all input
-            )
-            if rc == win32event.WAIT_OBJECT_0:
-                break
-            elif rc == win32event.WAIT_OBJECT_0 + 1:
-                # Our second event listed, "OtherEvent", was set. Do whatever needs
-                # to be done -- you can wait on as many kernel-waitable objects as
-                # needed (events, locks, processes, threads, notifications, and so on).
-                pass
-            elif rc == win32event.WAIT_OBJECT_0 + len(waitables):
-                # A windows message is waiting - take care of it. (Don't ask me
-                # why a WAIT_OBJECT_MSG isn't defined < WAIT_OBJECT_0...!).
-                # This message-serving MUST be done for COM, DDE, and other
-                # Windowsy things to work properly!
-                if pythoncom.PumpWaitingMessages():
-                    break
-            elif rc == win32event.WAIT_TIMEOUT:
-                # Our timeout has elapsed.
-                # Do some work here (e.g, poll something you can't thread)
-                # or just feel good to be alive.
-                pass
-            else:
-                raise RuntimeError("unexpected win32wait return value")
-
-            # call functions here, if txtt doesn't take too long. It will
-            # be executed at least every 200ms -- possibly a lot more often,
-            # depending on the number of Windows messages received.
-            try:
-                yield
-            finally:
-                win32event.SetEvent(self.stop_event)
 
 
 class JAB:
     def __init__(self, dll_path=None):
         self._loaded = False
+        self._started = False
         self._dll = None
         if dll_path:
             self.load(dll_path)
+            self.start()
 
     def load(self, dll_path):
         if self._loaded:
@@ -75,11 +31,57 @@ class JAB:
         self._dll = cdll.LoadLibrary(dll_path)
         self._dll.Windows_run()
         self._loaded = True
-        win32utils = Win32Utils()
-        gen = win32utils.setup_msg_pump()
-        gen.send(None)
 
-    def free(self):
+    def start(self):
+        if self._started:
+            return
+        stop_event = win32event.CreateEvent(None, 0, 0, None)
+        other_event = win32event.CreateEvent(None, 0, 0, None)
+
+        def setup_msg_pump() -> Generator:
+            waitables = stop_event, other_event
+            while True:
+                rc = win32event.MsgWaitForMultipleObjects(
+                    waitables,
+                    0,  # Wait for all = false, so it waits for anyone
+                    200,  # Timeout, ms (or win32event.INFINITE)
+                    win32event.QS_ALLEVENTS,  # Accepts all input
+                )
+                if rc == win32event.WAIT_OBJECT_0:
+                    break
+                elif rc == win32event.WAIT_OBJECT_0 + 1:
+                    # Our second event listed, "OtherEvent", was set. Do whatever needs
+                    # to be done -- you can wait on as many kernel-waitable objects as
+                    # needed (events, locks, processes, threads, notifications, and so on).
+                    pass
+                elif rc == win32event.WAIT_OBJECT_0 + len(waitables):
+                    # A windows message is waiting - take care of it. (Don't ask me
+                    # why a WAIT_OBJECT_MSG isn't defined < WAIT_OBJECT_0...!).
+                    # This message-serving MUST be done for COM, DDE, and other
+                    # Windowsy things to work properly!
+                    if pythoncom.PumpWaitingMessages():
+                        break
+                elif rc == win32event.WAIT_TIMEOUT:
+                    # Our timeout has elapsed.
+                    # Do some work here (e.g, poll something you can't thread)
+                    # or just feel good to be alive.
+                    pass
+                else:
+                    raise RuntimeError("unexpected win32wait return value")
+
+                # call functions here, if txtt doesn't take too long. It will
+                # be executed at least every 200ms -- possibly a lot more often,
+                # depending on the number of Windows messages received.
+                try:
+                    yield
+                finally:
+                    win32event.SetEvent(stop_event)
+
+        gen = setup_msg_pump()
+        gen.send(None)
+        self._started = True
+
+    def close(self):
         if self._dll:
             _ctypes.FreeLibrary(self._dll._handle)
 

@@ -193,7 +193,7 @@ def on_click(x, y, button):
 
         # dll.releaseJavaObject(new_vmid, accessible_context)
 
-    dll.free()
+    dll.close()
 
 
 if __name__ == '__main__':
