@@ -1,15 +1,18 @@
 import asyncio
 import ctypes
+import encodings
+import locale
 import os
 import platform
 from ctypes.wintypes import tagPOINT
+from typing import Optional
 
 import pywinauto
 import win32gui
 from pywinauto import win32defines, win32structures, win32functions
 
 from jab.call import JAB
-from jab.packages import AccessibleContext, AccessibleContextInfo, VisibleChildrenInfo
+from jab.packages import AccessibleContext, AccessibleContextInfo, VisibleChildrenInfo, AccessibleTextInfo, AccessibleActions
 from utils.input import listener, Event, Key, main
 
 OS_ARCH = platform.architecture()[0][:2]  # 32 or 64
@@ -53,6 +56,46 @@ def draw_outline(rect: tuple[int, int, int, int], msg=None):
     win32functions.DeleteDC(dc)
 
 
+def get_text_from_raw_bytes(
+        buffer: bytes,
+        chars_len: int,
+        encoding: Optional[str] = None,
+        errors_fallback: str = "replace",
+) -> str:
+    """[summary]
+
+    Args:
+        buffer (bytes): bytes object to convert to str.
+        chars_len (int): character length for handle bytes.
+        encoding (Optional[str], optional): encoding format for buffer. Defaults to None.
+        errors_fallback (str, optional): error handling scheme for handling of decoding errors. Default: "replace".
+
+    Returns:
+        str: decoded text from buffer.
+    """
+    if encoding is None:
+        if chars_len > 1 and any(buffer[chars_len:]):
+            encoding = "utf_16_le"
+        else:
+            encoding = locale.getpreferredencoding()
+    else:
+        encoding = encodings.normalize_encoding(encoding).lower()
+    if encoding.startswith("utf_16"):
+        num_of_bytes = chars_len * 2
+    elif encoding.startswith("utf_32"):
+        num_of_bytes = chars_len * 4
+    else:
+        num_of_bytes = chars_len
+    raw_text: bytes = buffer[:num_of_bytes]
+    if not any(raw_text):
+        return ""
+    try:
+        text = raw_text.decode(encoding, errors="surrogatepass")
+    except UnicodeDecodeError:
+        text = raw_text.decode(encoding, errors=errors_fallback)
+    return text
+
+
 @listener(Event.CLICK, Key.ctrl_l)
 def on_click(x, y, button):
     dll = JAB(JAB_DLL_PATH)
@@ -75,9 +118,29 @@ def on_click(x, y, button):
         def print_tree(depth, ac):
             aci = AccessibleContextInfo()
             res = dll.getAccessibleContextInfo(vmid, ac, aci)
-            print(f"{'-' * depth} name='{aci.name}' role='{aci.role}'")
             if not res:
                 return
+            print(f"{'-' * depth} name='{aci.name}' role='{aci.role}'")
+
+            if aci.accessibleText:
+                ati = AccessibleTextInfo()
+                res = dll.getAccessibleTextInfo(vmid, ac, ati)
+                if res:
+                    chars_start = ctypes.c_int(0)
+                    chars_end = ati.charCount - 1
+                    chars_len = ati.charCount
+                    buffer = ctypes.create_string_buffer((chars_len + 1) * 2)
+                    res = dll.getAccessibleTextRange(vmid, ac, chars_start, chars_end, buffer, chars_len)
+                    if res:
+                        text = get_text_from_raw_bytes(buffer=buffer, chars_len=chars_len, encoding="utf_16")
+                        print(f"{'-' * depth} text='{text}'")
+
+            if aci.accessibleAction:
+                aa = AccessibleActions()
+                res = dll.getAccessibleActions(vmid, ac, aa)
+                if res:
+                    for index in range(aa.actionsCount):
+                        print(f"{'-' * depth} action='{aa.actionInfo[index].name}'")
 
             count = dll.getVisibleChildrenCount(vmid, ac)
             # print('getVisibleChildrenCount', count)
@@ -90,7 +153,7 @@ def on_click(x, y, button):
                 return
 
             for idx in range(vci.returnedChildrenCount):
-                child = ctypes.c_long(vci.children[idx])
+                child = AccessibleContext(vci.children[idx])
                 print_tree(depth + 1, child)
 
         print_tree(0, accessible_context)
@@ -105,7 +168,7 @@ def on_click(x, y, button):
         # res1 = dll.getAccessibleContextAt(new_vmid, accessible_context, x, y, new_accessible_context)
 
         # print('getAccessibleContextWithFocus', bool(res), new_vmid.value, new_accessible_context.value)
-        #
+
         # if res1 and new_accessible_context.value != 0:
         #     if not dll.isSameObject(accessible_context, new_accessible_context):
         #         aci = AccessibleContextInfo()
@@ -118,7 +181,7 @@ def on_click(x, y, button):
         #         print('getAccessibleContextInfo2', aci.name, aci.role, aci.x, aci.y, aci.width, aci.height)
         #         draw_outline((aci.x, aci.y, aci.width + aci.x, aci.height + aci.y), f"{aci.name} {aci.role} {aci.x} {aci.y} {aci.width} {aci.height}")
         #     dll.releaseJavaObject(new_vmid, new_accessible_context)
-        #
+
         # dll.releaseJavaObject(new_vmid, accessible_context)
 
     dll.free()

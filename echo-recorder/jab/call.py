@@ -194,7 +194,7 @@ class JAB:
     def doAccessibleActions(self, vmID: c_long, accessibleContext: AccessibleContext, actionsToDo: AccessibleActionsToDo, failure: jint) -> BOOL:
         return self._dll.doAccessibleActions(vmID, accessibleContext, byref(actionsToDo), byref(failure))
 
-    def getAccessibleTextInfo(self, vmID: c_long, at: AccessibleText, textInfo: AccessibleTextInfo, x: jint, y: jint) -> BOOL:
+    def getAccessibleTextInfo(self, vmID: c_long, at: AccessibleText, textInfo: AccessibleTextInfo, x: jint = 0, y: jint = 0) -> BOOL:
         return self._dll.getAccessibleTextInfo(vmID, at, byref(textInfo), x, y)
 
     def getAccessibleTextItems(self, vmID: c_long, at: AccessibleText, textItems: AccessibleTextItemsInfo, index: jint) -> BOOL:
