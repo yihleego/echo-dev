@@ -20,6 +20,7 @@ JAB_DLL_PATH = os.path.abspath("lib/javaaccessbridge%s/WindowsAccessBridge-%s.dl
 
 
 def draw_outline(rect: tuple[int, int, int, int], msg=None):
+    # color red
     color = 0x0000ff
 
     # create the pen(outline)

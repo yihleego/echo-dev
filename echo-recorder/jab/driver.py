@@ -2,7 +2,7 @@ import os
 import platform
 import shutil
 from ctypes import c_long
-from ctypes.wintypes import HWND
+from ctypes.wintypes import HWND, HANDLE
 from enum import Enum
 from typing import Union, Optional
 
@@ -73,9 +73,9 @@ class Role(str, Enum):
 
 
 class JABElement:
-    def __init__(self, jab: JAB, handle: Union[int, HWND], vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
+    def __init__(self, jab: JAB, handle: Union[int, HWND, HANDLE], vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
         self._jab: JAB = jab
-        self._handle: Union[int, HWND] = handle
+        self._handle: Union[int, HWND, HANDLE] = handle
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
         if is_root or root == self:
@@ -105,7 +105,7 @@ class JABElement:
         return self._parent
 
     @staticmethod
-    def build(jab: JAB, handle: Union[int, HWND]) -> Optional['JABElement']:
+    def build(jab: JAB, handle: Union[int, HWND, HANDLE]) -> Optional['JABElement']:
         if jab.isJavaWindow(handle):
             vmid = c_long()
             ctx = AccessibleContext()
@@ -139,5 +139,5 @@ class JABDriver:
                 shutil.copy(os.path.join(jab_lib_dir, fn), os.path.join(dst, fn))
         return os.path.join(system_root_dir, "System32", f"WindowsAccessBridge-{os_arch}.dll")
 
-    def find_window(self, handle: Union[int, HWND]) -> Optional[JABElement]:
+    def find_window(self, handle: Union[int, HWND, HANDLE]) -> Optional[JABElement]:
         return JABElement.build(jab=self._jab, handle=handle)
