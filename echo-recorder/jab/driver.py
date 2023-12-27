@@ -6,6 +6,8 @@ from ctypes.wintypes import HWND, HANDLE
 from enum import Enum
 from typing import Union, Optional
 
+import pyperclip
+
 from calls import JAB
 from packages import *
 
@@ -113,33 +115,33 @@ class JABElement:
         return self._ctx
 
     @property
-    def info(self):
+    def info(self) -> AccessibleContextInfo:
         aci = AccessibleContextInfo()
         res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
         return aci
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.info.name
 
     @property
-    def description(self):
+    def description(self) -> str:
         return self.info.description
 
     @property
-    def role(self):
+    def role(self) -> str:
         return self.info.role_en_US
 
     @property
-    def states(self):
+    def states(self) -> list[str]:
         return self.info.states_en_US
 
     @property
-    def index_in_parent(self):
+    def index_in_parent(self) -> int:
         return self.info.indexInParent
 
     @property
-    def children_count(self):
+    def children_count(self) -> int:
         return self.info.childrenCount
 
     @property
@@ -187,6 +189,35 @@ class JABElement:
         if not self.info.accessibleValue:
             return None
 
+    def click(self):
+        return self._do_action(action_names=['单击', 'click'])
+
+    def input(self, text: str, set_foreground=True) -> bool:
+        pyperclip.copy(text)
+        pyperclip.paste()
+        pyperclip.copy("")
+        return True
+
+    def _do_action(self, action_names: list[str]) -> bool:
+        if not self.info.accessibleAction:
+            return False
+        aa = AccessibleActions()
+        res = self._jab.getAccessibleActions(self._vmid, self._ctx, aa)
+        if not res:
+            return False
+        for index in range(aa.actionsCount):
+            name = aa.actionInfo[index].name
+            if name not in action_names:
+                continue
+            aatd = AccessibleActionsToDo()
+            aatd.actions[0].name = name
+            aatd.actionsCount = 1
+            failure = c_int(0)
+            res = self._jab.doAccessibleActions(self._vmid, self._ctx, aatd, failure)
+            if res and failure:
+                return True
+        return False
+
     def child(self, index: int) -> Optional['JABElement']:
         count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
         if count <= 0 or count <= index:
@@ -212,13 +243,13 @@ class JABElement:
             res.append(JABElement(jab=self._jab, handle=self._handle, vmid=self._vmid, ctx=ctx, is_root=False, root=self._root))
         return res
 
-    def matches(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> bool:
-        return (role is not None and self.role == role) \
-            or (name is not None and self.name == name) \
-            or (states is not None and self.states == states) \
-            or (description is not None and self.description == description) \
-            or (text is not None and self.text == text) \
-            or (value is not None and self.value == value)
+    def matches(self, role: str = None, name: str = None, states: list[str] = None, description: str = None, text: str = None, value: str = None) -> bool:
+        return (role is not None and role == self.role) \
+            or (name is not None and name == self.name) \
+            or (states is not None and set(states).issubset(set(self.states))) \
+            or (description is not None and description == self.description) \
+            or (text is not None and text == self.text) \
+            or (value is not None and value == self.value)
 
     def find_elements(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> list['JABElement']:
         res = []

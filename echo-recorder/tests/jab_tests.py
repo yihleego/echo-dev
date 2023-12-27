@@ -1,4 +1,3 @@
-import asyncio
 import ctypes
 import encodings
 import locale
@@ -11,8 +10,8 @@ import pywinauto
 import win32gui
 from pywinauto import win32defines, win32structures, win32functions
 
-from jab import JAB, AccessibleContext, AccessibleContextInfo, VisibleChildrenInfo, AccessibleTextInfo, AccessibleActions, AccessibleActionsToDo
-from utils.input import listener, Event, Key, main
+from jab import JAB, AccessibleContext, AccessibleContextInfo, VisibleChildrenInfo, AccessibleTextInfo, AccessibleActions, AccessibleActionsToDo, JABDriver, Role
+from utils.input import listener, Event, Key
 
 OS_ARCH = platform.architecture()[0][:2]  # 32 or 64
 JAB_VERSION = "2.0.2"
@@ -197,5 +196,14 @@ def on_click(x, y, button):
     dll.close()
 
 
+def test():
+    driver = JABDriver()
+    root = driver.find_window(handle=123)
+    if not root:
+        return
+    root.find_elements(role=Role.PUSH_BUTTON, name="确定")[0].click()
+
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    # asyncio.run(main())
+    test()
