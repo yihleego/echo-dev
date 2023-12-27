@@ -1,2 +1,12 @@
+import abc
+
+
+class Driver(abc.ABC):
+    pass
+
+
+class Element(abc.ABC):
+    pass
+
 if __name__ == '__main__':
-    print(1)
+    pass

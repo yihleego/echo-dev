@@ -1,4 +1,4 @@
-from ctypes import c_bool, c_char, c_int, c_float, c_long, c_short, Structure, c_int64
+from ctypes import Structure, c_bool, c_char, c_int, c_int64, c_float, c_long, c_short
 from ctypes.wintypes import WCHAR, BOOL
 
 # AccessBridge versioning
