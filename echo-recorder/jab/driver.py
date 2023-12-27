@@ -2,12 +2,10 @@ import os
 import platform
 import shutil
 import subprocess
-from ctypes import create_string_buffer
+from ctypes import create_string_buffer, c_wchar_p
 from ctypes.wintypes import HWND, HANDLE
 from enum import Enum
 from typing import Union, Optional
-
-import pyperclip
 
 from .calls import JAB
 from .packages import *
@@ -193,11 +191,9 @@ class JABElement:
     def click(self):
         return self._do_action(action_names=['单击', 'click'])
 
-    def input(self, text: str, set_foreground=True) -> bool:
-        pyperclip.copy(text)
-        pyperclip.paste()
-        pyperclip.copy("")
-        return True
+    def input(self, text: str) -> bool:
+        res = self._jab.setTextContents(self._vmid, self._ctx, c_wchar_p(text))
+        return bool(res)
 
     def _do_action(self, action_names: list[str]) -> bool:
         if not self.info.accessibleAction:

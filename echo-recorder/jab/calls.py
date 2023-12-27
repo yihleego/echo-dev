@@ -1,6 +1,6 @@
 import _ctypes
 import os
-from ctypes import cdll, byref, CFUNCTYPE
+from ctypes import cdll, byref, CFUNCTYPE, c_wchar_p
 from ctypes.wintypes import HWND
 from typing import Generator, Callable
 
@@ -247,8 +247,8 @@ class JAB:
     def selectAllAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection):
         self._dll.selectAllAccessibleSelectionFromContext(vmID, as_)
 
-    def setTextContents(self, vmID: c_long, ac: AccessibleContext, text: wchar_t) -> BOOL:
-        return self._dll.setTextContents(vmID, ac, byref(text))
+    def setTextContents(self, vmID: c_long, ac: AccessibleContext, text: c_wchar_p) -> BOOL:
+        return self._dll.setTextContents(vmID, ac, text)
 
     def getParentWithRole(self, vmID: c_long, ac: AccessibleContext, role: wchar_t) -> AccessibleContext:
         return self._dll.getParentWithRole(vmID, ac, byref(role))
