@@ -3,80 +3,17 @@ import platform
 import shutil
 import subprocess
 from ctypes import create_string_buffer, c_wchar_p
-from ctypes.wintypes import HWND, HANDLE
-from enum import Enum
+from ctypes.wintypes import HWND
 from typing import Union, Optional
 
 from .calls import JAB
 from .packages import *
 
 
-class Role(str, Enum):
-    ALERT = "alert"
-    CANVAS = "canvas"
-    CHECK_BOX = "check box"
-    COLOR_CHOOSER = "color chooser"
-    COLUMN_HEADER = "column header"
-    COMBO_BOX = "combo box"
-    DATE_EDITOR = "date editor"
-    DESKTOP_ICON = "desktop icon"
-    DESKTOP_PANE = "desktop pane"
-    DIALOG = "dialog"
-    DIRECTORY_PANE = "directory pane"
-    EDIT_BAR = "edit bar"
-    FILE_CHOOSER = "file chooser"
-    FILLER = "filler"
-    FONT_CHOOSER = "font chooser"
-    FOOTER = "footer"
-    FRAME = "frame"
-    GLASS_PANE = "glass pane"
-    GROUP_BOX = "group box"
-    HEADER = "header"
-    HYPERLINK = "hyperlink"
-    ICON = "icon"
-    INTERNAL_FRAME = "internal frame"
-    LABEL = "label"
-    LAYERED_PANE = "layered pane"
-    LIST = "list"
-    LIST_ITEM = "list item"
-    MENU = "menu"
-    MENU_BAR = "menu bar"
-    MENU_ITEM = "menu item"
-    OPTION_PANE = "option pane"
-    PAGE_TAB = "page tab"
-    PAGE_TAB_LIST = "page tab list"
-    PANEL = "panel"
-    PARAGRAPH = "paragraph"
-    PASSWORD_TEXT = "password text"
-    POPUP_MENU = "popup menu"
-    PROGRESS_BAR = "progress bar"
-    PUSH_BUTTON = "push button"
-    RADIO_BUTTON = "radio button"
-    ROOT_PANE = "root pane"
-    ROW_HEADER = "row header"
-    RULER = "ruler"
-    SCROLL_BAR = "scroll bar"
-    SCROLL_PANE = "scroll pane"
-    SEPARATOR = "separator"
-    SLIDER = "slider"
-    SPIN_BOX = "spinbox"
-    SPLIT_PANE = "split pane"
-    STATUS_BAR = "status bar"
-    TABLE = "table"
-    TEXT = "text"
-    TOGGLE_BUTTON = "toggle button"
-    TOOL_BAR = "tool bar"
-    TOOL_TIP = "tool tip"
-    TREE = "tree"
-    UNKNOWN = "unknown"
-    VIEW_PORT = "viewport"
-    WINDOW = "window"
-
-
 class JABElement:
-    def __init__(self, jab: JAB, handle: Union[int, HWND, HANDLE], vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
+    def __init__(self, jab: JAB, handle: Union[int, HWND], vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
         self._jab: JAB = jab
-        self._handle: Union[int, HWND, HANDLE] = handle
+        self._handle: Union[int, HWND] = handle
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
         if is_root or root == self:
@@ -102,7 +39,7 @@ class JABElement:
         # get parent from context
         parent_ctx = self._jab.getAccessibleParentFromContext(self._vmid, self._ctx)
         if parent_ctx != 0:
-            self._parent = JABElement(jab=self._jab, handle=self._handle, vmid=self._vmid, ctx=parent_ctx, is_root=False, root=self._root)
+            self._parent = JABElement.create_element(root=self._root, ctx=parent_ctx)
         return self._parent
 
     @property
@@ -114,10 +51,10 @@ class JABElement:
         return self._ctx
 
     @property
-    def info(self) -> AccessibleContextInfo:
+    def info(self) -> Optional[AccessibleContextInfo]:
         aci = AccessibleContextInfo()
         res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
-        return aci
+        return aci if res else None
 
     @property
     def name(self) -> str:
@@ -188,7 +125,7 @@ class JABElement:
         if not self.info.accessibleValue:
             return None
 
-    def click(self):
+    def click(self) -> bool:
         return self._do_action(action_names=['单击', 'click'])
 
     def input(self, text: str) -> bool:
@@ -196,7 +133,7 @@ class JABElement:
         return bool(res)
 
     def _do_action(self, action_names: list[str]) -> bool:
-        if not self.info.accessibleAction:
+        if not action_names or not self.info.accessibleAction:
             return False
         aa = AccessibleActions()
         res = self._jab.getAccessibleActions(self._vmid, self._ctx, aa)
@@ -224,7 +161,7 @@ class JABElement:
         if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
             return None
         ctx = AccessibleContext(vci.children[index])
-        return JABElement(jab=self._jab, handle=self._handle, vmid=self._vmid, ctx=ctx, is_root=False, root=self._root)
+        return JABElement.create_element(root=self._root, ctx=ctx)
 
     def children(self) -> list['JABElement']:
         count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
@@ -237,7 +174,7 @@ class JABElement:
         res = []
         for idx in range(vci.returnedChildrenCount):
             ctx = AccessibleContext(vci.children[idx])
-            res.append(JABElement(jab=self._jab, handle=self._handle, vmid=self._vmid, ctx=ctx, is_root=False, root=self._root))
+            res.append(JABElement.create_element(root=self._root, ctx=ctx))
         return res
 
     def matches(self, role: str = None, name: str = None, states: list[str] = None, description: str = None, text: str = None, value: str = None) -> bool:
@@ -268,13 +205,17 @@ class JABElement:
         return None
 
     @staticmethod
-    def build(jab: JAB, handle: Union[int, HWND, HANDLE]) -> Optional['JABElement']:
+    def create_root(jab: JAB, handle: Union[int, HWND]) -> Optional['JABElement']:
         if jab.isJavaWindow(handle):
             vmid = c_long()
             ctx = AccessibleContext()
             if jab.getAccessibleContextFromHWND(handle, vmid, ctx):
                 return JABElement(jab=jab, handle=handle, vmid=vmid, ctx=ctx, is_root=True)
         return None
+
+    @staticmethod
+    def create_element(root: 'JABElement', ctx: AccessibleContext) -> 'JABElement':
+        return JABElement(jab=root._jab, handle=root._handle, vmid=root._vmid, ctx=ctx, is_root=False, root=root)
 
 
 class JABDriver:
@@ -302,8 +243,8 @@ class JABDriver:
                 shutil.copy(os.path.join(jab_lib_dir, fn), os.path.join(dst, fn))
         return os.path.join(system_root_dir, "System32", f"WindowsAccessBridge-{os_arch}.dll")
 
-    def find_window(self, handle: Union[int, HWND, HANDLE]) -> Optional[JABElement]:
-        return JABElement.build(jab=self._jab, handle=handle)
+    def find_window(self, handle: Union[int, HWND]) -> Optional[JABElement]:
+        return JABElement.create_root(jab=self._jab, handle=handle)
 
 
 def _get_system_root_dir():
