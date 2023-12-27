@@ -1,6 +1,7 @@
 import os
 import platform
 import shutil
+import subprocess
 from ctypes import create_string_buffer
 from ctypes.wintypes import HWND, HANDLE
 from enum import Enum
@@ -8,8 +9,8 @@ from typing import Union, Optional
 
 import pyperclip
 
-from calls import JAB
-from packages import *
+from .calls import JAB
+from .packages import *
 
 
 class Role(str, Enum):
@@ -290,8 +291,8 @@ class JABDriver:
         os_arch = platform.architecture()[0][:2]  # 32 or 64
         jab_version = "2.0.2"
         jab_lib_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), f"javaaccessbridge{jab_version}")
-        system_root_dir = os.environ.get("SYSTEMROOT")
-        java_home_dir = os.environ.get("JAVA_HOME")
+        system_root_dir = _get_system_root_dir()
+        java_home_dir = _get_java_home_dir()
         paths = {
             f"WindowsAccessBridge-{os_arch}.dll": os.path.join(system_root_dir, "System32"),
             f"JavaAccessBridge-{os_arch}.dll": os.path.join(java_home_dir, "bin"),
@@ -307,3 +308,21 @@ class JABDriver:
 
     def find_window(self, handle: Union[int, HWND, HANDLE]) -> Optional[JABElement]:
         return JABElement.build(jab=self._jab, handle=handle)
+
+
+def _get_system_root_dir():
+    return os.environ.get("SYSTEMROOT")
+
+
+def _get_java_home_dir() -> Optional[str]:
+    java_home_dir = os.environ.get("JAVA_HOME")
+    if java_home_dir:
+        return java_home_dir
+    process = subprocess.Popen(['java', '-XshowSettings:properties', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    decoded = (stdout or stderr).decode('utf-8')
+    lines = decoded.splitlines()
+    for line in lines:
+        if line.strip().startswith("java.home"):
+            return line.split("=")[1].strip()
+    return None
