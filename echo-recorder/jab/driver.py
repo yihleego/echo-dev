@@ -1,13 +1,13 @@
 import os
 import platform
 import shutil
-from ctypes import c_long
+from ctypes import create_string_buffer
 from ctypes.wintypes import HWND, HANDLE
 from enum import Enum
 from typing import Union, Optional
 
 from calls import JAB
-from packages import AccessibleContext
+from packages import *
 
 
 class Role(str, Enum):
@@ -103,6 +103,141 @@ class JABElement:
         if parent_ctx != 0:
             self._parent = JABElement(jab=self._jab, handle=self._handle, vmid=self._vmid, ctx=parent_ctx, is_root=False, root=self._root)
         return self._parent
+
+    @property
+    def vmid(self) -> c_long:
+        return self._vmid
+
+    @property
+    def accessible_context(self) -> AccessibleContext:
+        return self._ctx
+
+    @property
+    def info(self):
+        aci = AccessibleContextInfo()
+        res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
+        return aci
+
+    @property
+    def name(self):
+        return self.info.name
+
+    @property
+    def description(self):
+        return self.info.description
+
+    @property
+    def role(self):
+        return self.info.role_en_US
+
+    @property
+    def states(self):
+        return self.info.states_en_US
+
+    @property
+    def index_in_parent(self):
+        return self.info.indexInParent
+
+    @property
+    def children_count(self):
+        return self.info.childrenCount
+
+    @property
+    def x(self) -> int:
+        return int(self.info.x)
+
+    @property
+    def y(self) -> int:
+        return int(self.info.y)
+
+    @property
+    def width(self) -> int:
+        return int(self.info.width)
+
+    @property
+    def height(self) -> int:
+        return int(self.info.height)
+
+    @property
+    def rect(self) -> tuple[int, int, int, int]:
+        x, y, w, h = self.x, self.y, self.width, self.height
+        return x, y, x + w, y + h
+
+    @property
+    def text(self) -> Optional[str]:
+        if not self.info.accessibleText:
+            return None
+        ati = AccessibleTextInfo()
+        res = self._jab.getAccessibleTextInfo(self._vmid, self._ctx, ati)
+        if not res:
+            return None
+        chars_start = c_int(0)
+        chars_end = ati.charCount - 1
+        chars_len = ati.charCount
+        if chars_len == 0:
+            return ""
+        buffer = create_string_buffer((chars_len + 1) * 2)
+        res = self._jab.getAccessibleTextRange(self._vmid, self._ctx, chars_start, chars_end, buffer, chars_len)
+        if not res:
+            return None
+        return buffer[:chars_len * 2].decode("utf_16", errors="replace")
+
+    @property
+    def value(self) -> Optional[str]:
+        if not self.info.accessibleValue:
+            return None
+
+    def child(self, index: int) -> Optional['JABElement']:
+        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+        if count <= 0 or count <= index:
+            return None
+        vci = VisibleChildrenInfo()
+        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
+            return None
+        ctx = AccessibleContext(vci.children[index])
+        return JABElement(jab=self._jab, handle=self._handle, vmid=self._vmid, ctx=ctx, is_root=False, root=self._root)
+
+    def children(self) -> list['JABElement']:
+        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+        if count <= 0:
+            return []
+        vci = VisibleChildrenInfo()
+        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        if not res or vci.returnedChildrenCount <= 0:
+            return []
+        res = []
+        for idx in range(vci.returnedChildrenCount):
+            ctx = AccessibleContext(vci.children[idx])
+            res.append(JABElement(jab=self._jab, handle=self._handle, vmid=self._vmid, ctx=ctx, is_root=False, root=self._root))
+        return res
+
+    def matches(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> bool:
+        return (role is not None and self.role == role) \
+            or (name is not None and self.name == name) \
+            or (states is not None and self.states == states) \
+            or (description is not None and self.description == description) \
+            or (text is not None and self.text == text) \
+            or (value is not None and self.value == value)
+
+    def find_elements(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> list['JABElement']:
+        res = []
+        if self.matches(role=role, name=name, states=states, description=description, text=text, value=value):
+            res.append(self)
+        children = self.children()
+        for child in children:
+            res.extend(child.find_elements(role=role, name=name, states=states, description=description, text=text, value=value))
+        return res
+
+    def find_element(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> Optional['JABElement']:
+        if self.matches(role=role, name=name, states=states, description=description, text=text, value=value):
+            return self
+        children = self.children()
+        for child in children:
+            found = child.find_element(role=role, name=name, states=states, description=description, text=text, value=value)
+            if found:
+                return found
+        return None
 
     @staticmethod
     def build(jab: JAB, handle: Union[int, HWND, HANDLE]) -> Optional['JABElement']:
