@@ -457,7 +457,8 @@ class AccessibleContextInfo(Structure):
         ("accessibleAction", BOOL),  # Java Accessibility interfaces
         ("accessibleSelection", BOOL),  # FALSE if this object doesn't
         ("accessibleText", BOOL),  # implement the additional interface
-        ("accessibleValue", BOOL),  # new bitfield containing additional interface flags
+        # ("accessibleValue", BOOL),  # old BOOL indicating whether AccessibleValue is supported
+        ("accessibleInterfaces", BOOL),  # new bitfield containing additional interface flags
     ]
 
 

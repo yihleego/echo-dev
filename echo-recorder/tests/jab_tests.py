@@ -3,6 +3,8 @@ import encodings
 import locale
 import os
 import platform
+import random
+import time
 from ctypes.wintypes import tagPOINT
 from typing import Optional
 
@@ -198,10 +200,47 @@ def on_click(x, y, button):
 
 def test():
     driver = JABDriver()
-    root = driver.find_window(handle=123)
+    root = driver.find_window(handle=0x20600)
     if not root:
         return
-    root.find_elements(role=Role.PUSH_BUTTON, name="确定")[0].click()
+    root.set_foreground()
+
+    input = root.find_elements(role=Role.TEXT)[0]
+    button = root.find_elements(role=Role.PUSH_BUTTON, name="Click Me")[0]
+    print('text:', input.text)
+    time.sleep(1)
+    input.set_focus()
+    time.sleep(1)
+    input.input(input.text + "append")
+    button.click()
+    print('input', input.rectangle)
+    print('button', button.rectangle)
+
+    input2 = root.find_elements(role=Role.TEXT)[0]
+    button2 = root.find_elements(role=Role.PUSH_BUTTON, name="Click Me")[0]
+    print('text:', input2.text)
+    input2.input("sb")
+    button2.click()
+
+    input.release()
+    button.release()
+    input2.release()
+    input2.release()
+
+    root.set_foreground()
+    time.sleep(1)
+    rect = root.rectangle
+    root.move(random.randint(0, rect[2] - rect[0]), random.randint(0, rect[3] - rect[1]))
+    time.sleep(1)
+    root.maximize()
+    print('is_maximized', root.is_maximized(), 'is_minimized', root.is_minimized(), 'is_normal', root.is_normal(), 'ok' if root.is_maximized() else 'err')
+    time.sleep(1)
+    root.restore()
+    print('is_maximized', root.is_maximized(), 'is_minimized', root.is_minimized(), 'is_normal', root.is_normal(), 'ok' if root.is_normal() else 'err')
+    time.sleep(1)
+    root.minimize()
+    print('is_maximized', root.is_maximized(), 'is_minimized', root.is_minimized(), 'is_normal', root.is_normal(), 'ok' if root.is_minimized() else 'err')
+    time.sleep(1)
 
 
 if __name__ == '__main__':

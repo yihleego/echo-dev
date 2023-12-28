@@ -2,12 +2,29 @@ import os
 import platform
 import shutil
 import subprocess
-from ctypes import create_string_buffer, c_wchar_p
-from ctypes.wintypes import HWND
+from ctypes import create_string_buffer, sizeof, byref, c_wchar_p, windll
+from ctypes.wintypes import HWND, UINT, POINT, RECT
 from typing import Union, Optional
 
+from utils.deprecated import deprecated
 from .calls import JAB
 from .packages import *
+
+SW_HIDE = 0
+SW_SHOWNORMAL = 1
+SW_NORMAL = 1
+SW_SHOWMINIMIZED = 2
+SW_SHOWMAXIMIZED = 3
+SW_MAXIMIZE = 3
+SW_SHOWNOACTIVATE = 4
+SW_SHOW = 5
+SW_MINIMIZE = 6
+SW_SHOWMINNOACTIVE = 7
+SW_SHOWNA = 8
+SW_RESTORE = 9
+SW_SHOWDEFAULT = 10
+SW_FORCEMINIMIZE = 11
+SW_MAX = 11
 
 
 class JABElement:
@@ -43,6 +60,36 @@ class JABElement:
         return self._parent
 
     @property
+    def children(self) -> list['JABElement']:
+        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+        if count <= 0:
+            return []
+        vci = VisibleChildrenInfo()
+        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        if not res or vci.returnedChildrenCount <= 0:
+            return []
+        res = []
+        for idx in range(vci.returnedChildrenCount):
+            ctx = AccessibleContext(vci.children[idx])
+            res.append(JABElement.create_element(root=self._root, ctx=ctx))
+        return res
+
+    @property
+    def children_count(self) -> int:
+        return self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+
+    def child(self, index: int) -> Optional['JABElement']:
+        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+        if count <= 0 or count <= index:
+            return None
+        vci = VisibleChildrenInfo()
+        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
+            return None
+        ctx = AccessibleContext(vci.children[index])
+        return JABElement.create_element(root=self._root, ctx=ctx)
+
+    @property
     def vmid(self) -> c_long:
         return self._vmid
 
@@ -70,15 +117,42 @@ class JABElement:
 
     @property
     def states(self) -> list[str]:
-        return self.info.states_en_US
+        states = self.info.states_en_US
+        if not states:
+            return []
+        return states.split(",")
+
+    @property
+    def enabled(self) -> bool:
+        return "enabled" in self.states
+
+    @property
+    def focusable(self) -> bool:
+        return "focusable" in self.states
+
+    @property
+    def visible(self) -> bool:
+        return "visible" in self.states
+
+    @property
+    def editable(self) -> bool:
+        return "editable" in self.states
+
+    @property
+    def checked(self) -> bool:
+        return "checked" in self.states
+
+    @property
+    def showing(self) -> bool:
+        return "showing" in self.states
+
+    @property
+    def opaque(self) -> bool:
+        return "opaque" in self.states
 
     @property
     def index_in_parent(self) -> int:
         return self.info.indexInParent
-
-    @property
-    def children_count(self) -> int:
-        return self.info.childrenCount
 
     @property
     def x(self) -> int:
@@ -97,9 +171,24 @@ class JABElement:
         return int(self.info.height)
 
     @property
-    def rect(self) -> tuple[int, int, int, int]:
-        x, y, w, h = self.x, self.y, self.width, self.height
+    def position(self) -> tuple[int, int]:
+        info = self.info
+        return int(info.x), int(info.y)
+
+    @property
+    def size(self) -> tuple[int, int]:
+        info = self.info
+        return int(info.width), int(info.height)
+
+    @property
+    def rectangle(self) -> tuple[int, int, int, int]:
+        info = self.info
+        x, y, w, h = int(info.x), int(info.y), int(info.width), int(info.height)
         return x, y, x + w, y + h
+
+    @property
+    def depth(self) -> int:
+        return self._jab.getObjectDepth(self._vmid, self._ctx)
 
     @property
     def text(self) -> Optional[str]:
@@ -120,17 +209,94 @@ class JABElement:
             return None
         return buffer[:chars_len * 2].decode("utf_16", errors="replace")
 
+    @deprecated
     @property
     def value(self) -> Optional[str]:
-        if not self.info.accessibleValue:
-            return None
+        raise NotImplemented
+
+    @deprecated
+    @property
+    def interfaces(self) -> Optional[str]:
+        raise NotImplemented
+
+    def screenshot(self, filename: str) -> str:
+        # TODO
+        pass
 
     def click(self) -> bool:
+        # TODO I don't know why 'click' does not work
         return self._do_action(action_names=['单击', 'click'])
 
     def input(self, text: str) -> bool:
         res = self._jab.setTextContents(self._vmid, self._ctx, c_wchar_p(text))
         return bool(res)
+
+    def set_focus(self) -> bool:
+        res = self._jab.requestFocus(self._vmid, self._ctx)
+        return bool(res)
+
+    def set_foreground(self) -> bool:
+        self.show()
+        res = windll.user32.SetForegroundWindow(self._handle)
+        return bool(res)
+
+    def move(self, x: int = None, y: int = None, width: int = None, height: int = None, repaint=True) -> bool:
+        if x is None or y is None or width is None or height is None:
+            rect = self.root.rectangle
+            if x is None:
+                x = rect[0]
+            if y is None:
+                y = rect[1]
+            if width is None:
+                width = rect[2] - rect[0]
+            if height is None:
+                height = rect[3] - rect[1]
+        res = windll.user32.MoveWindow(self._handle, x, y, width, height, repaint)
+        if not res:
+            return False
+        else:
+            return True
+
+    def hide(self):
+        windll.user32.ShowWindow(self._handle, SW_HIDE)
+
+    def show(self):
+        windll.user32.ShowWindow(self._handle, SW_SHOW)
+
+    def maximize(self):
+        windll.user32.ShowWindow(self._handle, SW_MAXIMIZE)
+
+    def minimize(self):
+        windll.user32.ShowWindow(self._handle, SW_MINIMIZE)
+
+    def restore(self):
+        windll.user32.ShowWindow(self._handle, SW_RESTORE)
+
+    def is_minimized(self):
+        return self.get_window_state() == SW_SHOWMINIMIZED
+
+    def is_maximized(self):
+        return self.get_window_state() == SW_SHOWMAXIMIZED
+
+    def is_normal(self):
+        return self.get_window_state() == SW_SHOWNORMAL
+
+    def get_window_state(self):
+        # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowplacement
+        class WINDOWPLACEMENT(Structure):
+            _fields_ = [
+                ('length', UINT),
+                ('flags', UINT),
+                ('showCmd', UINT),
+                ('ptMinPosition', POINT),
+                ('ptMaxPosition', POINT),
+                ('rcNormalPosition', RECT),
+            ]
+
+        wp = WINDOWPLACEMENT()
+        wp.length = sizeof(wp)
+        windll.user32.GetWindowPlacement(self._handle, byref(wp))
+        return wp.showCmd
 
     def _do_action(self, action_names: list[str]) -> bool:
         if not action_names or not self.info.accessibleAction:
@@ -152,57 +318,58 @@ class JABElement:
                 return True
         return False
 
-    def child(self, index: int) -> Optional['JABElement']:
-        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
-        if count <= 0 or count <= index:
-            return None
-        vci = VisibleChildrenInfo()
-        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
-        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
-            return None
-        ctx = AccessibleContext(vci.children[index])
-        return JABElement.create_element(root=self._root, ctx=ctx)
-
-    def children(self) -> list['JABElement']:
-        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
-        if count <= 0:
-            return []
-        vci = VisibleChildrenInfo()
-        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
-        if not res or vci.returnedChildrenCount <= 0:
-            return []
-        res = []
-        for idx in range(vci.returnedChildrenCount):
-            ctx = AccessibleContext(vci.children[idx])
-            res.append(JABElement.create_element(root=self._root, ctx=ctx))
-        return res
-
     def matches(self, role: str = None, name: str = None, states: list[str] = None, description: str = None, text: str = None, value: str = None) -> bool:
-        return (role is not None and role == self.role) \
-            or (name is not None and name == self.name) \
-            or (states is not None and set(states).issubset(set(self.states))) \
-            or (description is not None and description == self.description) \
-            or (text is not None and text == self.text) \
-            or (value is not None and value == self.value)
+        info = self.info
+        if not info:
+            return False
+        # TODO value
+        return (role is not None and role == info.role) \
+            or (name is not None and name == info.name) \
+            or (states is not None and set(states).issubset(set(info.states))) \
+            or (description is not None and description == info.description) \
+            or (text is not None and text == self.text)
 
     def find_elements(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> list['JABElement']:
-        res = []
-        if self.matches(role=role, name=name, states=states, description=description, text=text, value=value):
-            res.append(self)
-        children = self.children()
+        found = []
+        closed = []
+        children = self.children
         for child in children:
-            res.extend(child.find_elements(role=role, name=name, states=states, description=description, text=text, value=value))
-        return res
+            matched = child.matches(role=role, name=name, states=states, description=description, text=text, value=value)
+            if matched:
+                found.append(child)
+            else:
+                closed.append(child)
+            # looking for deep elements anyway
+            found.extend(child.find_elements(role=role, name=name, states=states, description=description, text=text, value=value))
+        # close all mismatched elements
+        for child in closed:
+            child.release()
+        return found
 
     def find_element(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> Optional['JABElement']:
-        if self.matches(role=role, name=name, states=states, description=description, text=text, value=value):
-            return self
-        children = self.children()
+        found = None
+        closed = []
+        children = self.children
         for child in children:
-            found = child.find_element(role=role, name=name, states=states, description=description, text=text, value=value)
-            if found:
-                return found
-        return None
+            matched = child.matches(role=role, name=name, states=states, description=description, text=text, value=value)
+            if matched:
+                found = matched
+                break
+            else:
+                closed.append(child)
+        # looking for deep elements if not found
+        if not found:
+            for child in children:
+                found = child.find_element(role=role, name=name, states=states, description=description, text=text, value=value)
+                if found:
+                    break
+        # close all mismatched elements
+        for child in closed:
+            child.release()
+        return found
+
+    def release(self):
+        self._jab.releaseJavaObject(self._vmid, self._ctx)
 
     @staticmethod
     def create_root(jab: JAB, handle: Union[int, HWND]) -> Optional['JABElement']:
