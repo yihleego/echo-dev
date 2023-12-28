@@ -215,8 +215,34 @@ class JABElement:
         return self._jab.getObjectDepth(self._vmid, self._ctx)
 
     def screenshot(self, filename: str) -> str:
-        # TODO
-        pass
+        import win32api
+        import win32gui
+        import win32ui
+        import win32con
+        from PIL import Image, ImageGrab
+        rect = self.rectangle
+        if len(win32api.EnumDisplayMonitors()) > 1:
+            left, top, right, bottom = rect
+            width, height = right - left, bottom - top
+            hwin = win32gui.GetDesktopWindow()
+            hwindc = win32gui.GetWindowDC(hwin)
+            srcdc = win32ui.CreateDCFromHandle(hwindc)
+            memdc = srcdc.CreateCompatibleDC()
+            bmp = win32ui.CreateBitmap()
+            bmp.CreateCompatibleBitmap(srcdc, width, height)
+            memdc.SelectObject(bmp)
+            memdc.BitBlt((0, 0), (width, height), srcdc, (left, top), win32con.SRCCOPY)
+            bmpinfo = bmp.GetInfo()
+            bmpstr = bmp.GetBitmapBits(True)
+            img = Image.frombuffer('RGB', (bmpinfo['bmWidth'], bmpinfo['bmHeight']), bmpstr, 'raw', 'BGRX', 0, 1)
+        else:
+            img = ImageGrab.grab(rect)
+
+        dirname = os.path.dirname(filename)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
+        img.save(filename)
+        return filename
 
     def click(self) -> bool:
         # TODO I don't know why 'click' does not work
