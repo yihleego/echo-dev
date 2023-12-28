@@ -1,12 +1,12 @@
 import os
 import platform
+import re
 import shutil
 import subprocess
 from ctypes import create_string_buffer, sizeof, byref, c_wchar_p, windll
 from ctypes.wintypes import HWND, UINT, POINT, RECT
 from typing import Union, Optional
 
-from utils.deprecated import deprecated
 from .calls import JAB
 from .packages import *
 
@@ -40,6 +40,7 @@ class JABElement:
             self._root: JABElement = root
             self._is_root: bool = False
         self._parent: Optional[JABElement] = None
+        self._cached_info: Optional[AccessibleContextInfo] = None
 
     @property
     def root(self) -> 'JABElement':
@@ -101,7 +102,11 @@ class JABElement:
     def info(self) -> Optional[AccessibleContextInfo]:
         aci = AccessibleContextInfo()
         res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
-        return aci if res else None
+        if res:
+            self._cached_info = aci
+            return aci
+        else:
+            return None
 
     @property
     def name(self) -> str:
@@ -187,10 +192,6 @@ class JABElement:
         return x, y, x + w, y + h
 
     @property
-    def depth(self) -> int:
-        return self._jab.getObjectDepth(self._vmid, self._ctx)
-
-    @property
     def text(self) -> Optional[str]:
         if not self.info.accessibleText:
             return None
@@ -209,15 +210,9 @@ class JABElement:
             return None
         return buffer[:chars_len * 2].decode("utf_16", errors="replace")
 
-    @deprecated
     @property
-    def value(self) -> Optional[str]:
-        raise NotImplemented
-
-    @deprecated
-    @property
-    def interfaces(self) -> Optional[str]:
-        raise NotImplemented
+    def depth(self) -> int:
+        return self._jab.getObjectDepth(self._vmid, self._ctx)
 
     def screenshot(self, filename: str) -> str:
         # TODO
@@ -318,40 +313,116 @@ class JABElement:
                 return True
         return False
 
-    def matches(self, role: str = None, name: str = None, states: list[str] = None, description: str = None, text: str = None, value: str = None) -> bool:
+    def matches(self, **kwargs) -> bool:
+        """
+        Match element by criteria.
+        :param role: role equals
+        :param role_like: role name contains
+        :param role_in: role name in list
+        :param role_in_like: role name contains in list
+        :param role_regex: role name regex
+        :param name: name equals
+        :param name_like: name contains
+        :param name_in: name in list
+        :param name_in_like: name contains in list
+        :param name_regex: name regex
+        :param description: description equals
+        :param description_like: description contains
+        :param description_in: description in list
+        :param description_in_like: description contains in list
+        :param description_regex: description regex
+        :param text: text equals
+        :param text_like: text contains
+        :param text_in: text in list
+        :param text_in_like: text contains in list
+        :param text_regex: text regex
+        :param enabled: state enabled
+        :param focusable: state focusable
+        :param visible: state visible
+        :param editable: state editable
+        :param checked: state checked
+        :param showing: state showing
+        :param opaque: state opaque
+        :param depth: depth equals
+        :return: True if matched
+        """
+        if not kwargs:
+            return True
         info = self.info
-        if not info:
-            return False
-        # TODO value
-        return (role is not None and role == info.role) \
-            or (name is not None and name == info.name) \
-            or (states is not None and set(states).issubset(set(info.states))) \
-            or (description is not None and description == info.description) \
-            or (text is not None and text == self.text)
+        states = info.states_en_US
 
-    def find_elements(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> list['JABElement']:
+        def _keyword(key: str, src):
+            if src is None:
+                return False
+            keys = [key, key + "_like", key + "_in", key + "_in_like", key + "_regex"]
+            values = [kwargs.get(k) for k in keys]
+            if not any(values):
+                return False
+            value = values[0]
+            value_like = values[1]
+            value_in = values[2]
+            value_in_like = values[3]
+            value_regex = values[4]
+            if value is not None and value == src:
+                return True
+            if value_like is not None and value_like in src:
+                return True
+            if value_in is not None:
+                for tmp in value_in:
+                    if tmp == src:
+                        return True
+            if value_in_like is not None:
+                for tmp in value_in_like:
+                    if tmp in src:
+                        return True
+            if value_regex is not None:
+                if re.match(value_regex, src):
+                    return True
+            return False
+
+        def _state(key: str):
+            return kwargs.get(key) and key in states
+
+        def _value(key: str, v):
+            return kwargs.get(key) and kwargs.get(key) == v
+
+        return _keyword("role", info.role_en_US) \
+            or _keyword("name", info.name) \
+            or _keyword("description", info.description) \
+            or _state("enabled") \
+            or _state("focusable") \
+            or _state("visible") \
+            or _state("editable") \
+            or _state("checked") \
+            or _state("showing") \
+            or _state("opaque") \
+            or _state("depth") \
+            or _keyword("text", self.text) \
+            or _value("depth", self.depth)
+
+    def find_elements(self, **kwargs) -> list['JABElement']:
         found = []
         closed = []
         children = self.children
         for child in children:
-            matched = child.matches(role=role, name=name, states=states, description=description, text=text, value=value)
+            matched = child.matches(**kwargs)
             if matched:
                 found.append(child)
             else:
                 closed.append(child)
             # looking for deep elements anyway
-            found.extend(child.find_elements(role=role, name=name, states=states, description=description, text=text, value=value))
+            found.extend(child.find_elements(**kwargs))
         # close all mismatched elements
         for child in closed:
             child.release()
         return found
 
-    def find_element(self, role: str = None, name: str = None, states: str = None, description: str = None, text: str = None, value: str = None) -> Optional['JABElement']:
+    def find_element(self, **kwargs) -> Optional['JABElement']:
         found = None
         closed = []
         children = self.children
         for child in children:
-            matched = child.matches(role=role, name=name, states=states, description=description, text=text, value=value)
+            matched = child.matches(**kwargs)
             if matched:
                 found = matched
                 break
@@ -360,7 +431,7 @@ class JABElement:
         # looking for deep elements if not found
         if not found:
             for child in children:
-                found = child.find_element(role=role, name=name, states=states, description=description, text=text, value=value)
+                found = child.find_element(**kwargs)
                 if found:
                     break
         # close all mismatched elements
