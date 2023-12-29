@@ -378,24 +378,24 @@ class JABElement:
 
     def find_elements(self, **kwargs) -> list['JABElement']:
         found = []
-        closed = []
+        released = []
         children = self.children
         for child in children:
             matched = child.matches(**kwargs)
             if matched:
                 found.append(child)
             else:
-                closed.append(child)
+                released.append(child)
             # looking for deep elements anyway
             found.extend(child.find_elements(**kwargs))
-        # close all mismatched elements
-        for child in closed:
+        # release all mismatched elements
+        for child in released:
             child.release()
         return found
 
     def find_element(self, **kwargs) -> Optional['JABElement']:
         found = None
-        closed = []
+        released = []
         children = self.children
         for child in children:
             matched = child.matches(**kwargs)
@@ -403,15 +403,15 @@ class JABElement:
                 found = matched
                 break
             else:
-                closed.append(child)
+                released.append(child)
         # looking for deep elements if not found
         if not found:
             for child in children:
                 found = child.find_element(**kwargs)
                 if found:
                     break
-        # close all mismatched elements
-        for child in closed:
+        # release all mismatched elements
+        for child in released:
             child.release()
         return found
 
