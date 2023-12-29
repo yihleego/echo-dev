@@ -204,7 +204,8 @@ def test():
     if not root:
         print('not found')
         return
-    root.screenshot("./screenshots/root.png")
+    root.screenshot("./screenshots/root1.png")
+    win32.screenshot(root.handle, "./screenshots/root2.png")
 
     input = root.find_elements(role=Role.TEXT)[0]
     button = root.find_elements(role=Role.PUSH_BUTTON, name="Click Me")[0]
