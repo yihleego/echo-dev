@@ -1,26 +1,24 @@
+import asyncio
 import ctypes
 import encodings
 import locale
-import os
-import platform
 import random
-import time
 from ctypes.wintypes import tagPOINT
-from typing import Optional
 
 import pywinauto
-import win32gui
 from pywinauto import win32defines, win32structures, win32functions
 
-from jab import JAB, AccessibleContext, AccessibleContextInfo, VisibleChildrenInfo, AccessibleTextInfo, AccessibleActions, AccessibleActionsToDo, JABDriver, Role
-from utils.input import listener, Event, Key
+from jab import *
+from utils.input import listener, Event, Key, main
 
 OS_ARCH = platform.architecture()[0][:2]  # 32 or 64
 JAB_VERSION = "2.0.2"
 JAB_DLL_PATH = os.path.abspath("lib/javaaccessbridge%s/WindowsAccessBridge-%s.dll" % (JAB_VERSION, OS_ARCH))
+JAB_DLL_PATH = "C:\\Windows\\System32\\WindowsAccessBridge-64.dll"
 
 
 def draw_outline(rect: tuple[int, int, int, int], msg=None):
+    import win32gui
     # color red
     color = 0x0000ff
 
@@ -103,7 +101,7 @@ def on_click(x, y, button):
     elem = pywinauto.uia_defines.IUIA().iuia.ElementFromPoint(tagPOINT(x, y))
     elem_info = pywinauto.uia_element_info.UIAElementInfo(elem)
     target = elem_info
-    rectangle = target.rectangle
+    states = []
     if target.handle:
         hwnd = target.handle
         res = dll.isJavaWindow(hwnd)
@@ -121,7 +119,8 @@ def on_click(x, y, button):
             res = dll.getAccessibleContextInfo(vmid, ac, aci)
             if not res:
                 return
-            print(f"{'-' * depth} name='{aci.name}' role='{aci.role}'")
+            print(f"{'-' * depth} name='{aci.name}' description='{aci.description}' role='{aci.role_en_US}' states='{aci.states_en_US}' rect='{aci.x} {aci.y} {aci.width} {aci.height}'")
+            states.extend(aci.states_en_US.split(','))
 
             if aci.accessibleText:
                 ati = AccessibleTextInfo()
@@ -142,13 +141,13 @@ def on_click(x, y, button):
                 if res:
                     for index in range(aa.actionsCount):
                         print(f"{'-' * depth} action='{aa.actionInfo[index].name}'")
-                        if aa.actionInfo[index].name == '单击':
-                            aatd = AccessibleActionsToDo()
-                            aatd.actions[0].name = '单击'
-                            aatd.actionsCount = 1
-                            failure = ctypes.c_int(0)
-                            dll.doAccessibleActions(vmid, ac, aatd, failure)
-                            print(f"{'-' * depth} clicked")
+                        # if aa.actionInfo[index].name == '单击':
+                        #     aatd = AccessibleActionsToDo()
+                        #     aatd.actions[0].name = '单击'
+                        #     aatd.actionsCount = 1
+                        #     failure = ctypes.c_int(0)
+                        #     dll.doAccessibleActions(vmid, ac, aatd, failure)
+                        #     print(f"{'-' * depth} clicked")
 
             if aci.accessibleSelection:
                 pass
@@ -169,6 +168,7 @@ def on_click(x, y, button):
 
         print_tree(0, accessible_context)
         dll.releaseJavaObject(vmid, accessible_context)
+        print('states', sorted(list(set(states))))
 
         # new_vmid = ctypes.c_long()
         # new_accessible_context = AccessibleContext()
@@ -246,5 +246,5 @@ def test():
 
 
 if __name__ == '__main__':
-    # asyncio.run(main())
+    asyncio.run(main())
     test()

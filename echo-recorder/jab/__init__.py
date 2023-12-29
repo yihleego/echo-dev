@@ -65,3 +65,24 @@ class Role(str, Enum):
     UNKNOWN = "unknown"
     VIEW_PORT = "viewport"
     WINDOW = "window"
+
+
+class State(str, Enum):
+    ACTIVE = 'active'
+    COLLAPSED = 'collapsed'
+    EDITABLE = 'editable'
+    ENABLED = 'enabled'
+    FOCUSABLE = 'focusable'
+    FOCUSED = 'focused'
+    HORIZONTAL = 'horizontal'
+    MODAL = 'modal'
+    MULTIPLELINE = 'multiple line'
+    MULTISELECTABLE = 'multiselectable'
+    OPAQUE = 'opaque'
+    RESIZABLE = 'resizable'
+    SELECTABLE = 'selectable'
+    SELECTED = 'selected'
+    SHOWING = 'showing'
+    SINGLELINE = 'single line'
+    VERTICAL = 'vertical'
+    VISIBLE = 'visible'
