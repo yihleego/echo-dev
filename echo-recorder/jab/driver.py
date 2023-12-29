@@ -9,6 +9,7 @@ from ctypes.wintypes import HWND
 from typing import Optional
 
 from utils import win32
+from utils.deprecated import deprecated
 from .calls import JAB
 from .packages import *
 
@@ -156,18 +157,22 @@ class JABElement:
     def index_in_parent(self) -> int:
         return self.info.indexInParent
 
+    @deprecated("use 'position' instead")
     @property
     def x(self) -> int:
         return int(self.info.x)
 
+    @deprecated("use 'position' instead")
     @property
     def y(self) -> int:
         return int(self.info.y)
 
+    @deprecated("use 'size' instead")
     @property
     def width(self) -> int:
         return int(self.info.width)
 
+    @deprecated("use 'size' instead")
     @property
     def height(self) -> int:
         return int(self.info.height)
@@ -210,17 +215,6 @@ class JABElement:
     @property
     def depth(self) -> int:
         return self._jab.getObjectDepth(self._vmid, self._ctx)
-
-    def screenshot(self, filename: str) -> str:
-        from PIL import ImageGrab
-        dirname = os.path.dirname(filename)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname, exist_ok=True)
-        self.set_foreground()
-        time.sleep(0.06)
-        img = ImageGrab.grab(self.rectangle)
-        img.save(filename)
-        return filename
 
     def click(self) -> bool:
         # TODO I don't know why 'click' does not work
@@ -274,6 +268,17 @@ class JABElement:
 
     def is_normal(self) -> bool:
         return win32.get_window_placement(self._handle).showCmd == win32.SW_SHOWNORMAL
+
+    def screenshot(self, filename: str) -> str:
+        from PIL import ImageGrab
+        dirname = os.path.dirname(filename)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
+        self.set_foreground()
+        time.sleep(0.06)
+        img = ImageGrab.grab(self.rectangle)
+        img.save(filename)
+        return filename
 
     def matches(self, **kwargs) -> bool:
         """
@@ -362,6 +367,14 @@ class JABElement:
             and _state("depth") \
             and _keyword("text", self.text) \
             and _value("depth", self.depth)
+
+    def find_all_elements(self) -> list['JABElement']:
+        found = [self]
+        children = self.children
+        for child in children:
+            found.append(child)
+            found.extend(child.find_all_elements())
+        return found
 
     def find_elements(self, **kwargs) -> list['JABElement']:
         found = []
