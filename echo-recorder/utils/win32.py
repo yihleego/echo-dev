@@ -79,7 +79,7 @@ def get_window_rect(handle: int) -> RECT:
 
 
 def move_window(handle: int, process_id: int = None, x: int = None, y: int = None, width: int = None, height: int = None, repaint=True):
-    if not any((x, y, width, height)):
+    if x is None or y is None or width is None or height is None:
         rect = get_window_rect(handle)
         if x is None:
             x = rect[0]
