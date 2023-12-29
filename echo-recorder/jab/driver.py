@@ -95,6 +95,10 @@ class JABElement:
         return JABElement.create_element(root=self._root, ctx=ctx)
 
     @property
+    def depth(self) -> int:
+        return self._jab.getObjectDepth(self._vmid, self._ctx)
+
+    @property
     def info(self) -> Optional[AccessibleContextInfo]:
         aci = AccessibleContextInfo()
         res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
@@ -213,20 +217,16 @@ class JABElement:
         res = self._jab.getAccessibleTextInfo(self._vmid, self._ctx, ati)
         if not res:
             return None
+        if ati.charCount <= 0:
+            return ""
         chars_start = c_int(0)
         chars_end = ati.charCount - 1
         chars_len = ati.charCount
-        if chars_len == 0:
-            return ""
         buffer = create_string_buffer((chars_len + 1) * 2)
         res = self._jab.getAccessibleTextRange(self._vmid, self._ctx, chars_start, chars_end, buffer, chars_len)
         if not res:
             return None
         return buffer[:chars_len * 2].decode("utf_16", errors="replace")
-
-    @property
-    def depth(self) -> int:
-        return self._jab.getObjectDepth(self._vmid, self._ctx)
 
     def click(self) -> bool:
         # TODO I don't know why 'click' does not work
@@ -389,6 +389,9 @@ class JABElement:
         return found
 
     def find_elements(self, **kwargs) -> list['JABElement']:
+        # return empty list if no criteria
+        if len(kwargs) == 0:
+            return []
         found = []
         released = []
         children = self.children
@@ -406,6 +409,9 @@ class JABElement:
         return found
 
     def find_element(self, **kwargs) -> Optional['JABElement']:
+        # return None if no criteria
+        if len(kwargs) == 0:
+            return None
         found = None
         released = []
         children = self.children
