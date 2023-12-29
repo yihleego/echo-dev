@@ -200,16 +200,14 @@ def on_click(x, y, button):
 
 def test():
     driver = JABDriver()
-    root = driver.find_window(handle=0x3054A)
+    root = driver.find_window(handle=0x20600)
     if not root:
         print('not found')
         return
     root.screenshot("./screenshots/root.png")
 
-    input = root.find_elements(lambda e: e.role == Role.TEXT)[0]
-    button = root.find_elements(
-        lambda e: e.role == Role.PUSH_BUTTON,
-        lambda e: e.name == "Click Me")[0]
+    input = root.find_elements(role=Role.TEXT)[0]
+    button = root.find_elements(role=Role.PUSH_BUTTON, name="Click Me")[0]
     print('text:', input.text)
     time.sleep(1)
     input.set_focus()
