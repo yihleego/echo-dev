@@ -146,6 +146,22 @@ class JABElement:
         return "multiselectable" in self.states
 
     @property
+    def collapsed(self) -> bool:
+        return "collapsed" in self.states
+
+    @property
+    def enabled(self) -> bool:
+        return "enabled" in self.states
+
+    @property
+    def focused(self) -> bool:
+        return "focused" in self.states
+
+    @property
+    def selected(self) -> bool:
+        return "selected" in self.states
+
+    @property
     def showing(self) -> bool:
         return "showing" in self.states
 
