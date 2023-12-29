@@ -207,15 +207,15 @@ def test():
     root.screenshot("./screenshots/root1.png")
     win32.screenshot(root.handle, "./screenshots/root2.png")
 
-    input = root.find_elements(role=Role.TEXT)[0]
+    text = root.find_elements(role=Role.TEXT)[0]
     button = root.find_elements(role=Role.PUSH_BUTTON, name="Click Me")[0]
-    print('text:', input.text)
+    print('text:', text.text)
     time.sleep(1)
-    input.set_focus()
+    text.set_focus()
     time.sleep(1)
-    input.input(input.text + "append")
+    text.input(text.text + "append")
     button.click()
-    print('input', input.rectangle)
+    print('input', text.rectangle)
     print('button', button.rectangle)
 
     input2 = root.find_elements(role=Role.TEXT)[0]
@@ -224,7 +224,7 @@ def test():
     input2.input("sb")
     button2.click()
 
-    input.release()
+    text.release()
     button.release()
     input2.release()
     input2.release()
