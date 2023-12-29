@@ -200,7 +200,7 @@ def on_click(x, y, button):
 
 def test():
     driver = JABDriver()
-    root = driver.find_window(handle=0x20600)
+    root = driver.find_window(handle=0x3054A)
     if not root:
         print('not found')
         return
