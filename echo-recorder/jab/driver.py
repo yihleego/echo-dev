@@ -122,36 +122,32 @@ class JABElement:
         return states.split(",")
 
     @property
-    def enabled(self) -> bool:
-        return "enabled" in self.states
+    def editable(self) -> bool:
+        return "editable" in self.states
 
     @property
     def focusable(self) -> bool:
         return "focusable" in self.states
 
     @property
+    def resizable(self) -> bool:
+        return "resizable" in self.states
+
+    @property
     def visible(self) -> bool:
         return "visible" in self.states
 
     @property
-    def editable(self) -> bool:
-        return "editable" in self.states
+    def selectable(self) -> bool:
+        return "selectable" in self.states
 
     @property
-    def checked(self) -> bool:
-        return "checked" in self.states
-
-    @property
-    def focused(self) -> bool:
-        return "focused" in self.states
+    def multiselectable(self) -> bool:
+        return "multiselectable" in self.states
 
     @property
     def showing(self) -> bool:
         return "showing" in self.states
-
-    @property
-    def opaque(self) -> bool:
-        return "opaque" in self.states
 
     @property
     def index_in_parent(self) -> int:
