@@ -157,22 +157,22 @@ class JABElement:
     def index_in_parent(self) -> int:
         return self.info.indexInParent
 
-    @deprecated("use 'position' instead")
+    @deprecated("please use 'position' instead")
     @property
     def x(self) -> int:
         return int(self.info.x)
 
-    @deprecated("use 'position' instead")
+    @deprecated("please use 'position' instead")
     @property
     def y(self) -> int:
         return int(self.info.y)
 
-    @deprecated("use 'size' instead")
+    @deprecated("please use 'size' instead")
     @property
     def width(self) -> int:
         return int(self.info.width)
 
-    @deprecated("use 'size' instead")
+    @deprecated("please use 'size' instead")
     @property
     def height(self) -> int:
         return int(self.info.height)
