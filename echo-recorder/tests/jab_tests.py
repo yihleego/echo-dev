@@ -202,8 +202,10 @@ def test():
     driver = JABDriver()
     root = driver.find_window(handle=0x20600)
     if not root:
+        print('not found')
         return
-    root.set_foreground()
+    root.screenshot("./screenshots/root_inactive.png", True)
+    root.screenshot("./screenshots/root_foreground.png", False)
 
     input = root.find_elements(role=Role.TEXT)[0]
     button = root.find_elements(role=Role.PUSH_BUTTON, name="Click Me")[0]

@@ -3,9 +3,10 @@ import platform
 import re
 import shutil
 import subprocess
+import time
 from ctypes import create_string_buffer, sizeof, byref, c_wchar_p, windll
-from ctypes.wintypes import HWND, UINT, POINT, RECT
-from typing import Union, Optional
+from ctypes.wintypes import HWND, DWORD, UINT, POINT, RECT
+from typing import Optional
 
 from .calls import JAB
 from .packages import *
@@ -24,13 +25,13 @@ SW_SHOWNA = 8
 SW_RESTORE = 9
 SW_SHOWDEFAULT = 10
 SW_FORCEMINIMIZE = 11
-SW_MAX = 11
 
 
 class JABElement:
-    def __init__(self, jab: JAB, handle: Union[int, HWND], vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
+    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
         self._jab: JAB = jab
-        self._handle: Union[int, HWND] = handle
+        self._handle: int = handle
+        self._process_id: int = process_id
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
         if is_root or root == self:
@@ -41,6 +42,22 @@ class JABElement:
             self._is_root: bool = False
         self._parent: Optional[JABElement] = None
         self._cached_info: Optional[AccessibleContextInfo] = None
+
+    @property
+    def handle(self) -> int:
+        return self._handle
+
+    @property
+    def process_id(self) -> int:
+        return self._process_id
+
+    @property
+    def vmid(self) -> c_long:
+        return self._vmid
+
+    @property
+    def accessible_context(self) -> AccessibleContext:
+        return self._ctx
 
     @property
     def root(self) -> 'JABElement':
@@ -91,22 +108,12 @@ class JABElement:
         return JABElement.create_element(root=self._root, ctx=ctx)
 
     @property
-    def vmid(self) -> c_long:
-        return self._vmid
-
-    @property
-    def accessible_context(self) -> AccessibleContext:
-        return self._ctx
-
-    @property
     def info(self) -> Optional[AccessibleContextInfo]:
         aci = AccessibleContextInfo()
         res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
         if res:
             self._cached_info = aci
-            return aci
-        else:
-            return None
+        return aci
 
     @property
     def name(self) -> str:
@@ -146,6 +153,10 @@ class JABElement:
     @property
     def checked(self) -> bool:
         return "checked" in self.states
+
+    @property
+    def focused(self) -> bool:
+        return "focused" in self.states
 
     @property
     def showing(self) -> bool:
@@ -214,28 +225,43 @@ class JABElement:
     def depth(self) -> int:
         return self._jab.getObjectDepth(self._vmid, self._ctx)
 
-    def screenshot(self, filename: str) -> str:
-        import win32api
-        import win32gui
-        import win32ui
-        import win32con
-        from PIL import Image, ImageGrab
+    def screenshot(self, filename: str, inactive=True) -> str:
         rect = self.rectangle
-        if len(win32api.EnumDisplayMonitors()) > 1:
-            left, top, right, bottom = rect
-            width, height = right - left, bottom - top
-            hwin = win32gui.GetDesktopWindow()
-            hwindc = win32gui.GetWindowDC(hwin)
-            srcdc = win32ui.CreateDCFromHandle(hwindc)
-            memdc = srcdc.CreateCompatibleDC()
-            bmp = win32ui.CreateBitmap()
-            bmp.CreateCompatibleBitmap(srcdc, width, height)
-            memdc.SelectObject(bmp)
-            memdc.BitBlt((0, 0), (width, height), srcdc, (left, top), win32con.SRCCOPY)
-            bmpinfo = bmp.GetInfo()
-            bmpstr = bmp.GetBitmapBits(True)
+        if inactive:
+            import win32gui
+            import win32ui
+            from PIL import Image
+
+            hwnd = self._handle
+            w = rect[2] - rect[0]
+            h = rect[3] - rect[1]
+
+            hwndDC = win32gui.GetWindowDC(hwnd)
+            mfcDC = win32ui.CreateDCFromHandle(hwndDC)
+            saveDC = mfcDC.CreateCompatibleDC()
+
+            saveBitMap = win32ui.CreateBitmap()
+            saveBitMap.CreateCompatibleBitmap(mfcDC, w, h)
+
+            saveDC.SelectObject(saveBitMap)
+
+            res = windll.user32.PrintWindow(hwnd, saveDC.GetSafeHdc(), 2)
+            if not res:
+                raise Exception()
+
+            bmpinfo = saveBitMap.GetInfo()
+            bmpstr = saveBitMap.GetBitmapBits(True)
+
             img = Image.frombuffer('RGB', (bmpinfo['bmWidth'], bmpinfo['bmHeight']), bmpstr, 'raw', 'BGRX', 0, 1)
+
+            win32gui.DeleteObject(saveBitMap.GetHandle())
+            saveDC.DeleteDC()
+            mfcDC.DeleteDC()
+            win32gui.ReleaseDC(hwnd, hwndDC)
         else:
+            from PIL import ImageGrab
+            self.set_foreground()
+            time.sleep(0.06)
             img = ImageGrab.grab(rect)
 
         dirname = os.path.dirname(filename)
@@ -259,6 +285,7 @@ class JABElement:
     def set_foreground(self) -> bool:
         self.show()
         res = windll.user32.SetForegroundWindow(self._handle)
+        self._wait_idle()
         return bool(res)
 
     def move(self, x: int = None, y: int = None, width: int = None, height: int = None, repaint=True) -> bool:
@@ -273,36 +300,44 @@ class JABElement:
             if height is None:
                 height = rect[3] - rect[1]
         res = windll.user32.MoveWindow(self._handle, x, y, width, height, repaint)
+        self._wait_idle()
+        time.sleep(0)
         if not res:
             return False
         else:
             return True
 
-    def hide(self):
-        windll.user32.ShowWindow(self._handle, SW_HIDE)
+    def hide(self) -> bool:
+        # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
+        res = windll.user32.ShowWindow(self._handle, SW_HIDE)
+        return bool(res)
 
-    def show(self):
-        windll.user32.ShowWindow(self._handle, SW_SHOW)
+    def show(self) -> bool:
+        res = windll.user32.ShowWindow(self._handle, SW_SHOW)
+        return bool(res)
 
-    def maximize(self):
-        windll.user32.ShowWindow(self._handle, SW_MAXIMIZE)
+    def maximize(self) -> bool:
+        res = windll.user32.ShowWindow(self._handle, SW_MAXIMIZE)
+        return bool(res)
 
-    def minimize(self):
-        windll.user32.ShowWindow(self._handle, SW_MINIMIZE)
+    def minimize(self) -> bool:
+        res = windll.user32.ShowWindow(self._handle, SW_MINIMIZE)
+        return bool(res)
 
-    def restore(self):
-        windll.user32.ShowWindow(self._handle, SW_RESTORE)
+    def restore(self) -> bool:
+        res = windll.user32.ShowWindow(self._handle, SW_RESTORE)
+        return bool(res)
 
-    def is_minimized(self):
+    def is_minimized(self) -> bool:
         return self.get_window_state() == SW_SHOWMINIMIZED
 
-    def is_maximized(self):
+    def is_maximized(self) -> bool:
         return self.get_window_state() == SW_SHOWMAXIMIZED
 
-    def is_normal(self):
+    def is_normal(self) -> bool:
         return self.get_window_state() == SW_SHOWNORMAL
 
-    def get_window_state(self):
+    def get_window_state(self) -> int:
         # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowplacement
         class WINDOWPLACEMENT(Structure):
             _fields_ = [
@@ -318,26 +353,6 @@ class JABElement:
         wp.length = sizeof(wp)
         windll.user32.GetWindowPlacement(self._handle, byref(wp))
         return wp.showCmd
-
-    def _do_action(self, action_names: list[str]) -> bool:
-        if not action_names or not self.info.accessibleAction:
-            return False
-        aa = AccessibleActions()
-        res = self._jab.getAccessibleActions(self._vmid, self._ctx, aa)
-        if not res:
-            return False
-        for index in range(aa.actionsCount):
-            name = aa.actionInfo[index].name
-            if name not in action_names:
-                continue
-            aatd = AccessibleActionsToDo()
-            aatd.actions[0].name = name
-            aatd.actionsCount = 1
-            failure = c_int(0)
-            res = self._jab.doAccessibleActions(self._vmid, self._ctx, aatd, failure)
-            if res and failure:
-                return True
-        return False
 
     def matches(self, **kwargs) -> bool:
         """
@@ -420,6 +435,7 @@ class JABElement:
             or _state("visible") \
             or _state("editable") \
             or _state("checked") \
+            or _state("focused") \
             or _state("showing") \
             or _state("opaque") \
             or _state("depth") \
@@ -468,18 +484,49 @@ class JABElement:
     def release(self):
         self._jab.releaseJavaObject(self._vmid, self._ctx)
 
+    def _do_action(self, action_names: list[str]) -> bool:
+        if not action_names or not self.info.accessibleAction:
+            return False
+        aa = AccessibleActions()
+        res = self._jab.getAccessibleActions(self._vmid, self._ctx, aa)
+        if not res:
+            return False
+        for index in range(aa.actionsCount):
+            name = aa.actionInfo[index].name
+            if name not in action_names:
+                continue
+            aatd = AccessibleActionsToDo()
+            aatd.actions[0].name = name
+            aatd.actionsCount = 1
+            failure = c_int(0)
+            res = self._jab.doAccessibleActions(self._vmid, self._ctx, aatd, failure)
+            if res and failure:
+                return True
+        return False
+
+    def _wait_idle(self):
+        # https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess
+        process = windll.kernel32.OpenProcess(0x0400, 0, self._process_id)
+        if windll.user32.IsHungAppWindow(self._handle):
+            raise RuntimeError(f'Window (hwnd={self._handle}) is not responding!')
+        windll.kernel32.CloseHandle(process)
+
     @staticmethod
-    def create_root(jab: JAB, handle: Union[int, HWND]) -> Optional['JABElement']:
+    def create_root(jab: JAB, handle: int) -> Optional['JABElement']:
+        process_id = DWORD(0)
+        handle = HWND(handle) if isinstance(handle, int) else handle
+        windll.user32.GetWindowThreadProcessId(handle, byref(process_id))
         if jab.isJavaWindow(handle):
             vmid = c_long()
             ctx = AccessibleContext()
             if jab.getAccessibleContextFromHWND(handle, vmid, ctx):
-                return JABElement(jab=jab, handle=handle, vmid=vmid, ctx=ctx, is_root=True)
+                return JABElement(jab=jab, handle=handle.value, process_id=process_id.value, vmid=vmid, ctx=ctx, is_root=True)
         return None
 
     @staticmethod
     def create_element(root: 'JABElement', ctx: AccessibleContext) -> 'JABElement':
-        return JABElement(jab=root._jab, handle=root._handle, vmid=root._vmid, ctx=ctx, is_root=False, root=root)
+        return JABElement(jab=root._jab, handle=root._handle, process_id=root._process_id,
+                          vmid=root._vmid, ctx=ctx, is_root=False, root=root)
 
 
 class JABDriver:
@@ -507,7 +554,7 @@ class JABDriver:
                 shutil.copy(os.path.join(jab_lib_dir, fn), os.path.join(dst, fn))
         return os.path.join(system_root_dir, "System32", f"WindowsAccessBridge-{os_arch}.dll")
 
-    def find_window(self, handle: Union[int, HWND]) -> Optional[JABElement]:
+    def find_window(self, handle: int) -> Optional[JABElement]:
         return JABElement.create_root(jab=self._jab, handle=handle)
 
 
