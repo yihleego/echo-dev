@@ -9,8 +9,9 @@ from ctypes import create_string_buffer
 from functools import cached_property
 from typing import Optional
 
-from utils import win32
-from utils.deprecated import deprecated
+from PIL import Image, ImageGrab
+
+from utils import win32, deprecated
 from .jab import *
 
 
@@ -368,15 +369,15 @@ class JABElement(JABElementProperties):
     def is_normal(self) -> bool:
         return win32.get_window_placement(self._handle).showCmd == win32.SW_SHOWNORMAL
 
-    def screenshot(self, filename: str) -> str:
-        from PIL import ImageGrab
-        dirname = os.path.dirname(filename)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname, exist_ok=True)
+    def screenshot(self, filename: str = None) -> Image:
         self.set_foreground()
         time.sleep(0.06)
-        img = ImageGrab.grab(self.rectangle)
-        img.save(filename)
+        image = ImageGrab.grab(self.rectangle)
+        dirname = os.path.dirname(filename)
+        if filename:
+            if not os.path.exists(dirname):
+                os.makedirs(dirname, exist_ok=True)
+            image.save(filename)
         return filename
 
     def matches(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> bool:
