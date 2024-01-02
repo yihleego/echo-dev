@@ -2,19 +2,23 @@ import unittest
 
 from jab import *
 
-handle = win32.find_window(class_name="SunAwtFrame", window_name="Swing Example")
-
 
 class JABTestSuite(unittest.TestCase):
-    def __init__(self):
-        super().__init__()
-        self.driver = JABDriver()
+
+    def setUp(self):
+        self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Swing Example")
+        self.driver: JABDriver = JABDriver()
+
+    def tearDown(self):
+        self.driver.close()
+
+    def get_root(self):
+        root = self.driver.find_window(handle=self.handle)
+        if not root:
+            raise Exception('not found')
 
     def test_find_all_elements(self):
-        root = self.driver.find_window(handle=handle)
-        if not root:
-            print('not found')
-            return
+        root = self.get_root()
 
         all = root.find_all_elements()
         for e in all:
@@ -22,10 +26,7 @@ class JABTestSuite(unittest.TestCase):
             e.release()
 
     def test_find_elements_by_kwargs(self):
-        root = self.driver.find_window(handle=handle)
-        if not root:
-            print('not found')
-            return
+        root = self.get_root()
 
         text_elems = root.find_elements(role=Role.TEXT)
         for e in text_elems:
@@ -52,10 +53,7 @@ class JABTestSuite(unittest.TestCase):
             e.release()
 
     def test_find_elements_by_filters(self):
-        root = self.driver.find_window(handle=handle)
-        if not root:
-            print('not found')
-            return
+        root = self.get_root()
 
         filtered_elems = root.find_elements(
             lambda e: e.name == "Click Me",
@@ -67,10 +65,7 @@ class JABTestSuite(unittest.TestCase):
         root.release()
 
     def test_screenshot(self):
-        root = self.driver.find_window(handle=handle)
-        if not root:
-            print('not found')
-            return
+        root = self.get_root()
 
         elem = root.find_element(role=Role.TEXT)
         elem.screenshot("./screenshots/text.png")

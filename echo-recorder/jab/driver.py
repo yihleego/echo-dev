@@ -545,7 +545,7 @@ class JABElement(JABElementProperties):
         for child in children:
             matched = child.matches(*filters, **kwargs)
             if matched:
-                found = matched
+                found = child
                 break
             else:
                 releasing.append(child)
@@ -626,6 +626,10 @@ class JABDriver:
 
     def find_window(self, handle: int) -> Optional[JABElement]:
         return JABElement.create_root(jab=self._jab, handle=handle)
+
+    def close(self):
+        if self._jab:
+            self._jab.close()
 
 
 def _get_system_root_dir():
