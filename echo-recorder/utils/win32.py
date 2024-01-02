@@ -63,6 +63,14 @@ class WINDOWPLACEMENT(Structure):
     ]
 
 
+def find_window(class_name: str = None, window_name: str = None) -> HWND:
+    return windll.user32.FindWindowW(class_name, window_name)
+
+
+def find_window_ex(parent: int = None, child_after: int = None, class_name: str = None, window_name: str = None) -> HWND:
+    return windll.user32.FindWindowExW(parent, child_after, class_name, window_name)
+
+
 def set_foreground(handle: int, process_id: int = None) -> bool:
     # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow
     res = windll.user32.SetForegroundWindow(handle)

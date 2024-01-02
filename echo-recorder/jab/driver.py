@@ -467,6 +467,17 @@ class JABElement(JABElementProperties):
                 return fixed <= value
             raise ValueError(f"unknown expression: {expr}")
 
+        def _do_prop(obj, prop):
+            if "." not in prop:
+                return getattr(obj, prop)
+            val = obj
+            levels = prop.split(".")
+            for level in levels:
+                if not val:
+                    return None
+                val = getattr(val, level)
+            return val
+
         if len(filters) == 0 and len(kwargs) == 0:
             return False
         ss = self.snapshot()
@@ -490,7 +501,7 @@ class JABElement(JABElementProperties):
                 arg = kwargs.get(key)
                 if arg is None:
                     continue
-                val = getattr(ss, prop)
+                val = _do_prop(ss, prop)
                 if val is None:
                     return False
                 if not _do_expr(expr, val, arg):
@@ -518,7 +529,7 @@ class JABElement(JABElementProperties):
             else:
                 releasing.append(child)
             # looking for deep elements anyway
-            found.extend(child.find_elements(**kwargs))
+            found.extend(child.find_elements(*filters, **kwargs))
         # release all mismatched elements
         for child in releasing:
             child.release()
@@ -541,7 +552,7 @@ class JABElement(JABElementProperties):
         # looking for deep elements if not found
         if not found:
             for child in children:
-                found = child.find_element(**kwargs)
+                found = child.find_element(*filters, **kwargs)
                 if found:
                     break
         # release all mismatched elements
