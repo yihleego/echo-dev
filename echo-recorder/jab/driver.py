@@ -1,11 +1,12 @@
 import os
 import platform
-import re
 import shutil
 import subprocess
 import time
+from abc import ABC, abstractmethod
 from ctypes import create_string_buffer, c_wchar_p
 from ctypes.wintypes import HWND
+from functools import cached_property
 from typing import Optional
 
 from utils import win32
@@ -14,97 +15,31 @@ from .calls import JAB
 from .packages import *
 
 
-class JABElement:
-    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
-        self._jab: JAB = jab
-        self._handle: int = handle
-        self._process_id: int = process_id
-        self._vmid: c_long = vmid
-        self._ctx: AccessibleContext = ctx
-        if is_root or root == self:
-            self._root: JABElement = self
-            self._is_root: bool = True
-        else:
-            self._root: JABElement = root
-            self._is_root: bool = False
-        self._parent: Optional[JABElement] = None
-        self._cached_info: Optional[AccessibleContextInfo] = None
+class JABElementProperties(ABC):
 
     @property
-    def handle(self) -> int:
-        return self._handle
+    @abstractmethod
+    def info(self) -> AccessibleContextInfo:
+        pass
 
     @property
-    def process_id(self) -> int:
-        return self._process_id
+    @abstractmethod
+    def text(self) -> Optional[str]:
+        pass
 
     @property
-    def vmid(self) -> c_long:
-        return self._vmid
-
-    @property
-    def accessible_context(self) -> AccessibleContext:
-        return self._ctx
-
-    @property
-    def root(self) -> 'JABElement':
-        return self._root
-
-    @property
-    def parent(self) -> Optional['JABElement']:
-        # the root does not have a parent
-        if self._is_root:
-            return None
-        # return if parent exists
-        if self._parent is not None:
-            return self._parent
-        # get parent from context
-        parent_ctx = self._jab.getAccessibleParentFromContext(self._vmid, self._ctx)
-        if parent_ctx != 0:
-            self._parent = JABElement.create_element(root=self._root, ctx=parent_ctx)
-        return self._parent
-
-    @property
-    def children(self) -> list['JABElement']:
-        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
-        if count <= 0:
-            return []
-        vci = VisibleChildrenInfo()
-        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
-        if not res or vci.returnedChildrenCount <= 0:
-            return []
-        res = []
-        for idx in range(vci.returnedChildrenCount):
-            ctx = AccessibleContext(vci.children[idx])
-            res.append(JABElement.create_element(root=self._root, ctx=ctx))
-        return res
-
-    @property
+    @abstractmethod
     def children_count(self) -> int:
-        return self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
-
-    def child(self, index: int) -> Optional['JABElement']:
-        count = self.children_count
-        if count <= 0 or count <= index:
-            return None
-        vci = VisibleChildrenInfo()
-        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
-        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
-            return None
-        ctx = AccessibleContext(vci.children[index])
-        return JABElement.create_element(root=self._root, ctx=ctx)
+        pass
 
     @property
+    @abstractmethod
     def depth(self) -> int:
-        return self._jab.getObjectDepth(self._vmid, self._ctx)
+        pass
 
     @property
-    def info(self) -> Optional[AccessibleContextInfo]:
-        aci = AccessibleContextInfo()
-        res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
-        if res:
-            self._cached_info = aci
-        return aci
+    def role(self) -> str:
+        return self.info.role_en_US
 
     @property
     def name(self) -> str:
@@ -115,8 +50,40 @@ class JABElement:
         return self.info.description
 
     @property
-    def role(self) -> str:
-        return self.info.role_en_US
+    def x(self) -> int:
+        return int(self.info.x)
+
+    @property
+    def y(self) -> int:
+        return int(self.info.y)
+
+    @property
+    def width(self) -> int:
+        return int(self.info.width)
+
+    @property
+    def height(self) -> int:
+        return int(self.info.height)
+
+    @property
+    def index_in_parent(self) -> int:
+        return self.info.indexInParent
+
+    @property
+    def position(self) -> tuple[int, int]:
+        info = self.info
+        return int(info.x), int(info.y)
+
+    @property
+    def size(self) -> tuple[int, int]:
+        info = self.info
+        return int(info.width), int(info.height)
+
+    @property
+    def rectangle(self) -> tuple[int, int, int, int]:
+        info = self.info
+        x, y, w, h = int(info.x), int(info.y), int(info.width), int(info.height)
+        return x, y, x + w, y + h
 
     @property
     def states(self) -> list[str]:
@@ -169,45 +136,87 @@ class JABElement:
     def showing(self) -> bool:
         return "showing" in self.states
 
+
+class JABElementSnapshot(JABElementProperties):
+    def __init__(self, elem):
+        self._elem: JABElement = elem
+
+    @cached_property
+    def info(self) -> Optional[AccessibleContextInfo]:
+        return self._elem.info
+
+    @cached_property
+    def text(self) -> Optional[str]:
+        return self._elem.text
+
+    @cached_property
+    def children_count(self) -> int:
+        return self._elem.children_count
+
+    @cached_property
+    def depth(self) -> int:
+        return self._elem.depth
+
+
+class JABElement(JABElementProperties):
+    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
+        self._jab: JAB = jab
+        self._handle: int = handle
+        self._process_id: int = process_id
+        self._vmid: c_long = vmid
+        self._ctx: AccessibleContext = ctx
+        if is_root or root == self:
+            self._root: JABElement = self
+            self._is_root: bool = True
+        else:
+            self._root: JABElement = root
+            self._is_root: bool = False
+        self._parent: Optional[JABElement] = None
+        self._cached_info: Optional[AccessibleContextInfo] = None
+
     @property
-    def index_in_parent(self) -> int:
-        return self.info.indexInParent
+    def handle(self) -> int:
+        return self._handle
+
+    @property
+    def process_id(self) -> int:
+        return self._process_id
+
+    @property
+    def vmid(self) -> c_long:
+        return self._vmid
+
+    @property
+    def accessible_context(self) -> AccessibleContext:
+        return self._ctx
+
+    @property
+    def info(self) -> Optional[AccessibleContextInfo]:
+        aci = AccessibleContextInfo()
+        res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
+        if res:
+            self._cached_info = aci
+        return aci
 
     @deprecated("please use 'position' instead")
     @property
     def x(self) -> int:
-        return int(self.info.x)
+        return super().x
 
     @deprecated("please use 'position' instead")
     @property
     def y(self) -> int:
-        return int(self.info.y)
+        return super().y
 
     @deprecated("please use 'size' instead")
     @property
     def width(self) -> int:
-        return int(self.info.width)
+        return super().width
 
     @deprecated("please use 'size' instead")
     @property
     def height(self) -> int:
-        return int(self.info.height)
-
-    @property
-    def position(self) -> tuple[int, int]:
-        info = self.info
-        return int(info.x), int(info.y)
-
-    @property
-    def size(self) -> tuple[int, int]:
-        info = self.info
-        return int(info.width), int(info.height)
-
-    @property
-    def rectangle(self) -> tuple[int, int, int, int]:
-        info = self.info
-        x, y, w, h = int(info.x), int(info.y), int(info.width), int(info.height)
-        return x, y, x + w, y + h
+        return super().height
 
     @property
     def text(self) -> Optional[str]:
@@ -227,6 +236,58 @@ class JABElement:
         if not res:
             return None
         return buffer[:chars_len * 2].decode("utf_16", errors="replace")
+
+    @property
+    def depth(self) -> int:
+        return self._jab.getObjectDepth(self._vmid, self._ctx)
+
+    @property
+    def root(self) -> 'JABElement':
+        return self._root
+
+    @property
+    def parent(self) -> Optional['JABElement']:
+        # the root does not have a parent
+        if self._is_root:
+            return None
+        # return if parent exists
+        if self._parent is not None:
+            return self._parent
+        # get parent from context
+        parent_ctx = self._jab.getAccessibleParentFromContext(self._vmid, self._ctx)
+        if parent_ctx != 0:
+            self._parent = JABElement.create_element(root=self._root, ctx=parent_ctx)
+        return self._parent
+
+    @property
+    def children(self) -> list['JABElement']:
+        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+        if count <= 0:
+            return []
+        vci = VisibleChildrenInfo()
+        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        if not res or vci.returnedChildrenCount <= 0:
+            return []
+        res = []
+        for idx in range(vci.returnedChildrenCount):
+            ctx = AccessibleContext(vci.children[idx])
+            res.append(JABElement.create_element(root=self._root, ctx=ctx))
+        return res
+
+    @property
+    def children_count(self) -> int:
+        return self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+
+    def child(self, index: int) -> Optional['JABElement']:
+        count = self.children_count
+        if count <= 0 or count <= index:
+            return None
+        vci = VisibleChildrenInfo()
+        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
+            return None
+        ctx = AccessibleContext(vci.children[index])
+        return JABElement.create_element(root=self._root, ctx=ctx)
 
     def click(self) -> bool:
         # TODO I don't know why 'click' does not work
@@ -291,94 +352,6 @@ class JABElement:
         img = ImageGrab.grab(self.rectangle)
         img.save(filename)
         return filename
-
-    def matches(self, **kwargs) -> bool:
-        """
-        Match element by criteria.
-        :param role: role equals
-        :param role_like: role name contains
-        :param role_in: role name in list
-        :param role_in_like: role name contains in list
-        :param role_regex: role name regex
-        :param name: name equals
-        :param name_like: name contains
-        :param name_in: name in list
-        :param name_in_like: name contains in list
-        :param name_regex: name regex
-        :param description: description equals
-        :param description_like: description contains
-        :param description_in: description in list
-        :param description_in_like: description contains in list
-        :param description_regex: description regex
-        :param text: text equals
-        :param text_like: text contains
-        :param text_in: text in list
-        :param text_in_like: text contains in list
-        :param text_regex: text regex
-        :param enabled: state enabled
-        :param focusable: state focusable
-        :param visible: state visible
-        :param editable: state editable
-        :param checked: state checked
-        :param showing: state showing
-        :param opaque: state opaque
-        :param depth: depth equals
-        :return: True if matched
-        """
-        if not kwargs:
-            return True
-        info = self.info
-        states = info.states_en_US
-
-        def _keyword(key: str, src):
-            if src is None:
-                return False
-            keys = [key, key + "_like", key + "_in", key + "_in_like", key + "_regex"]
-            values = [kwargs.get(k) for k in keys]
-            if not any(values):
-                return False
-            value = values[0]
-            value_like = values[1]
-            value_in = values[2]
-            value_in_like = values[3]
-            value_regex = values[4]
-            if value is not None and value == src:
-                return True
-            if value_like is not None and value_like in src:
-                return True
-            if value_in is not None:
-                for tmp in value_in:
-                    if tmp == src:
-                        return True
-            if value_in_like is not None:
-                for tmp in value_in_like:
-                    if tmp in src:
-                        return True
-            if value_regex is not None:
-                if re.match(value_regex, src):
-                    return True
-            return False
-
-        def _state(key: str):
-            return kwargs.get(key) and key in states
-
-        def _value(key: str, v):
-            return kwargs.get(key) and kwargs.get(key) == v
-
-        return _keyword("role", info.role_en_US) \
-            and _keyword("name", info.name) \
-            and _keyword("description", info.description) \
-            and _state("enabled") \
-            and _state("focusable") \
-            and _state("visible") \
-            and _state("editable") \
-            and _state("checked") \
-            and _state("focused") \
-            and _state("showing") \
-            and _state("opaque") \
-            and _state("depth") \
-            and _keyword("text", self.text) \
-            and _value("depth", self.depth)
 
     def find_all_elements(self) -> list['JABElement']:
         found = [self]
