@@ -1,5 +1,6 @@
+import _ctypes
 import os
-from ctypes import c_bool, c_char, c_wchar, c_wchar_p, c_int, c_int64, c_float, c_long, c_short, cdll, windll, byref, CFUNCTYPE, Structure
+from ctypes import c_bool, c_char, c_wchar, c_wchar_p, c_int, c_int64, c_float, c_long, c_short, cdll, byref, CFUNCTYPE, Structure
 from ctypes.wintypes import HWND
 from typing import Generator, Callable
 
@@ -709,7 +710,7 @@ class JAB:
 
     def close(self):
         if self._dll:
-            windll.kernel32.FreeLibrary(self._dll._handle)
+            _ctypes.FreeLibrary(self._dll._handle)
 
     def releaseJavaObject(self, vmID: c_long, object: Java_Object):
         self._dll.releaseJavaObject(vmID, object)
