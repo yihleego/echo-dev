@@ -158,8 +158,12 @@ class JABElementSnapshot(JABElementProperties):
         return self._elem.depth
 
     @cached_property
-    def parent(self) -> 'JABElementSnapshot':
-        return JABElementSnapshot(self._elem.parent)
+    def parent(self) -> Optional['JABElementSnapshot']:
+        parent = self._elem.parent
+        if parent:
+            return JABElementSnapshot(self._elem.parent)
+        else:
+            return None
 
 
 class JABElement(JABElementProperties):
