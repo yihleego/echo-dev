@@ -4,6 +4,8 @@ import inspect
 import platform
 import warnings
 
+import wrapt
+
 try:
     # If the C extension for wrapt was compiled and wrapt/_wrappers.pyd exists, then the
     # stack level that should be passed to warnings.warn should be 2. However, if using
@@ -22,7 +24,7 @@ except ImportError:
 string_types = (type(b''), type(u''))
 
 
-class ClassicAdapter:
+class ClassicAdapter(wrapt.AdapterFactory):
     """
     Classic adapter -- *for advanced usage only*
 
@@ -158,7 +160,7 @@ class ClassicAdapter:
             old_new1 = wrapped.__new__
 
             def wrapped_cls(cls, *args, **kwargs):
-                msg = self.get_message(wrapped)
+                msg = self.get_message(wrapped, None)
                 stacklevel = _class_stacklevel + self.extra_stacklevel
                 if self.action:
                     with warnings.catch_warnings():
@@ -174,9 +176,9 @@ class ClassicAdapter:
             wrapped.__new__ = staticmethod(wrapped_cls)
 
         elif inspect.isroutine(wrapped):
-            @functools.wraps(wrapped)
-            def wrapper_function(*args, **kwargs):
-                msg = self.get_message(wrapped)
+            @wrapt.decorator
+            def wrapper_function(wrapped_, instance_, args_, kwargs_):
+                msg = self.get_message(wrapped_, instance_)
                 stacklevel = _routine_stacklevel + self.extra_stacklevel
                 if self.action:
                     with warnings.catch_warnings():
@@ -184,9 +186,9 @@ class ClassicAdapter:
                         warnings.warn(msg, category=self.category, stacklevel=stacklevel)
                 else:
                     warnings.warn(msg, category=self.category, stacklevel=stacklevel)
-                return wrapped(*args, **kwargs)
+                return wrapped_(*args_, **kwargs_)
 
-            return wrapper_function
+            return wrapper_function(wrapped)
 
         else:
             raise TypeError(repr(type(wrapped)))
