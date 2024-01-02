@@ -157,6 +157,10 @@ class JABElementSnapshot(JABElementProperties):
     def depth(self) -> int:
         return self._elem.depth
 
+    @cached_property
+    def parent(self) -> 'JABElementSnapshot':
+        return JABElementSnapshot(self._elem.parent)
+
 
 class JABElement(JABElementProperties):
     def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
