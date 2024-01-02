@@ -138,6 +138,11 @@ class JABElementProperties(ABC):
     def showing(self) -> bool:
         return "showing" in self.states
 
+    def __str__(self):
+        return (f"role='{self.role}', name='{self.name}', description='{self.description}', "
+                f"rectangle={self.rectangle}, states={self.states}, "
+                f"children_count={self.children_count}, depth={self.depth}")
+
 
 class JABElementSnapshot(JABElementProperties):
     def __init__(self, elem):
@@ -211,23 +216,23 @@ class JABElement(JABElementProperties):
         res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
         return aci
 
-    @deprecated("please use 'position' instead")
     @property
+    @deprecated("please use 'position' instead")
     def x(self) -> int:
         return super().x
 
-    @deprecated("please use 'position' instead")
     @property
+    @deprecated("please use 'position' instead")
     def y(self) -> int:
         return super().y
 
-    @deprecated("please use 'size' instead")
     @property
+    @deprecated("please use 'size' instead")
     def width(self) -> int:
         return super().width
 
-    @deprecated("please use 'size' instead")
     @property
+    @deprecated("please use 'size' instead")
     def height(self) -> int:
         return super().height
 
@@ -301,6 +306,9 @@ class JABElement(JABElementProperties):
             return None
         ctx = AccessibleContext(vci.children[index])
         return JABElement.create_element(root=self._root, ctx=ctx)
+
+    def snapshot(self) -> JABElementSnapshot:
+        return JABElementSnapshot(self)
 
     def click(self) -> bool:
         # TODO I don't know why 'click' does not work
@@ -461,7 +469,7 @@ class JABElement(JABElementProperties):
 
         if len(filters) == 0 and len(kwargs) == 0:
             return False
-        ss = JABElementSnapshot(self)
+        ss = self.snapshot()
         if filters:
             for filter in filters:
                 if not filter(ss):
@@ -493,7 +501,6 @@ class JABElement(JABElementProperties):
         found = [self]
         children = self.children
         for child in children:
-            found.append(child)
             found.extend(child.find_all_elements())
         return found
 
