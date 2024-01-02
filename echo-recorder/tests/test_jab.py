@@ -1,6 +1,7 @@
 import unittest
 
 from jab import *
+from utils import win32
 
 
 class JABTestSuite(unittest.TestCase):
