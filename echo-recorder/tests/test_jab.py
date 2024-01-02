@@ -14,8 +14,9 @@ class JABTestSuite(unittest.TestCase):
 
     def get_root(self):
         root = self.driver.find_window(handle=self.handle)
-        if not root:
-            raise Exception('not found')
+        if root:
+            return root
+        raise Exception('not found')
 
     def test_find_all_elements(self):
         root = self.get_root()
