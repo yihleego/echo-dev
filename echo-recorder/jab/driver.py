@@ -1,13 +1,15 @@
 import os
 import platform
+import re
 import shutil
 import subprocess
 import time
+import warnings
 from abc import ABC, abstractmethod
 from ctypes import create_string_buffer, c_wchar_p
 from ctypes.wintypes import HWND
 from functools import cached_property
-from typing import Optional
+from typing import Optional, Callable
 
 from utils import win32
 from utils.deprecated import deprecated
@@ -20,22 +22,22 @@ class JABElementProperties(ABC):
     @property
     @abstractmethod
     def info(self) -> AccessibleContextInfo:
-        pass
+        raise NotImplementedError
 
     @property
     @abstractmethod
     def text(self) -> Optional[str]:
-        pass
+        raise NotImplementedError
 
     @property
     @abstractmethod
     def children_count(self) -> int:
-        pass
+        raise NotImplementedError
 
     @property
     @abstractmethod
     def depth(self) -> int:
-        pass
+        raise NotImplementedError
 
     @property
     def role(self) -> str:
@@ -67,7 +69,7 @@ class JABElementProperties(ABC):
 
     @property
     def index_in_parent(self) -> int:
-        return self.info.indexInParent
+        return int(self.info.indexInParent)
 
     @property
     def position(self) -> tuple[int, int]:
@@ -83,7 +85,7 @@ class JABElementProperties(ABC):
     def rectangle(self) -> tuple[int, int, int, int]:
         info = self.info
         x, y, w, h = int(info.x), int(info.y), int(info.width), int(info.height)
-        return x, y, x + w, y + h
+        return x, y, x + w, y + h  # left, top, right, bottom
 
     @property
     def states(self) -> list[str]:
@@ -158,12 +160,18 @@ class JABElementSnapshot(JABElementProperties):
         return self._elem.depth
 
     @cached_property
+    def root(self) -> 'JABElementSnapshot':
+        return JABElementSnapshot(self._elem.root)
+
+    @cached_property
     def parent(self) -> Optional['JABElementSnapshot']:
         parent = self._elem.parent
-        if parent:
-            return JABElementSnapshot(self._elem.parent)
-        else:
-            return None
+        return JABElementSnapshot(self._elem.parent) if parent else None
+
+    @cached_property
+    def children(self) -> list['JABElementSnapshot']:
+        children = self._elem.children
+        return [JABElementSnapshot(child) for child in children]
 
 
 class JABElement(JABElementProperties):
@@ -180,7 +188,6 @@ class JABElement(JABElementProperties):
             self._root: JABElement = root
             self._is_root: bool = False
         self._parent: Optional[JABElement] = None
-        self._cached_info: Optional[AccessibleContextInfo] = None
 
     @property
     def handle(self) -> int:
@@ -202,8 +209,6 @@ class JABElement(JABElementProperties):
     def info(self) -> Optional[AccessibleContextInfo]:
         aci = AccessibleContextInfo()
         res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
-        if res:
-            self._cached_info = aci
         return aci
 
     @deprecated("please use 'position' instead")
@@ -361,6 +366,129 @@ class JABElement(JABElementProperties):
         img.save(filename)
         return filename
 
+    def matches(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> bool:
+        """
+        Match element by criteria.
+        :key role: role equals
+        :key role_like: role name contains
+        :key role_in: role name in list
+        :key role_in_like: role name contains in list
+        :key role_regex: role name regex
+        :key name: name equals
+        :key name_like: name contains
+        :key name_in: name in list
+        :key name_in_like: name contains in list
+        :key name_regex: name regex
+        :key description: description equals
+        :key description_like: description contains
+        :key description_in: description in list
+        :key description_in_like: description contains in list
+        :key description_regex: description regex
+        :key x: x equals
+        :key y: y equals
+        :key width: width equals
+        :key height: height equals
+        :key index_in_parent: index in parent equals
+        :key text: text equals
+        :key text_like: text contains
+        :key text_in: text in list
+        :key text_in_like: text contains in list
+        :key text_regex: text regex
+        :key editable: state editable
+        :key focusable: state focusable
+        :key resizable: state resizable
+        :key visible: state visible
+        :key selectable: state selectable
+        :key multiselectable: state multiselectable
+        :key collapsed: state collapsed
+        :key enabled: state enabled
+        :key focused: state focused
+        :key selected: state selected
+        :key showing: state showing
+        :key children_count: children count equals
+        :key depth: depth equals
+        :return: True if matched
+        """
+
+        rules = {
+            "role": ("info.role", ["eq", "like", "in", "in_like", "regex"]),
+            "name": ("info.name", ["eq", "like", "in", "in_like", "regex"]),
+            "description": ("info.description", ["eq", "like", "in", "in_like", "regex"]),
+            "x": ("info.x", ["eq", "gt", "gte", "lt", "lte"]),
+            "y": ("info.y", ["eq", "gt", "gte", "lt", "lte"]),
+            "width": ("info.width", ["eq", "gt", "gte", "lt", "lte"]),
+            "height": ("info.height", ["eq", "gt", "gte", "lt", "lte"]),
+            "index_in_parent": ("info.index_in_parent", ["eq", "gt", "gte", "lt", "lte"]),
+            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
+            "editable": ("states.editable", ["eq"]),
+            "focusable": ("states.focusable", ["eq"]),
+            "resizable": ("states.resizable", ["eq"]),
+            "visible": ("states.visible", ["eq"]),
+            "selectable": ("states.selectable", ["eq"]),
+            "multiselectable": ("states.multiselectable", ["eq"]),
+            "collapsed": ("states.collapsed", ["eq"]),
+            "enabled": ("states.enabled", ["eq"]),
+            "focused": ("states.focused", ["eq"]),
+            "selected": ("states.selected", ["eq"]),
+            "showing": ("states.showing", ["eq"]),
+            "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
+            "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
+        }
+
+        def _do_expr(expr, fixed, value):
+            if expr == "eq":
+                return fixed == value
+            if expr == "like":
+                return fixed.find(value) >= 0
+            if expr == "in":
+                return fixed in value
+            if expr == "in_like":
+                for v in value:
+                    if fixed.find(v) >= 0:
+                        return True
+                return False
+            if expr == "regex":
+                return re.match(value, fixed) is not None
+            if expr == "gt":
+                return fixed > value
+            if expr == "gte":
+                return fixed >= value
+            if expr == "lt":
+                return fixed < value
+            if expr == "lte":
+                return fixed <= value
+            raise ValueError(f"unknown expression: {expr}")
+
+        if len(filters) == 0 and len(kwargs) == 0:
+            return False
+        ss = JABElementSnapshot(self)
+        if filters:
+            for filter in filters:
+                if not filter(ss):
+                    return False
+        if kwargs:
+            criteria = {}
+            for key, (prop, exprs) in rules.items():
+                for expr in exprs:
+                    fullkey = key if expr == "eq" else key + "_" + expr
+                    if fullkey in kwargs:
+                        criteria[fullkey] = (prop, expr)
+                        break
+            if len(criteria) != len(kwargs):
+                diff = kwargs.keys() - criteria.keys()
+                if len(diff) > 0:
+                    warnings.warn(f"Unsupported key(s): {str(diff)}")
+            for key, (prop, expr) in criteria.items():
+                arg = kwargs.get(key)
+                if arg is None:
+                    continue
+                val = getattr(ss, prop)
+                if val is None:
+                    return False
+                if not _do_expr(expr, val, arg):
+                    return False
+        return True
+
     def find_all_elements(self) -> list['JABElement']:
         found = [self]
         children = self.children
@@ -369,40 +497,40 @@ class JABElement(JABElementProperties):
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, **kwargs) -> list['JABElement']:
+    def find_elements(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> list['JABElement']:
         # return empty list if no criteria
-        if len(kwargs) == 0:
+        if len(filters) == 0 and len(kwargs) == 0:
             return []
         found = []
-        released = []
+        releasing = []
         children = self.children
         for child in children:
-            matched = child.matches(**kwargs)
+            matched = child.matches(*filters, **kwargs)
             if matched:
                 found.append(child)
             else:
-                released.append(child)
+                releasing.append(child)
             # looking for deep elements anyway
             found.extend(child.find_elements(**kwargs))
         # release all mismatched elements
-        for child in released:
+        for child in releasing:
             child.release()
         return found
 
-    def find_element(self, **kwargs) -> Optional['JABElement']:
+    def find_element(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> Optional['JABElement']:
         # return None if no criteria
-        if len(kwargs) == 0:
+        if len(filters) == 0 and len(kwargs) == 0:
             return None
         found = None
-        released = []
+        releasing = []
         children = self.children
         for child in children:
-            matched = child.matches(**kwargs)
+            matched = child.matches(*filters, **kwargs)
             if matched:
                 found = matched
                 break
             else:
-                released.append(child)
+                releasing.append(child)
         # looking for deep elements if not found
         if not found:
             for child in children:
@@ -410,7 +538,7 @@ class JABElement(JABElementProperties):
                 if found:
                     break
         # release all mismatched elements
-        for child in released:
+        for child in releasing:
             child.release()
         return found
 
