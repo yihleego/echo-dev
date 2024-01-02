@@ -1,4 +1,4 @@
-# -*- coding=utf-8
+# -*- coding: utf-8 -*-
 import asyncio
 from enum import Enum
 from functools import wraps

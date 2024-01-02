@@ -1,29 +1,289 @@
-# -*- coding=utf-8
+# -*- coding: utf-8 -*-
+import functools
+import inspect
+import platform
 import warnings
 
+try:
+    # If the C extension for wrapt was compiled and wrapt/_wrappers.pyd exists, then the
+    # stack level that should be passed to warnings.warn should be 2. However, if using
+    # a pure python wrapt, an extra stacklevel is required.
+    import wrapt._wrappers
 
-def deprecated(message=None, category=DeprecationWarning, stacklevel=2):
-    def decorator(obj):
-        if isinstance(obj, type):
-            class DeprecatedClass(obj):
-                def __init__(self, *args, **kwargs):
-                    if message:
-                        warnings.warn(f"{obj.__name__} is deprecated: {message}", category=category, stacklevel=stacklevel)
-                    else:
-                        warnings.warn(f"{obj.__name__} is deprecated", category=category, stacklevel=stacklevel)
-                    super().__init__(*args, **kwargs)
+    _routine_stacklevel = 2
+    _class_stacklevel = 2
+except ImportError:
+    _routine_stacklevel = 3
+    if platform.python_implementation() == "PyPy":
+        _class_stacklevel = 2
+    else:
+        _class_stacklevel = 3
 
-            return DeprecatedClass
-        elif callable(obj):
-            def deprecated_func(*args, **kwargs):
-                if message:
-                    warnings.warn(f"{obj.__name__} is deprecated: {message}", category=category, stacklevel=stacklevel)
-                else:
-                    warnings.warn(f"{obj.__name__} is deprecated", category=category, stacklevel=stacklevel)
-                return obj(*args, **kwargs)
+string_types = (type(b''), type(u''))
 
-            return deprecated_func
+
+class ClassicAdapter:
+    """
+    Classic adapter -- *for advanced usage only*
+
+    This adapter is used to get the deprecation message according to the wrapped object type:
+    class, function, standard method, static method, or class method.
+
+    This is the base class of the :class:`~deprecated.sphinx.SphinxAdapter` class
+    which is used to update the wrapped object docstring.
+
+    You can also inherit this class to change the deprecation message.
+
+    In the following example, we change the message into "The ... is deprecated.":
+
+    .. code-block:: python
+
+       import inspect
+
+       from deprecated.classic import ClassicAdapter
+       from deprecated.classic import deprecated
+
+
+       class MyClassicAdapter(ClassicAdapter):
+           def get_deprecated_msg(self, wrapped, instance):
+               if instance is None:
+                   if inspect.isclass(wrapped):
+                       fmt = "The class {name} is deprecated."
+                   else:
+                       fmt = "The function {name} is deprecated."
+               else:
+                   if inspect.isclass(instance):
+                       fmt = "The class method {name} is deprecated."
+                   else:
+                       fmt = "The method {name} is deprecated."
+               if self.reason:
+                   fmt += " ({reason})"
+               if self.version:
+                   fmt += " -- Deprecated since version {version}."
+               return fmt.format(name=wrapped.__name__,
+                                 reason=self.reason or "",
+                                 version=self.version or "")
+
+    Then, you can use your ``MyClassicAdapter`` class like this in your source code:
+
+    .. code-block:: python
+
+       @deprecated(reason="use another function", adapter_cls=MyClassicAdapter)
+       def some_old_function(x, y):
+           return x + y
+    """
+
+    def __init__(self, reason="", version="", action=None, category=DeprecationWarning, extra_stacklevel=0):
+        """
+        Construct a wrapper adapter.
+
+        :type  reason: str
+        :param reason:
+            Reason message which documents the deprecation in your library (can be omitted).
+
+        :type  version: str
+        :param version:
+            Version of your project which deprecates this feature.
+            If you follow the `Semantic Versioning <https://semver.org/>`_,
+            the version number has the format "MAJOR.MINOR.PATCH".
+
+        :type  action: Literal["default", "error", "ignore", "always", "module", "once"]
+        :param action:
+            A warning filter used to activate or not the deprecation warning.
+            Can be one of "error", "ignore", "always", "default", "module", or "once".
+            If ``None`` or empty, the global filtering mechanism is used.
+            See: `The Warnings Filter`_ in the Python documentation.
+
+        :type  category: Type[Warning]
+        :param category:
+            The warning category to use for the deprecation warning.
+            By default, the category class is :class:`~DeprecationWarning`,
+            you can inherit this class to define your own deprecation warning category.
+
+        :type  extra_stacklevel: int
+        :param extra_stacklevel:
+            Number of additional stack levels to consider instrumentation rather than user code.
+            With the default value of 0, the warning refers to where the class was instantiated
+            or the function was called.
+
+        .. versionchanged:: 1.2.15
+            Add the *extra_stacklevel* parameter.
+        """
+        self.reason = reason or ""
+        self.version = version or ""
+        self.action = action
+        self.category = category
+        self.extra_stacklevel = extra_stacklevel
+        super(ClassicAdapter, self).__init__()
+
+    def get_message(self, wrapped, instance=None):
+        """
+        Get the deprecation warning message for the user.
+
+        :param wrapped: Wrapped class or function.
+
+        :param instance: The object to which the wrapped function was bound when it was called.
+
+        :return: The warning message.
+        """
+        if inspect.isclass(wrapped):
+            fmt = f"Call to deprecated class {wrapped.__name__}"
+        elif inspect.ismethod(wrapped):
+            fmt = f"Call to deprecated class {instance.__class__.__name__} method {wrapped.__name__}"
+        elif inspect.isfunction(wrapped):
+            fmt = f"Call to deprecated function (staticmethod) {wrapped.__name__}"
         else:
-            raise TypeError("Unsupported object type for @deprecated decorator")
+            fmt = f"Call to deprecated method {wrapped.__name__}"
+        if self.reason:
+            fmt += f": {self.reason}"
+        if self.version:
+            fmt += f" (deprecated since {self.version})"
+        return fmt
 
-    return decorator
+    def __call__(self, wrapped):
+        """
+        Decorate your class or function.
+
+        :param wrapped: Wrapped class or function.
+
+        :return: the decorated class or function.
+
+        .. versionchanged:: 1.2.4
+           Don't pass arguments to :meth:`object.__new__` (other than *cls*).
+
+        .. versionchanged:: 1.2.8
+           The warning filter is not set if the *action* parameter is ``None`` or empty.
+        """
+        if inspect.isclass(wrapped):
+            old_new1 = wrapped.__new__
+
+            def wrapped_cls(cls, *args, **kwargs):
+                msg = self.get_message(wrapped)
+                stacklevel = _class_stacklevel + self.extra_stacklevel
+                if self.action:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter(self.action, self.category)
+                        warnings.warn(msg, category=self.category, stacklevel=stacklevel)
+                else:
+                    warnings.warn(msg, category=self.category, stacklevel=stacklevel)
+                if old_new1 is object.__new__:
+                    return old_new1(cls)
+                # actually, we don't know the real signature of *old_new1*
+                return old_new1(cls, *args, **kwargs)
+
+            wrapped.__new__ = staticmethod(wrapped_cls)
+
+        elif inspect.isroutine(wrapped):
+            @functools.wraps(wrapped)
+            def wrapper_function(*args, **kwargs):
+                msg = self.get_message(wrapped)
+                stacklevel = _routine_stacklevel + self.extra_stacklevel
+                if self.action:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter(self.action, self.category)
+                        warnings.warn(msg, category=self.category, stacklevel=stacklevel)
+                else:
+                    warnings.warn(msg, category=self.category, stacklevel=stacklevel)
+                return wrapped(*args, **kwargs)
+
+            return wrapper_function
+
+        else:
+            raise TypeError(repr(type(wrapped)))
+
+        return wrapped
+
+
+def deprecated(*args, **kwargs):
+    """
+    This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used.
+
+    **Classic usage:**
+
+    To use this, decorate your deprecated function with **@deprecated** decorator:
+
+    .. code-block:: python
+
+       from deprecated import deprecated
+
+
+       @deprecated
+       def some_old_function(x, y):
+           return x + y
+
+    You can also decorate a class or a method:
+
+    .. code-block:: python
+
+       from deprecated import deprecated
+
+
+       class SomeClass(object):
+           @deprecated
+           def some_old_method(self, x, y):
+               return x + y
+
+
+       @deprecated
+       class SomeOldClass(object):
+           pass
+
+    You can give a *reason* message to help the developer to choose another function/class,
+    and a *version* number to specify the starting version number of the deprecation.
+
+    .. code-block:: python
+
+       from deprecated import deprecated
+
+
+       @deprecated(reason="use another function", version='1.2.0')
+       def some_old_function(x, y):
+           return x + y
+
+    The *category* keyword argument allow you to specify the deprecation warning class of your choice.
+    By default, :exc:`DeprecationWarning` is used, but you can choose :exc:`FutureWarning`,
+    :exc:`PendingDeprecationWarning` or a custom subclass.
+
+    .. code-block:: python
+
+       from deprecated import deprecated
+
+
+       @deprecated(category=PendingDeprecationWarning)
+       def some_old_function(x, y):
+           return x + y
+
+    The *action* keyword argument allow you to locally change the warning filtering.
+    *action* can be one of "error", "ignore", "always", "default", "module", or "once".
+    If ``None``, empty or missing, the global filtering mechanism is used.
+    See: `The Warnings Filter`_ in the Python documentation.
+
+    .. code-block:: python
+
+       from deprecated import deprecated
+
+
+       @deprecated(action="error")
+       def some_old_function(x, y):
+           return x + y
+
+    The *extra_stacklevel* keyword argument allows you to specify additional stack levels
+    to consider instrumentation rather than user code. With the default value of 0, the
+    warning refers to where the class was instantiated or the function was called.
+    """
+    if args and isinstance(args[0], string_types):
+        kwargs['reason'] = args[0]
+        args = args[1:]
+
+    if args and not callable(args[0]):
+        raise TypeError(repr(type(args[0])))
+
+    if args:
+        adapter_cls = kwargs.pop('adapter_cls', ClassicAdapter)
+        adapter = adapter_cls(**kwargs)
+        wrapped = args[0]
+        return adapter(wrapped)
+
+    return functools.partial(deprecated, **kwargs)

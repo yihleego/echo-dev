@@ -1,4 +1,4 @@
-# -*- coding=utf-8
+# -*- coding: utf-8 -*-
 class Criteria:
     def __init__(self, key: str, chain: list['Criteria'] = None):
         self.key: str = key
