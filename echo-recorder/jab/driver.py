@@ -123,6 +123,10 @@ class JABElementProperties(ABC):
         return "collapsed" in self.states
 
     @property
+    def checked(self) -> bool:
+        return "checked" in self.states
+
+    @property
     def enabled(self) -> bool:
         return "enabled" in self.states
 
@@ -140,7 +144,7 @@ class JABElementProperties(ABC):
 
     def __str__(self):
         return (f"role='{self.role}', name='{self.name}', description='{self.description}', "
-                f"rectangle={self.rectangle}, states={self.states}, "
+                f"text='{self.text}', rectangle={self.rectangle}, states={self.states}, "
                 f"children_count={self.children_count}, depth={self.depth}")
 
 
@@ -254,6 +258,10 @@ class JABElement(JABElementProperties):
         if not res:
             return None
         return buffer[:chars_len * 2].decode("utf_16", errors="replace")
+
+    @text.setter
+    def text(self, value: str):
+        self.input(value)
 
     @property
     def depth(self) -> int:
@@ -377,6 +385,7 @@ class JABElement(JABElementProperties):
     def matches(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> bool:
         """
         Match element by criteria.
+        :param filters: filters
         :key role: role equals
         :key role_like: role name contains
         :key role_in: role name in list
@@ -409,6 +418,7 @@ class JABElement(JABElementProperties):
         :key selectable: state selectable
         :key multiselectable: state multiselectable
         :key collapsed: state collapsed
+        :key checked: state checked
         :key enabled: state enabled
         :key focused: state focused
         :key selected: state selected
@@ -428,17 +438,18 @@ class JABElement(JABElementProperties):
             "height": ("info.height", ["eq", "gt", "gte", "lt", "lte"]),
             "index_in_parent": ("info.index_in_parent", ["eq", "gt", "gte", "lt", "lte"]),
             "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
-            "editable": ("states.editable", ["eq"]),
-            "focusable": ("states.focusable", ["eq"]),
-            "resizable": ("states.resizable", ["eq"]),
-            "visible": ("states.visible", ["eq"]),
-            "selectable": ("states.selectable", ["eq"]),
-            "multiselectable": ("states.multiselectable", ["eq"]),
-            "collapsed": ("states.collapsed", ["eq"]),
-            "enabled": ("states.enabled", ["eq"]),
-            "focused": ("states.focused", ["eq"]),
-            "selected": ("states.selected", ["eq"]),
-            "showing": ("states.showing", ["eq"]),
+            "editable": ("editable", ["eq"]),
+            "focusable": ("focusable", ["eq"]),
+            "resizable": ("resizable", ["eq"]),
+            "visible": ("visible", ["eq"]),
+            "selectable": ("selectable", ["eq"]),
+            "multiselectable": ("multiselectable", ["eq"]),
+            "collapsed": ("collapsed", ["eq"]),
+            "checked": ("checked", ["eq"]),
+            "enabled": ("enabled", ["eq"]),
+            "focused": ("focused", ["eq"]),
+            "selected": ("selected", ["eq"]),
+            "showing": ("showing", ["eq"]),
             "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
             "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
         }
@@ -528,7 +539,7 @@ class JABElement(JABElementProperties):
                 found.append(child)
             else:
                 releasing.append(child)
-            # looking for deep elements anyway
+            # looking for deep elements
             found.extend(child.find_elements(*filters, **kwargs))
         # release all mismatched elements
         for child in releasing:

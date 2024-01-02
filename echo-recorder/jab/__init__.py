@@ -69,6 +69,7 @@ class Role(str, Enum):
 
 class State(str, Enum):
     ACTIVE = 'active'
+    CHECKED = 'checked'
     COLLAPSED = 'collapsed'
     EDITABLE = 'editable'
     ENABLED = 'enabled'
