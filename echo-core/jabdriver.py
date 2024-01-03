@@ -1,19 +1,19 @@
-import platform
+import os
 import re
-import shutil
-import subprocess
 import time
 import warnings
 from abc import ABC, abstractmethod
-from ctypes import create_string_buffer
+from ctypes import create_string_buffer, c_wchar_p, c_int, c_long
+from ctypes.wintypes import HWND
 from enum import Enum
 from functools import cached_property
-from typing import Optional
+from typing import Optional, Callable
 
 from PIL import Image, ImageGrab
 
+from driver import Driver, Element
+from jab import *
 from utils import win32
-from .jab import *
 
 
 class Role(str, Enum):
@@ -266,8 +266,8 @@ class JABElementSnapshot(JABElementProperties):
         return [JABElementSnapshot(child) for child in children]
 
 
-class JABElement(JABElementProperties):
-    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, is_root, root: 'JABElement' = None):
+class JABElement(JABElementProperties, Element):
+    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, is_root: bool, root: 'JABElement' = None):
         self._jab: JAB = jab
         self._handle: int = handle
         self._process_id: int = process_id
@@ -673,52 +673,13 @@ class JABElement(JABElementProperties):
                           vmid=root._vmid, ctx=ctx, is_root=False, root=root)
 
 
-class JABDriver:
+class JABDriver(Driver):
     def __init__(self):
-        self._dll_path = self._init()
-        self._jab = JAB(self._dll_path)
-
-    def _init(self):
-        # https://docs.oracle.com/javase/accessbridge/2.0.2/setup.htm
-        os_arch = platform.architecture()[0][:2]  # 32 or 64
-        jab_version = "2.0.2"
-        jab_lib_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), f"javaaccessbridge{jab_version}")
-        system_root_dir = _get_system_root_dir()
-        java_home_dir = _get_java_home_dir()
-        paths = {
-            f"WindowsAccessBridge-{os_arch}.dll": os.path.join(system_root_dir, "System32"),
-            f"JavaAccessBridge-{os_arch}.dll": os.path.join(java_home_dir, "bin"),
-            f"JAWTAccessBridge-{os_arch}.dll": os.path.join(java_home_dir, "bin"),
-            f"accessibility.properties": os.path.join(java_home_dir, "lib"),
-            f"access-bridge-{os_arch}.jar": os.path.join(java_home_dir, "lib", "ext"),
-            f"jaccess.jar": os.path.join(java_home_dir, "lib", "ext"),
-        }
-        for fn, dst in paths.items():
-            if not os.path.exists(os.path.join(dst, fn)):
-                shutil.copy(os.path.join(jab_lib_dir, fn), os.path.join(dst, fn))
-        return os.path.join(system_root_dir, "System32", f"WindowsAccessBridge-{os_arch}.dll")
+        self._jab = JAB()
 
     def find_window(self, handle: int) -> Optional[JABElement]:
         return JABElement.create_root(jab=self._jab, handle=handle)
 
     def close(self):
         if self._jab:
-            self._jab.close()
-
-
-def _get_system_root_dir():
-    return os.environ.get("SYSTEMROOT")
-
-
-def _get_java_home_dir() -> Optional[str]:
-    java_home_dir = os.environ.get("JAVA_HOME")
-    if java_home_dir:
-        return java_home_dir
-    process = subprocess.Popen(['java', '-XshowSettings:properties', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    decoded = (stdout or stderr).decode('utf-8')
-    lines = decoded.splitlines()
-    for line in lines:
-        if line.strip().startswith("java.home"):
-            return line.split("=")[1].strip()
-    return None
+            self._jab.stop()
