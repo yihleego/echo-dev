@@ -1,5 +1,3 @@
-import re
-import warnings
 from abc import ABC, abstractmethod
 from ctypes import create_string_buffer, c_wchar_p, c_int, c_long
 from ctypes.wintypes import HWND
@@ -263,13 +261,13 @@ class JABElementSnapshot(JABElementProperties):
 
 
 class JABElement(JABElementProperties, Element):
-    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, root: 'JABElement' = None, parent: 'JABElement' = None):
+    def __init__(self, jab: JAB, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, root: 'JABElement' = None, parent: 'JABElement' = None):
         self._jab: JAB = jab
+        self._vmid: c_long = vmid
+        self._ctx: AccessibleContext = ctx
         self._handle: int = handle
         self._process_id: int = process_id
         self._process_name: str = None  # TODO
-        self._vmid: c_long = vmid
-        self._ctx: AccessibleContext = ctx
         self._root: JABElement = root or self  # TODO
         self._parent: Optional[JABElement] = parent
         self._released: bool = False
@@ -372,10 +370,7 @@ class JABElement(JABElementProperties, Element):
         ctx = AccessibleContext(vci.children[index])
         return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
 
-    def snapshot(self) -> JABElementSnapshot:
-        return JABElementSnapshot(self)
-
-    def click(self) -> bool:
+    def click(self, button="left") -> bool:
         # TODO I don't know why 'click' does not work
         return self._do_action(action_names=['单击', 'click'])
 
@@ -390,6 +385,36 @@ class JABElement(JABElementProperties, Element):
     def set_focus(self) -> bool:
         res = self._jab.requestFocus(self._vmid, self._ctx)
         return bool(res)
+
+    def _snapshot(self) -> JABElementSnapshot:
+        return JABElementSnapshot(self)
+
+    def _rules(self):
+        return {
+            "role": ("role", ["eq", "like", "in", "in_like", "regex"]),
+            "name": ("name", ["eq", "like", "in", "in_like", "regex"]),
+            "description": ("description", ["eq", "like", "in", "in_like", "regex"]),
+            "x": ("x", ["eq", "gt", "gte", "lt", "lte"]),
+            "y": ("y", ["eq", "gt", "gte", "lt", "lte"]),
+            "width": ("width", ["eq", "gt", "gte", "lt", "lte"]),
+            "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
+            "index_in_parent": ("index_in_parent", ["eq", "gt", "gte", "lt", "lte"]),
+            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
+            "editable": ("editable", ["eq"]),
+            "focusable": ("focusable", ["eq"]),
+            "resizable": ("resizable", ["eq"]),
+            "visible": ("visible", ["eq"]),
+            "selectable": ("selectable", ["eq"]),
+            "multiselectable": ("multiselectable", ["eq"]),
+            "collapsed": ("collapsed", ["eq"]),
+            "checked": ("checked", ["eq"]),
+            "enabled": ("enabled", ["eq"]),
+            "focused": ("focused", ["eq"]),
+            "selected": ("selected", ["eq"]),
+            "showing": ("showing", ["eq"]),
+            "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
+            "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
+        }
 
     def matches(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
         """
@@ -436,157 +461,7 @@ class JABElement(JABElementProperties, Element):
         :key depth: depth equals
         :return: True if matched
         """
-
-        rules = {
-            "role": ("info.role", ["eq", "like", "in", "in_like", "regex"]),
-            "name": ("info.name", ["eq", "like", "in", "in_like", "regex"]),
-            "description": ("info.description", ["eq", "like", "in", "in_like", "regex"]),
-            "x": ("info.x", ["eq", "gt", "gte", "lt", "lte"]),
-            "y": ("info.y", ["eq", "gt", "gte", "lt", "lte"]),
-            "width": ("info.width", ["eq", "gt", "gte", "lt", "lte"]),
-            "height": ("info.height", ["eq", "gt", "gte", "lt", "lte"]),
-            "index_in_parent": ("info.index_in_parent", ["eq", "gt", "gte", "lt", "lte"]),
-            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
-            "editable": ("editable", ["eq"]),
-            "focusable": ("focusable", ["eq"]),
-            "resizable": ("resizable", ["eq"]),
-            "visible": ("visible", ["eq"]),
-            "selectable": ("selectable", ["eq"]),
-            "multiselectable": ("multiselectable", ["eq"]),
-            "collapsed": ("collapsed", ["eq"]),
-            "checked": ("checked", ["eq"]),
-            "enabled": ("enabled", ["eq"]),
-            "focused": ("focused", ["eq"]),
-            "selected": ("selected", ["eq"]),
-            "showing": ("showing", ["eq"]),
-            "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
-            "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
-        }
-
-        def _do_expr(expr, fixed, value):
-            if expr == "eq":
-                return fixed == value
-            if expr == "like":
-                return fixed.find(value) >= 0
-            if expr == "in":
-                return fixed in value
-            if expr == "in_like":
-                for v in value:
-                    if fixed.find(v) >= 0:
-                        return True
-                return False
-            if expr == "regex":
-                return re.match(value, fixed) is not None
-            if expr == "gt":
-                return fixed > value
-            if expr == "gte":
-                return fixed >= value
-            if expr == "lt":
-                return fixed < value
-            if expr == "lte":
-                return fixed <= value
-            raise ValueError(f"unknown expression: {expr}")
-
-        def _do_prop(obj, prop):
-            if "." not in prop:
-                return getattr(obj, prop)
-            val = obj
-            levels = prop.split(".")
-            for level in levels:
-                if not val:
-                    return None
-                val = getattr(val, level)
-            return val
-
-        if len(filters) == 0 and len(criteria) == 0:
-            return False
-        ss = self.snapshot()
-        if filters:
-            for filter in filters:
-                if not filter(ss):
-                    return False
-        if criteria:
-            criteria = {}
-            for key, (prop, exprs) in rules.items():
-                for expr in exprs:
-                    fullkey = key if expr == "eq" else key + "_" + expr
-                    if fullkey in criteria:
-                        criteria[fullkey] = (prop, expr)
-                        break
-            if len(criteria) != len(criteria):
-                diff = criteria.keys() - criteria.keys()
-                if len(diff) > 0:
-                    warnings.warn(f"Unsupported key(s): {str(diff)}")
-            for key, (prop, expr) in criteria.items():
-                arg = criteria.get(key)
-                if arg is None:
-                    continue
-                val = _do_prop(ss, prop)
-                if val is None:
-                    return False
-                if not _do_expr(expr, val, arg):
-                    return False
-        return True
-
-    def find_all_elements(self) -> list['JABElement']:
-        found = [self]
-        children = self.children
-        for child in children:
-            found.extend(child.find_all_elements())
-        return found
-
-    def find_elements(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> list['JABElement']:
-        # return empty list if no criteria
-        if len(filters) == 0 and len(criteria) == 0:
-            return []
-        found = []
-        releasing = []
-        children = self.children
-        for child in children:
-            matched = child.matches(*filters, **criteria)
-            if matched:
-                found.append(child)
-            else:
-                releasing.append(child)
-            # looking for deep elements
-            found.extend(child.find_elements(*filters, **criteria))
-        # release all mismatched elements
-        for child in releasing:
-            child.release()
-        return found
-
-    def find_element(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> Optional['JABElement']:
-        # return None if no criteria
-        if len(filters) == 0 and len(criteria) == 0:
-            return None
-        found = None
-        releasing = []
-        children = self.children
-        for child in children:
-            matched = child.matches(*filters, **criteria)
-            if matched:
-                found = child
-                break
-            else:
-                releasing.append(child)
-        # looking for deep elements if not found
-        if not found:
-            for child in children:
-                found = child.find_element(*filters, **criteria)
-                if found:
-                    break
-        # release all mismatched elements
-        for child in releasing:
-            child.release()
-        return found
-
-    def exists_element(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
-        found = self.find_element(*filters, **criteria)
-        if found:
-            found.release()
-            return True
-        else:
-            return False
+        return super().matches(*filters, **criteria)
 
     def release(self):
         self._jab.releaseJavaObject(self._vmid, self._ctx)
@@ -619,14 +494,12 @@ class JABElement(JABElementProperties, Element):
             vmid = c_long()
             ctx = AccessibleContext()
             if jab.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
-                return JABElement(jab=jab, handle=handle, process_id=process_id,
-                                  vmid=vmid, ctx=ctx)
+                return JABElement(jab=jab, vmid=vmid, ctx=ctx, handle=handle, process_id=process_id)
         return None
 
     @staticmethod
     def create_element(ctx: AccessibleContext, root: 'JABElement', parent: 'JABElement' = None) -> 'JABElement':
-        return JABElement(jab=root._jab, handle=root._handle, process_id=root._process_id,
-                          vmid=root._vmid, ctx=ctx, root=root, parent=parent)
+        return JABElement(jab=root._jab, vmid=root._vmid, ctx=ctx, handle=root._handle, process_id=root._process_id, root=root, parent=parent)
 
 
 class JABDriver(Driver):
