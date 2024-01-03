@@ -1,7 +1,7 @@
 import unittest
 
-from utils import win32
-from .. import JABDriver, Role
+from src.jabdriver import JABDriver, Role
+from src.utils import win32
 
 
 class JABTestSuite(unittest.TestCase):

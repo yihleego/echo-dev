@@ -11,9 +11,9 @@ from typing import Optional, Callable
 
 from PIL import Image, ImageGrab
 
-from driver import Driver, Element
-from jab import *
-from utils import win32
+from .driver import Driver, Element
+from .jab import *
+from .utils import win32
 
 
 class Role(str, Enum):
