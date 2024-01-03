@@ -37,7 +37,7 @@ class JABTestSuite(unittest.TestCase):
             print('input', e.text)
             e.release()
 
-        button_elems = root.find_elements(role=Role.PUSH_BUTTON, name="Click Me")
+        button_elems = root.find_elements(role=Role.PUSH_BUTTON, name="Click")
         for e in button_elems:
             print("found button", e)
             e.click()
@@ -49,7 +49,7 @@ class JABTestSuite(unittest.TestCase):
             print("found role_like", e)
             e.release()
 
-        name_like_elems = root.find_elements(name_like="Me")
+        name_like_elems = root.find_elements(name_like="Click")
         for e in name_like_elems:
             print("found name_like", e)
             e.release()
@@ -59,7 +59,7 @@ class JABTestSuite(unittest.TestCase):
             print("found enabled", e)
             e.release()
 
-        kwargs_elems = root.find_elements(**{"role": Role.PUSH_BUTTON, "name": "Click Me"})
+        kwargs_elems = root.find_elements(**{"role": Role.PUSH_BUTTON, "name": "Click"})
         for e in kwargs_elems:
             print("found kwargs", e)
             e.release()
@@ -68,7 +68,7 @@ class JABTestSuite(unittest.TestCase):
         root = self.get_root()
 
         filtered_elems = root.find_elements(
-            lambda e: e.name == "Click Me",
+            lambda e: e.name == "Click",
             lambda e: e.role == Role.PUSH_BUTTON)
         for e in filtered_elems:
             print("filtered", e)
@@ -114,6 +114,18 @@ class JABTestSuite(unittest.TestCase):
             e.release()
 
         print(len(root.find_elements(checked=True)))
+
+        root.release()
+
+    def test_parent_is_root(self):
+        root = self.get_root()
+
+        child = root.child(0)
+        parent = child.parent
+        assert parent == root
+
+        print('root', root)
+        print('child', child)
 
         root.release()
 

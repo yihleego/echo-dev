@@ -1,6 +1,4 @@
-import os
 import re
-import time
 import warnings
 from abc import ABC, abstractmethod
 from ctypes import create_string_buffer, c_wchar_p, c_int, c_long
@@ -8,8 +6,6 @@ from ctypes.wintypes import HWND
 from enum import Enum
 from functools import cached_property
 from typing import Optional, Callable
-
-from PIL import Image, ImageGrab
 
 from .driver import Driver, Element
 from .jab import *
@@ -267,19 +263,16 @@ class JABElementSnapshot(JABElementProperties):
 
 
 class JABElement(JABElementProperties, Element):
-    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, is_root: bool, root: 'JABElement' = None):
+    def __init__(self, jab: JAB, handle: int, process_id: int, vmid: c_long, ctx: AccessibleContext, root: 'JABElement' = None, parent: 'JABElement' = None):
         self._jab: JAB = jab
         self._handle: int = handle
         self._process_id: int = process_id
+        self._process_name: str = None  # TODO
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
-        if is_root or root == self:
-            self._root: JABElement = self
-            self._is_root: bool = True
-        else:
-            self._root: JABElement = root
-            self._is_root: bool = False
-        self._parent: Optional[JABElement] = None
+        self._root: JABElement = root or self  # TODO
+        self._parent: Optional[JABElement] = parent
+        self._released: bool = False
 
     @property
     def handle(self) -> int:
@@ -337,15 +330,16 @@ class JABElement(JABElementProperties, Element):
     @property
     def parent(self) -> Optional['JABElement']:
         # the root does not have a parent
-        if self._is_root:
+        if self.depth == 0:
             return None
-        # return if parent exists
-        if self._parent is not None:
+        # return if parent exists and is not released
+        if self._parent is not None and not self._parent._released:
             return self._parent
         # get parent from context
         parent_ctx = self._jab.getAccessibleParentFromContext(self._vmid, self._ctx)
-        if parent_ctx != 0:
-            self._parent = JABElement.create_element(root=self._root, ctx=parent_ctx)
+        if parent_ctx == 0:
+            return None
+        self._parent = JABElement.create_element(ctx=parent_ctx, root=self._root)
         return self._parent
 
     @property
@@ -360,7 +354,7 @@ class JABElement(JABElementProperties, Element):
         res = []
         for idx in range(vci.returnedChildrenCount):
             ctx = AccessibleContext(vci.children[idx])
-            res.append(JABElement.create_element(root=self._root, ctx=ctx))
+            res.append(JABElement.create_element(ctx=ctx, root=self._root, parent=self))
         return res
 
     @property
@@ -376,7 +370,7 @@ class JABElement(JABElementProperties, Element):
         if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
             return None
         ctx = AccessibleContext(vci.children[index])
-        return JABElement.create_element(root=self._root, ctx=ctx)
+        return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
 
     def snapshot(self) -> JABElementSnapshot:
         return JABElementSnapshot(self)
@@ -389,63 +383,15 @@ class JABElement(JABElementProperties, Element):
         res = self._jab.setTextContents(self._vmid, self._ctx, c_wchar_p(text))
         return bool(res)
 
+    def wait(self, wait_for: str, timeout=None, interval=None):
+        # TODO
+        pass
+
     def set_focus(self) -> bool:
         res = self._jab.requestFocus(self._vmid, self._ctx)
         return bool(res)
 
-    def set_foreground(self) -> bool:
-        self.show()
-        return win32.set_foreground(self._handle, self._process_id)
-
-    def move(self, x: int = None, y: int = None, width: int = None, height: int = None, repaint=True) -> bool:
-        if x is None or y is None or width is None or height is None:
-            rect = self.root.rectangle
-            if x is None:
-                x = rect[0]
-            if y is None:
-                y = rect[1]
-            if width is None:
-                width = rect[2] - rect[0]
-            if height is None:
-                height = rect[3] - rect[1]
-        return win32.move_window(self._handle, self._process_id, x, y, width, height, repaint)
-
-    def hide(self) -> bool:
-        return win32.show_window(self._handle, win32.SW_HIDE)
-
-    def show(self) -> bool:
-        return win32.show_window(self._handle, win32.SW_SHOW)
-
-    def maximize(self) -> bool:
-        return win32.show_window(self._handle, win32.SW_MAXIMIZE)
-
-    def minimize(self) -> bool:
-        return win32.show_window(self._handle, win32.SW_MINIMIZE)
-
-    def restore(self) -> bool:
-        return win32.show_window(self._handle, win32.SW_RESTORE)
-
-    def is_minimized(self) -> bool:
-        return win32.get_window_placement(self._handle).showCmd == win32.SW_SHOWMINIMIZED
-
-    def is_maximized(self) -> bool:
-        return win32.get_window_placement(self._handle).showCmd == win32.SW_SHOWMAXIMIZED
-
-    def is_normal(self) -> bool:
-        return win32.get_window_placement(self._handle).showCmd == win32.SW_SHOWNORMAL
-
-    def screenshot(self, filename: str = None) -> Image:
-        self.set_foreground()
-        time.sleep(0.06)
-        image = ImageGrab.grab(self.rectangle)
-        dirname = os.path.dirname(filename)
-        if filename:
-            if not os.path.exists(dirname):
-                os.makedirs(dirname, exist_ok=True)
-            image.save(filename)
-        return filename
-
-    def matches(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> bool:
+    def matches(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
         """
         Match element by criteria.
         :param filters: filters
@@ -552,27 +498,27 @@ class JABElement(JABElementProperties, Element):
                 val = getattr(val, level)
             return val
 
-        if len(filters) == 0 and len(kwargs) == 0:
+        if len(filters) == 0 and len(criteria) == 0:
             return False
         ss = self.snapshot()
         if filters:
             for filter in filters:
                 if not filter(ss):
                     return False
-        if kwargs:
+        if criteria:
             criteria = {}
             for key, (prop, exprs) in rules.items():
                 for expr in exprs:
                     fullkey = key if expr == "eq" else key + "_" + expr
-                    if fullkey in kwargs:
+                    if fullkey in criteria:
                         criteria[fullkey] = (prop, expr)
                         break
-            if len(criteria) != len(kwargs):
-                diff = kwargs.keys() - criteria.keys()
+            if len(criteria) != len(criteria):
+                diff = criteria.keys() - criteria.keys()
                 if len(diff) > 0:
                     warnings.warn(f"Unsupported key(s): {str(diff)}")
             for key, (prop, expr) in criteria.items():
-                arg = kwargs.get(key)
+                arg = criteria.get(key)
                 if arg is None:
                     continue
                 val = _do_prop(ss, prop)
@@ -589,35 +535,35 @@ class JABElement(JABElementProperties, Element):
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> list['JABElement']:
+    def find_elements(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> list['JABElement']:
         # return empty list if no criteria
-        if len(filters) == 0 and len(kwargs) == 0:
+        if len(filters) == 0 and len(criteria) == 0:
             return []
         found = []
         releasing = []
         children = self.children
         for child in children:
-            matched = child.matches(*filters, **kwargs)
+            matched = child.matches(*filters, **criteria)
             if matched:
                 found.append(child)
             else:
                 releasing.append(child)
             # looking for deep elements
-            found.extend(child.find_elements(*filters, **kwargs))
+            found.extend(child.find_elements(*filters, **criteria))
         # release all mismatched elements
         for child in releasing:
             child.release()
         return found
 
-    def find_element(self, *filters: Callable[[JABElementSnapshot], bool], **kwargs) -> Optional['JABElement']:
+    def find_element(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> Optional['JABElement']:
         # return None if no criteria
-        if len(filters) == 0 and len(kwargs) == 0:
+        if len(filters) == 0 and len(criteria) == 0:
             return None
         found = None
         releasing = []
         children = self.children
         for child in children:
-            matched = child.matches(*filters, **kwargs)
+            matched = child.matches(*filters, **criteria)
             if matched:
                 found = child
                 break
@@ -626,7 +572,7 @@ class JABElement(JABElementProperties, Element):
         # looking for deep elements if not found
         if not found:
             for child in children:
-                found = child.find_element(*filters, **kwargs)
+                found = child.find_element(*filters, **criteria)
                 if found:
                     break
         # release all mismatched elements
@@ -634,8 +580,17 @@ class JABElement(JABElementProperties, Element):
             child.release()
         return found
 
+    def exists_element(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
+        found = self.find_element(*filters, **criteria)
+        if found:
+            found.release()
+            return True
+        else:
+            return False
+
     def release(self):
         self._jab.releaseJavaObject(self._vmid, self._ctx)
+        self._released = True
 
     def _do_action(self, action_names: list[str]) -> bool:
         if not action_names or not self.info.accessibleAction:
@@ -664,13 +619,14 @@ class JABElement(JABElementProperties, Element):
             vmid = c_long()
             ctx = AccessibleContext()
             if jab.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
-                return JABElement(jab=jab, handle=handle, process_id=process_id, vmid=vmid, ctx=ctx, is_root=True)
+                return JABElement(jab=jab, handle=handle, process_id=process_id,
+                                  vmid=vmid, ctx=ctx)
         return None
 
     @staticmethod
-    def create_element(root: 'JABElement', ctx: AccessibleContext) -> 'JABElement':
+    def create_element(ctx: AccessibleContext, root: 'JABElement', parent: 'JABElement' = None) -> 'JABElement':
         return JABElement(jab=root._jab, handle=root._handle, process_id=root._process_id,
-                          vmid=root._vmid, ctx=ctx, is_root=False, root=root)
+                          vmid=root._vmid, ctx=ctx, root=root, parent=parent)
 
 
 class JABDriver(Driver):
