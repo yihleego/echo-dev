@@ -13,13 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from functools import wraps
 
 
-class CVTestSuite(unittest.TestCase):
+def singleton(cls):
+    instances = {}
 
-    def setUp(self):
-        pass
+    @wraps(cls)
+    def wrapper(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
 
-    def tearDown(self):
-        pass
+    return wrapper

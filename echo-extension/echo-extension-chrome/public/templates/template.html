@@ -1,0 +1,201 @@
+<template class='tl-template'>
+    <style>
+
+        .tl-wrap {
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 10000001;
+        }
+
+        .new-element {
+            position: absolute;
+            top: 30px; /* Adjust this value to position the new element */
+            padding: 4px;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(-100%);
+            z-index: 9999999; /* lower this value to make it appear behind the tl-code-wrap */
+            animation: drop-in 0.5s forwards;
+        }
+
+        @keyframes drop-in {
+            0% {
+                transform: translateY(-120%);
+            }
+            100% {
+                transform: translateY(0%);
+            }
+        }
+
+        .new-element.show {
+            opacity: 1;
+            transform: translateY(0%);
+        }
+
+        .tl-wrap.-out .tl-code-wrap {
+            -webkit-animation: 0.5s tl-hide forwards !important;
+            animation: 0.5s tl-hide forwards !important;
+        }
+
+        .tl-wrap.-out .tl-canvas {
+            transition: opacity 0.3s;
+            opacity: 0;
+        }
+
+        .tl-code-wrap {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 4px;
+            -webkit-animation: 0.4s tl-show forwards;
+            animation: 0.4s tl-show forwards;
+            z-index: 10000003;
+        }
+
+        .tl-code {
+            display: inline-block;
+            max-width: 100%;
+            box-sizing: border-box;
+            background: #fff;
+            box-shadow: 0 0 0 1px #eee;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            font-size: 13px;
+            font-weight: 400;
+            color: #aaa;
+            padding: 5px 6px 4px;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            -webkit-animation-duration: 0.5s;
+            animation-duration: 0.5s;
+            -webkit-animation-fill-mode: both;
+            animation-fill-mode: both;
+            z-index: 10000003;
+            /*position: absolute;*/
+        }
+        /* http://prismjs.com/download.html?themes=prism&languages=markup+css */
+        /**
+            * prism.js default theme for JavaScript, CSS and HTML
+            * Based on dabblet (http://dabblet.com)
+            * @author Lea Verou
+            */
+
+        .tl-code-wrap .token.comment,
+        .tl-code-wrap .token.prolog,
+        .tl-code-wrap .token.doctype,
+        .tl-code-wrap .token.cdata {
+            color: #b9bec9;
+        }
+
+        .tl-code-wrap .token.punctuation {
+            color: #ccc;
+            /* punctuation */;
+        }
+
+        .tl-code-wrap .token.property,
+        .tl-code-wrap .token.tag,
+        .tl-code-wrap .token.boolean,
+        .tl-code-wrap .token.number,
+        .tl-code-wrap .token.constant,
+        .tl-code-wrap .token.symbol,
+        .tl-code-wrap .token.deleted {
+            color: #d259ff;
+        }
+
+        .tl-code-wrap .token.selector,
+        .tl-code-wrap .token.attr-name,
+        .tl-code-wrap .token.string,
+        .tl-code-wrap .token.char,
+        .tl-code-wrap .token.builtin,
+        .tl-code-wrap .token.inserted {
+            color: #7ebd00;
+            /* attr name */;
+        }
+
+        .tl-code-wrap .token.atrule,
+        .tl-code-wrap .token.attr-value,
+        .tl-code-wrap .token.keyword {
+            color: #52b2e5;
+        }
+
+        .tl-code-wrap .token.operator,
+        .tl-code-wrap .token.entity,
+        .tl-code-wrap .token.url,
+        .tl-code-wrap .language-css .token.string,
+        .tl-code-wrap .style .token.string {
+            color: #a67f59;
+        }
+
+        .tl-code-wrap .token.function {
+            color: #dd4a68;
+        }
+
+        .tl-code-wrap .token.regex,
+        .tl-code-wrap .token.important,
+        .tl-code-wrap .token.variable {
+            color: #e90;
+        }
+
+        .tl-code-wrap .token.important {
+            font-weight: bold;
+        }
+
+        @-webkit-keyframes tl-show {
+            0% {
+                -webkit-transform: translate(0, -100%);
+                transform: translate(0, -100%);
+            };
+        }
+
+        @keyframes tl-show {
+            0% {
+                -webkit-transform: translate(0, -100%);
+                transform: translate(0, -100%);
+            };
+        }
+
+        @-webkit-keyframes tl-hide {
+            45% {
+                -webkit-transform: translate(0, 30%);
+                transform: translate(0, 30%);
+            }
+
+            100% {
+                -webkit-transform: translate(0, -100%);
+                transform: translate(0, -100%);
+            };
+        }
+
+        @keyframes tl-hide {
+            45% {
+                -webkit-transform: translate(0, 30%);
+                transform: translate(0, 30%);
+            }
+
+            100% {
+                -webkit-transform: translate(0, -100%);
+                transform: translate(0, -100%);
+            };
+        }
+
+    </style>
+
+    <div class="tl-wrap">
+        <canvas width='100' height='100' id='tl-canvas' class='tl-canvas'></canvas>
+
+        <div class='tl-code-wrap'>
+            <code class='tl-code language-markup'>&lt;html&gt;</code>
+        </div>
+
+        <div class="new-element">
+            <!-- Content for new-element goes here -->
+        </div>
+    </div>
+</template>

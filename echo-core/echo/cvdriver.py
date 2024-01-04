@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from .driver import Driver, Element
 
 
-class CVTestSuite(unittest.TestCase):
+class CVDriver(Driver):
+    pass
 
-    def setUp(self):
-        pass
 
-    def tearDown(self):
-        pass
+class CVElement(Element):
+    pass

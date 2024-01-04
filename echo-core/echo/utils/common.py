@@ -13,13 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+def to_string(obj, *keys) -> str:
+    def _warp(v):
+        return "'" + v + "'" if isinstance(v, str) else v
 
-
-class CVTestSuite(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+    return ", ".join([f"{k}={_warp(getattr(obj, k))}" for k in keys])

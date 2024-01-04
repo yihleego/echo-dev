@@ -13,13 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from .common import to_string
+from .deprecated import deprecated
+from .singleton import singleton
 
-
-class CVTestSuite(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
+__all__ = [
+    "to_string",
+    "deprecated",
+    "singleton",
+]
