@@ -3,12 +3,13 @@ from enum import Enum
 from typing import Optional, Callable
 
 from pywinauto.application import Application
-from pywinauto.controls.uia_controls import EditWrapper
+from pywinauto.controls.uia_controls import EditWrapper, ButtonWrapper, ListItemWrapper, TreeItemWrapper
 from pywinauto.controls.uiawrapper import UIAWrapper
+from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
 from .driver import Driver, Element
-from .utils import win32
+from .utils import win32, to_string
 
 
 class Role(str, Enum):
@@ -56,12 +57,12 @@ class Role(str, Enum):
 
 
 class UIAElement(Element):
-    def __init__(self, app: Application, window: UIAWrapper, handle: int, process_id: int, root: 'UIAElement' = None, parent: 'UIAElement' = None):
+    def __init__(self, app: Application, window: UIAWrapper, handle: int, process_id: int, process_name: str, root: 'UIAElement' = None, parent: 'UIAElement' = None):
         self._app: Application = app
         self._window: UIAWrapper = window
         self._handle: int = handle
         self._process_id: int = process_id
-        self._process_name: str = None  # TODO
+        self._process_name: str = process_name
         self._root: UIAElement = root or self  # TODO
         self._parent: Optional[UIAElement] = parent
 
@@ -72,6 +73,10 @@ class UIAElement(Element):
     @property
     def process_id(self) -> int:
         return self._process_id
+
+    @property
+    def process_name(self) -> str:
+        return self._process_name
 
     @property
     def info(self) -> UIAElementInfo:
@@ -133,32 +138,46 @@ class UIAElement(Element):
         return self.info.visible
 
     @property
+    def checked(self) -> bool:
+        role = self.role
+        if role == Role.CHECK_BOX and isinstance(self._window, ButtonWrapper):
+            return self._window.get_toggle_state() == 1
+        elif role == Role.LIST_ITEM and isinstance(self._window, ListItemWrapper):
+            return self._window.is_checked()
+        elif role == Role.TREE_ITEM and isinstance(self._window, TreeItemWrapper):
+            return self._window.is_checked()
+        return False
+
+    @property
     def enabled(self) -> bool:
         return self.info.enabled
 
     @property
-    def text(self) -> Optional[str]:
-        if isinstance(self._window, EditWrapper):
-            return self._window.get_value()
-        else:
-            return None
+    def selected(self) -> bool:
+        try:
+            return self._window.is_selected() == 1
+        except NoPatternInterfaceError:
+            return False
+        except Exception as e:
+            raise e
 
     @property
-    def depth(self) -> int:
-        # TODO
-        return -1
+    def text(self) -> Optional[str]:
+        role = self.role
+        if role == Role.EDIT and isinstance(self._window, EditWrapper):
+            return self._window.get_value()
+        return None
 
     def root(self) -> 'UIAElement':
         return self._root
 
     def parent(self) -> Optional['UIAElement']:
-        # the root does not have a parent
-        if self.depth == 0:
-            return None
         # return if parent exists
         if self._parent is not None:
             return self._parent
         parent_window = self._window.parent()
+        if parent_window is None:
+            return None
         self._parent = UIAElement.create_element(window=parent_window, root=self._root)
         return self._parent
 
@@ -186,8 +205,12 @@ class UIAElement(Element):
         return len(self._window.children())
 
     def click(self, button="left") -> bool:
-        self._window.set_focus()
-        return self._window.click_input(button)
+        if isinstance(self._window, ButtonWrapper):
+            self._window.click()
+        else:
+            self._window.set_focus()
+            self._window.click_input(button)
+        return True
 
     def input(self, text: str) -> bool:
         if isinstance(self._window, EditWrapper):
@@ -195,13 +218,13 @@ class UIAElement(Element):
                 self._window.set_edit_text(text)
                 return True
             except COMError:
-                # ignored
-                return True
+                return self._window.get_value() == text
+            except NoPatternInterfaceError:
+                return False
             except Exception as e:
                 if not self._window.get_value() == text:
                     raise Exception("failed to input", e)
-        else:
-            return False
+        return False
 
     def set_focus(self) -> bool:
         self._window.set_focus()
@@ -236,6 +259,8 @@ class UIAElement(Element):
         :key text_in_like: text contains in list
         :key text_regex: text regex
         :key visible: state visible
+        :key checked: state checked
+        :key selected: state selected
         :key enabled: state enabled
         :return: True if matched
         """
@@ -250,6 +275,8 @@ class UIAElement(Element):
             "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
             "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
             "visible": ("visible", ["eq"]),
+            "checked": ("checked", ["eq"]),
+            "selected": ("selected", ["eq"]),
             "enabled": ("enabled", ["eq"]),
         }
         return self._matches(snapshot, rules, *filters, **criteria)
@@ -291,20 +318,21 @@ class UIAElement(Element):
                 return found
         return None
 
+    def __str__(self) -> str:
+        return to_string(self,'role', 'name', 'description', 'automation_id', 'class_name',
+                         'rectangle', 'text', 'visible', 'checked', 'enabled', 'selected')
+
+
     @staticmethod
     def create_root(app: Application, window: UIAWrapper, handle: int) -> Optional['UIAElement']:
         process_id = win32.get_process_id_from_handle(handle)
-        return UIAElement(app=app, window=window, handle=handle, process_id=process_id)
+        process_name = win32.get_process_name_by_process_id(process_id)
+        return UIAElement(app=app, window=window, handle=handle, process_id=process_id, process_name=process_name)
 
     @staticmethod
     def create_element(window: UIAWrapper, root: 'UIAElement', parent: 'UIAElement' = None) -> 'UIAElement':
-        return UIAElement(app=root._app, window=window, handle=root._handle, process_id=root._process_id, root=root, parent=parent)
-
-    def __str__(self) -> str:
-        return (f"role='{self.role}', name='{self.name}', description='{self.description}', "
-                f"automation_id='{self.automation_id}', class_name='{self.class_name}', description='{self.description}', "
-                f"text='{self.text}', rectangle={self.rectangle}, visible={self.visible}, enabled={self.enabled}")
-
+        return UIAElement(app=root._app, window=window, handle=root._handle,
+                          process_id=root._process_id, process_name=root._process_name, root=root, parent=parent)
 
 class UIADriver(Driver):
     def find_window(self, handle: int) -> Optional[UIAElement]:

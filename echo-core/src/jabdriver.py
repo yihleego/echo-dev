@@ -7,7 +7,7 @@ from typing import Optional, Callable
 
 from .driver import Driver, Element
 from .jab import *
-from .utils import win32
+from .utils import win32, to_string
 
 
 class Role(str, Enum):
@@ -220,9 +220,8 @@ class JABElementProperties(ABC):
         return State.SHOWING in self.info.states_en_US
 
     def __str__(self) -> str:
-        return (f"role='{self.role}', name='{self.name}', description='{self.description}', "
-                f"text='{self.text}', rectangle={self.rectangle}, states={self.states}, "
-                f"children_count={self.children_count}, depth={self.depth}")
+        return to_string(self, 'role', 'name', 'description', 'index_in_parent',
+                         'rectangle', 'states', 'text', 'children_count', 'depth')
 
 
 class JABElementSnapshot(JABElementProperties):
@@ -258,13 +257,13 @@ class JABElementSnapshot(JABElementProperties):
 
 
 class JABElement(JABElementProperties, Element):
-    def __init__(self, jab: JAB, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, root: 'JABElement' = None, parent: 'JABElement' = None):
+    def __init__(self, jab: JAB, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, process_name: str, root: 'JABElement' = None, parent: 'JABElement' = None):
         self._jab: JAB = jab
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
         self._handle: int = handle
         self._process_id: int = process_id
-        self._process_name: str = None  # TODO
+        self._process_name: str = process_name
         self._root: JABElement = root or self  # TODO
         self._parent: Optional[JABElement] = parent
         self._released: bool = False
@@ -276,6 +275,10 @@ class JABElement(JABElementProperties, Element):
     @property
     def process_id(self) -> int:
         return self._process_id
+
+    @property
+    def process_name(self) -> str:
+        return self._process_name
 
     @property
     def vmid(self) -> c_long:
@@ -530,11 +533,12 @@ class JABElement(JABElementProperties, Element):
     @staticmethod
     def create_root(jab: JAB, handle: int) -> Optional['JABElement']:
         process_id = win32.get_process_id_from_handle(handle)
+        process_name = win32.get_process_name_by_process_id(process_id)
         if jab.isJavaWindow(HWND(handle)):
             vmid = c_long()
             ctx = AccessibleContext()
             if jab.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
-                return JABElement(jab=jab, vmid=vmid, ctx=ctx, handle=handle, process_id=process_id)
+                return JABElement(jab=jab, vmid=vmid, ctx=ctx, handle=handle, process_id=process_id, process_name=process_name)
         return None
 
     @staticmethod

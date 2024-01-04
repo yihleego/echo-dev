@@ -130,6 +130,17 @@ def get_process_id_from_handle(handle: int) -> int:
     return process_id.value
 
 
+def get_process_name_by_process_id(process_id):
+    import psutil
+    try:
+        process = psutil.Process(process_id)
+        return process.name()
+    except psutil.NoSuchProcess as e:
+        return f"Process with PID {process_id} not found"
+    except psutil.AccessDenied as e:
+        return f"Access denied to process with PID {process_id}"
+
+
 def wait_thread_idle(process_id: int, handle: int):
     # https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess
     process = windll.kernel32.OpenProcess(0x0400, 0, process_id)

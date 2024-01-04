@@ -1,4 +1,5 @@
 import unittest
+import uuid
 
 from src.jabdriver import JABDriver, Role
 from src.utils import win32
@@ -9,39 +10,38 @@ class JABTestSuite(unittest.TestCase):
     def setUp(self):
         self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Swing Example")
         self.driver = JABDriver()
+        self.root = self.driver.find_window(handle=self.handle)
+        assert self.root is not None
 
     def tearDown(self):
+        self.root.release()
         self.driver.close()
 
-    def get_root(self):
-        root = self.driver.find_window(handle=self.handle)
-        if root:
-            return root
-        raise Exception('not found')
-
     def test_find_all_elements(self):
-        root = self.get_root()
+        root = self.root
 
-        all = root.find_all_elements()
-        for e in all:
+        elems = root.find_all_elements()
+        for e in elems:
             print("-" * e.depth, e)
             e.release()
 
     def test_find_elements_by_kwargs(self):
-        root = self.get_root()
+        root = self.root
 
         text_elems = root.find_elements(role=Role.TEXT)
         for e in text_elems:
-            print("found text", e)
-            e.input("sb")
-            print('input', e.text)
+            s = str(uuid.uuid4())
+            print("old text", e)
+            e.input(s)
+            print('new text', e.text)
+            assert e.text == s
             e.release()
 
         button_elems = root.find_elements(role=Role.PUSH_BUTTON, name="Click")
         for e in button_elems:
-            print("found button", e)
+            print("button", e)
             e.click()
-            print('click', e)
+            print('clicked', e)
             e.release()
 
         role_like_elems = root.find_elements(role_like="pane")
@@ -65,33 +65,22 @@ class JABTestSuite(unittest.TestCase):
             e.release()
 
     def test_find_elements_by_filters(self):
-        root = self.get_root()
+        root = self.root
 
-        filtered_elems = root.find_elements(
+        elems = root.find_elements(
             lambda e: e.name == "Click",
             lambda e: e.role == Role.PUSH_BUTTON)
-        for e in filtered_elems:
+        for e in elems:
             print("filtered", e)
             e.release()
 
         root.release()
 
-    def test_button(self):
-        root = self.get_root()
-
-        button_elems = root.find_elements(role=Role.PUSH_BUTTON)
-        for e in button_elems:
-            res = e.click()
-            print('click', res, e)
-            e.release()
-
-        root.release()
-
     def test_text(self):
-        root = self.get_root()
+        root = self.root
 
-        text_elems = root.find_elements(role=Role.TEXT)
-        for e in text_elems:
+        elems = root.find_elements(role=Role.TEXT)
+        for e in elems:
             print('before', e.text)
             res = e.input("Hello,World!")
             print('after', e.text, res)
@@ -101,11 +90,22 @@ class JABTestSuite(unittest.TestCase):
 
         root.release()
 
-    def test_checkbox(self):
-        root = self.get_root()
+    def test_button(self):
+        root = self.root
 
-        checkbox_elems = root.find_elements(role=Role.CHECK_BOX)
-        for e in checkbox_elems:
+        elems = root.find_elements(role=Role.PUSH_BUTTON)
+        for e in elems:
+            res = e.click()
+            print('click', res, e)
+            e.release()
+
+        root.release()
+
+    def test_checkbox(self):
+        root = self.root
+
+        elems = root.find_elements(role=Role.CHECK_BOX)
+        for e in elems:
             print('before', e.checked)
             res = e.click()
             print('after', e.checked, res)
@@ -116,7 +116,7 @@ class JABTestSuite(unittest.TestCase):
         root.release()
 
     def test_parent_is_root(self):
-        root = self.get_root()
+        root = self.root
 
         child = root.child(0)
         parent = child.parent()
@@ -128,11 +128,15 @@ class JABTestSuite(unittest.TestCase):
         root.release()
 
     def test_screenshot(self):
-        root = self.get_root()
-        root.screenshot("./screenshots/root.png")
+        root = self.root
+        root.screenshot("./screenshots/jab/root.png")
 
-        elem = root.find_element(role=Role.TEXT)
-        elem.screenshot("./screenshots/text.png")
+        text_elem = root.find_element(role=Role.TEXT)
+        text_elem.screenshot("./screenshots/jab/text.png")
 
-        elem.release()
+        button_elem = root.find_element(role=Role.PUSH_BUTTON)
+        button_elem.screenshot("./screenshots/jab/button.png")
+
+        button_elem.release()
+        text_elem.release()
         root.release()
