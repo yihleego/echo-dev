@@ -28,18 +28,16 @@ class Element(ABC, Generic[T]):
     def rectangle(self) -> tuple[int, int, int, int]:
         pass
 
-    @property
     @abstractmethod
     def parent(self) -> Optional[T]:
         pass
 
-    @property
     @abstractmethod
-    def children(self) -> list[T]:
+    def child(self, index: int) -> Optional[T]:
         pass
 
     @abstractmethod
-    def child(self, index: int) -> Optional[T]:
+    def children(self) -> list[T]:
         pass
 
     @abstractmethod
@@ -49,6 +47,16 @@ class Element(ABC, Generic[T]):
     @abstractmethod
     def _rules(self) -> dict:
         pass
+
+    def wait(self, predicate: Callable[[Union[T, any]], bool], timeout=None, interval=None):
+        start = time.perf_counter()
+        while not predicate(self._snapshot()):
+            time_left = timeout - (time.perf_counter() - start)
+            if time_left > 0:
+                time.sleep(min(interval, time_left))
+            else:
+                err = TimeoutError("timed out")
+                raise err
 
     def matches(self, *filters: Callable[[Union[T, any]], bool], **criteria) -> bool:
         def _do_expr(expr, fixed, value):
@@ -118,12 +126,9 @@ class Element(ABC, Generic[T]):
                     return False
         return True
 
-    def release(self):
-        pass
-
     def find_all_elements(self) -> list[T]:
         found = [self]
-        children = self.children
+        children = self.children()
         for child in children:
             found.extend(child.find_all_elements())
         return found
@@ -134,7 +139,7 @@ class Element(ABC, Generic[T]):
             return []
         found = []
         releasing = []
-        children = self.children
+        children = self.children()
         for child in children:
             matched = child.matches(*filters, **criteria)
             if matched:
@@ -154,7 +159,7 @@ class Element(ABC, Generic[T]):
             return None
         found = None
         releasing = []
-        children = self.children
+        children = self.children()
         for child in children:
             matched = child.matches(*filters, **criteria)
             if matched:
@@ -179,6 +184,9 @@ class Element(ABC, Generic[T]):
             return True
         else:
             return False
+
+    def release(self):
+        pass
 
     def set_foreground(self) -> bool:
         self.show()

@@ -37,10 +37,14 @@ class UIATestSuite(unittest.TestCase):
             print('before', e.text)
             res = e.input("Hello,World!")
             print('after', e.text, res)
-            e.text = "setter"
-            print('setter', e.text)
             res = e.input("😎-> 😭🕶👌")
             print('emoji', e.text, res)
+
+    def test_wait(self):
+        root = self.get_root()
+
+        text_elem = root.find_element(role=Role.EDIT)
+        text_elem.wait(lambda x: x.text == 'SB', timeout=10, interval=1)
 
     def test_any(self):
         app = Application(backend='uia')

@@ -95,8 +95,6 @@ class JABTestSuite(unittest.TestCase):
             print('before', e.text)
             res = e.input("Hello,World!")
             print('after', e.text, res)
-            e.text = "setter"
-            print('setter', e.text)
             res = e.input("😎-> 😭🕶👌")
             print('emoji', e.text, res)
             e.release()
@@ -121,7 +119,7 @@ class JABTestSuite(unittest.TestCase):
         root = self.get_root()
 
         child = root.child(0)
-        parent = child.parent
+        parent = child.parent()
         assert parent == root
 
         print('root', root)

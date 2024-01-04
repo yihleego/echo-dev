@@ -1,9 +1,11 @@
+from _ctypes import COMError
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import cached_property
 from typing import Optional, Callable
 
 from pywinauto.application import Application
+from pywinauto.controls.uia_controls import EditWrapper
 from pywinauto.controls.uiawrapper import UIAWrapper
 from pywinauto.uia_element_info import UIAElementInfo
 
@@ -156,26 +158,19 @@ class UIAElement(UIAElementProperties, Element):
 
     @property
     def text(self) -> Optional[str]:
-        # TODO
-        try:
+        if isinstance(self._window, EditWrapper):
             return self._window.get_value()
-        except:
+        else:
             return None
-
-    @text.setter
-    def text(self, value: str):
-        self.input(value)
 
     @property
     def depth(self) -> int:
         # TODO
         return -1
 
-    @property
     def root(self) -> 'UIAElement':
         return self._root
 
-    @property
     def parent(self) -> Optional['UIAElement']:
         # the root does not have a parent
         if self.depth == 0:
@@ -187,13 +182,6 @@ class UIAElement(UIAElementProperties, Element):
         self._parent = UIAElement.create_element(window=parent_window, root=self._root)
         return self._parent
 
-    @property
-    def children(self) -> list['UIAElement']:
-        res = []
-        for child_window in self._window.children():
-            res.append(UIAElement.create_element(window=child_window, root=self._root, parent=self))
-        return res
-
     def child(self, index: int) -> Optional['UIAElement']:
         children = self._window.children()
         count = len(children)
@@ -201,21 +189,29 @@ class UIAElement(UIAElementProperties, Element):
             return None
         return UIAElement.create_element(window=children[index], root=self._root, parent=self)
 
+    def children(self) -> list['UIAElement']:
+        res = []
+        for child_window in self._window.children():
+            res.append(UIAElement.create_element(window=child_window, root=self._root, parent=self))
+        return res
+
     def click(self, button="left") -> bool:
         self._window.set_focus()
         return self._window.click_input(button)
 
     def input(self, text: str) -> bool:
-        # TODO
-        try:
-            self._window.set_edit_text(text)
-            return True
-        except:
-            return self._window.get_value() == text
-
-    def wait(self, wait_for: str, timeout=None, interval=None):
-        # TODO
-        pass
+        if isinstance(self._window, EditWrapper):
+            try:
+                self._window.set_edit_text(text)
+                return True
+            except COMError:
+                # ignored
+                return True
+            except Exception as e:
+                if not self._window.get_value() == text:
+                    raise Exception("failed to input", e)
+        else:
+            return False
 
     def set_focus(self) -> bool:
         self._window.set_focus()
@@ -266,20 +262,8 @@ class UIAElement(UIAElementProperties, Element):
         :key text_in: text in list
         :key text_in_like: text contains in list
         :key text_regex: text regex
-        :key editable: state editable
-        :key focusable: state focusable
-        :key resizable: state resizable
         :key visible: state visible
-        :key selectable: state selectable
-        :key multiselectable: state multiselectable
-        :key collapsed: state collapsed
-        :key checked: state checked
         :key enabled: state enabled
-        :key focused: state focused
-        :key selected: state selected
-        :key showing: state showing
-        :key children_count: children count equals
-        :key depth: depth equals
         :return: True if matched
         """
         return super().matches(*filters, **criteria)

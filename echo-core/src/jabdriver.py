@@ -245,18 +245,15 @@ class JABElementSnapshot(JABElementProperties):
     def depth(self) -> int:
         return self._elem.depth
 
-    @cached_property
     def root(self) -> 'JABElementSnapshot':
-        return JABElementSnapshot(self._elem.root)
+        return JABElementSnapshot(self._elem.root())
 
-    @cached_property
     def parent(self) -> Optional['JABElementSnapshot']:
-        parent = self._elem.parent
-        return JABElementSnapshot(self._elem.parent) if parent else None
+        parent = self._elem.parent()
+        return JABElementSnapshot(parent) if parent else None
 
-    @cached_property
     def children(self) -> list['JABElementSnapshot']:
-        children = self._elem.children
+        children = self._elem.children()
         return [JABElementSnapshot(child) for child in children]
 
 
@@ -313,19 +310,13 @@ class JABElement(JABElementProperties, Element):
             return None
         return buffer[:chars_len * 2].decode("utf_16", errors="replace")
 
-    @text.setter
-    def text(self, value: str):
-        self.input(value)
-
     @property
     def depth(self) -> int:
         return self._jab.getObjectDepth(self._vmid, self._ctx)
 
-    @property
     def root(self) -> 'JABElement':
         return self._root
 
-    @property
     def parent(self) -> Optional['JABElement']:
         # the root does not have a parent
         if self.depth == 0:
@@ -340,7 +331,17 @@ class JABElement(JABElementProperties, Element):
         self._parent = JABElement.create_element(ctx=parent_ctx, root=self._root)
         return self._parent
 
-    @property
+    def child(self, index: int) -> Optional['JABElement']:
+        count = self.children_count
+        if count <= 0 or count <= index:
+            return None
+        vci = VisibleChildrenInfo()
+        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
+            return None
+        ctx = AccessibleContext(vci.children[index])
+        return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
+
     def children(self) -> list['JABElement']:
         count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
         if count <= 0:
@@ -359,17 +360,6 @@ class JABElement(JABElementProperties, Element):
     def children_count(self) -> int:
         return self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
 
-    def child(self, index: int) -> Optional['JABElement']:
-        count = self.children_count
-        if count <= 0 or count <= index:
-            return None
-        vci = VisibleChildrenInfo()
-        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
-        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
-            return None
-        ctx = AccessibleContext(vci.children[index])
-        return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
-
     def click(self, button="left") -> bool:
         # TODO I don't know why 'click' does not work
         return self._do_action(action_names=['单击', 'click'])
@@ -377,10 +367,6 @@ class JABElement(JABElementProperties, Element):
     def input(self, text: str) -> bool:
         res = self._jab.setTextContents(self._vmid, self._ctx, c_wchar_p(text))
         return bool(res)
-
-    def wait(self, wait_for: str, timeout=None, interval=None):
-        # TODO
-        pass
 
     def set_focus(self) -> bool:
         res = self._jab.requestFocus(self._vmid, self._ctx)
