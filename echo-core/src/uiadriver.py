@@ -1,7 +1,5 @@
 from _ctypes import COMError
-from abc import ABC, abstractmethod
 from enum import Enum
-from functools import cached_property
 from typing import Optional, Callable
 
 from pywinauto.application import Application
@@ -57,17 +55,27 @@ class Role(str, Enum):
     WINDOW = "Window"
 
 
-class UIAElementProperties(ABC):
+class UIAElement(Element):
+    def __init__(self, app: Application, window: UIAWrapper, handle: int, process_id: int, root: 'UIAElement' = None, parent: 'UIAElement' = None):
+        self._app: Application = app
+        self._window: UIAWrapper = window
+        self._handle: int = handle
+        self._process_id: int = process_id
+        self._process_name: str = None  # TODO
+        self._root: UIAElement = root or self  # TODO
+        self._parent: Optional[UIAElement] = parent
 
     @property
-    @abstractmethod
+    def handle(self) -> int:
+        return self._handle
+
+    @property
+    def process_id(self) -> int:
+        return self._process_id
+
+    @property
     def info(self) -> UIAElementInfo:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def text(self) -> Optional[str]:
-        raise NotImplementedError
+        return self._window.element_info
 
     @property
     def role(self) -> str:
@@ -128,34 +136,6 @@ class UIAElementProperties(ABC):
     def enabled(self) -> bool:
         return self.info.enabled
 
-    def __str__(self) -> str:
-        return (f"role='{self.role}', name='{self.name}', description='{self.description}', "
-                f"automation_id='{self.automation_id}', class_name='{self.class_name}', description='{self.description}', "
-                f"text='{self.text}', rectangle={self.rectangle}, visible={self.visible}, enabled={self.enabled}")
-
-
-class UIAElement(UIAElementProperties, Element):
-    def __init__(self, app: Application, window: UIAWrapper, handle: int, process_id: int, root: 'UIAElement' = None, parent: 'UIAElement' = None):
-        self._app: Application = app
-        self._window: UIAWrapper = window
-        self._handle: int = handle
-        self._process_id: int = process_id
-        self._process_name: str = None  # TODO
-        self._root: UIAElement = root or self  # TODO
-        self._parent: Optional[UIAElement] = parent
-
-    @property
-    def handle(self) -> int:
-        return self._handle
-
-    @property
-    def process_id(self) -> int:
-        return self._process_id
-
-    @cached_property
-    def info(self) -> UIAElementInfo:
-        return self._window.element_info
-
     @property
     def text(self) -> Optional[str]:
         if isinstance(self._window, EditWrapper):
@@ -189,11 +169,21 @@ class UIAElement(UIAElementProperties, Element):
             return None
         return UIAElement.create_element(window=children[index], root=self._root, parent=self)
 
-    def children(self) -> list['UIAElement']:
+    def children(self, *filters: Callable[['UIAElement'], bool], **criteria) -> list['UIAElement']:
         res = []
         for child_window in self._window.children():
-            res.append(UIAElement.create_element(window=child_window, root=self._root, parent=self))
+            child = UIAElement.create_element(window=child_window, root=self._root, parent=self)
+            if filters or criteria:
+                matched = child.matches(*filters, **criteria)
+                if matched:
+                    res.append(child)
+            else:
+                res.append(child)
         return res
+
+    @property
+    def children_count(self) -> int:
+        return len(self._window.children())
 
     def click(self, button="left") -> bool:
         self._window.set_focus()
@@ -216,23 +206,6 @@ class UIAElement(UIAElementProperties, Element):
     def set_focus(self) -> bool:
         self._window.set_focus()
         return True
-
-    def _snapshot(self) -> 'UIAElement':
-        return self
-
-    def _rules(self):
-        return {
-            "role": ("role", ["eq", "like", "in", "in_like", "regex"]),
-            "name": ("name", ["eq", "like", "in", "in_like", "regex"]),
-            "description": ("description", ["eq", "like", "in", "in_like", "regex"]),
-            "x": ("x", ["eq", "gt", "gte", "lt", "lte"]),
-            "y": ("y", ["eq", "gt", "gte", "lt", "lte"]),
-            "width": ("width", ["eq", "gt", "gte", "lt", "lte"]),
-            "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
-            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
-            "visible": ("visible", ["eq"]),
-            "enabled": ("enabled", ["eq"]),
-        }
 
     def matches(self, *filters: Callable[['UIAElement'], bool], **criteria) -> bool:
         """
@@ -266,7 +239,57 @@ class UIAElement(UIAElementProperties, Element):
         :key enabled: state enabled
         :return: True if matched
         """
-        return super().matches(*filters, **criteria)
+        snapshot = self
+        rules = {
+            "role": ("role", ["eq", "like", "in", "in_like", "regex"]),
+            "name": ("name", ["eq", "like", "in", "in_like", "regex"]),
+            "description": ("description", ["eq", "like", "in", "in_like", "regex"]),
+            "x": ("x", ["eq", "gt", "gte", "lt", "lte"]),
+            "y": ("y", ["eq", "gt", "gte", "lt", "lte"]),
+            "width": ("width", ["eq", "gt", "gte", "lt", "lte"]),
+            "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
+            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
+            "visible": ("visible", ["eq"]),
+            "enabled": ("enabled", ["eq"]),
+        }
+        return self._matches(snapshot, rules, *filters, **criteria)
+
+    def find_all_elements(self) -> list['UIAElement']:
+        found = [self]
+        children = self.children()
+        for child in children:
+            found.extend(child.find_all_elements())
+        return found
+
+    def find_elements(self, *filters: Callable[['UIAElement'], bool], **criteria) -> list['UIAElement']:
+        # return empty list if no filters or criteria
+        if len(filters) == 0 and len(criteria) == 0:
+            return []
+        found = []
+        children = self.children()
+        for child in children:
+            matched = child.matches(*filters, **criteria)
+            if matched:
+                found.append(child)
+            # looking for deep elements
+            found.extend(child.find_elements(*filters, **criteria))
+        return found
+
+    def find_element(self, *filters: Callable[['UIAElement'], bool], **criteria) -> Optional['UIAElement']:
+        # return None if no filters or criteria
+        if len(filters) == 0 and len(criteria) == 0:
+            return None
+        children = self.children()
+        for child in children:
+            matched = child.matches(*filters, **criteria)
+            if matched:
+                return child
+        # looking for deep elements if not found
+        for child in children:
+            found = child.find_element(*filters, **criteria)
+            if found is not None:
+                return found
+        return None
 
     @staticmethod
     def create_root(app: Application, window: UIAWrapper, handle: int) -> Optional['UIAElement']:
@@ -276,6 +299,11 @@ class UIAElement(UIAElementProperties, Element):
     @staticmethod
     def create_element(window: UIAWrapper, root: 'UIAElement', parent: 'UIAElement' = None) -> 'UIAElement':
         return UIAElement(app=root._app, window=window, handle=root._handle, process_id=root._process_id, root=root, parent=parent)
+
+    def __str__(self) -> str:
+        return (f"role='{self.role}', name='{self.name}', description='{self.description}', "
+                f"automation_id='{self.automation_id}', class_name='{self.class_name}', description='{self.description}', "
+                f"text='{self.text}', rectangle={self.rectangle}, visible={self.visible}, enabled={self.enabled}")
 
 
 class UIADriver(Driver):

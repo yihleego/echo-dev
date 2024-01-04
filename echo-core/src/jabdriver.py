@@ -342,7 +342,7 @@ class JABElement(JABElementProperties, Element):
         ctx = AccessibleContext(vci.children[index])
         return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
 
-    def children(self) -> list['JABElement']:
+    def children(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> list['JABElement']:
         count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
         if count <= 0:
             return []
@@ -353,7 +353,13 @@ class JABElement(JABElementProperties, Element):
         res = []
         for idx in range(vci.returnedChildrenCount):
             ctx = AccessibleContext(vci.children[idx])
-            res.append(JABElement.create_element(ctx=ctx, root=self._root, parent=self))
+            child = JABElement.create_element(ctx=ctx, root=self._root, parent=self)
+            if filters or criteria:
+                matched = child.matches(*filters, **criteria)
+                if matched:
+                    res.append(child)
+            else:
+                res.append(child)
         return res
 
     @property
@@ -371,36 +377,6 @@ class JABElement(JABElementProperties, Element):
     def set_focus(self) -> bool:
         res = self._jab.requestFocus(self._vmid, self._ctx)
         return bool(res)
-
-    def _snapshot(self) -> JABElementSnapshot:
-        return JABElementSnapshot(self)
-
-    def _rules(self):
-        return {
-            "role": ("role", ["eq", "like", "in", "in_like", "regex"]),
-            "name": ("name", ["eq", "like", "in", "in_like", "regex"]),
-            "description": ("description", ["eq", "like", "in", "in_like", "regex"]),
-            "x": ("x", ["eq", "gt", "gte", "lt", "lte"]),
-            "y": ("y", ["eq", "gt", "gte", "lt", "lte"]),
-            "width": ("width", ["eq", "gt", "gte", "lt", "lte"]),
-            "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
-            "index_in_parent": ("index_in_parent", ["eq", "gt", "gte", "lt", "lte"]),
-            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
-            "editable": ("editable", ["eq"]),
-            "focusable": ("focusable", ["eq"]),
-            "resizable": ("resizable", ["eq"]),
-            "visible": ("visible", ["eq"]),
-            "selectable": ("selectable", ["eq"]),
-            "multiselectable": ("multiselectable", ["eq"]),
-            "collapsed": ("collapsed", ["eq"]),
-            "checked": ("checked", ["eq"]),
-            "enabled": ("enabled", ["eq"]),
-            "focused": ("focused", ["eq"]),
-            "selected": ("selected", ["eq"]),
-            "showing": ("showing", ["eq"]),
-            "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
-            "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
-        }
 
     def matches(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
         """
@@ -447,7 +423,85 @@ class JABElement(JABElementProperties, Element):
         :key depth: depth equals
         :return: True if matched
         """
-        return super().matches(*filters, **criteria)
+        snapshot = JABElementSnapshot(self)
+        rules = {
+            "role": ("role", ["eq", "like", "in", "in_like", "regex"]),
+            "name": ("name", ["eq", "like", "in", "in_like", "regex"]),
+            "description": ("description", ["eq", "like", "in", "in_like", "regex"]),
+            "x": ("x", ["eq", "gt", "gte", "lt", "lte"]),
+            "y": ("y", ["eq", "gt", "gte", "lt", "lte"]),
+            "width": ("width", ["eq", "gt", "gte", "lt", "lte"]),
+            "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
+            "index_in_parent": ("index_in_parent", ["eq", "gt", "gte", "lt", "lte"]),
+            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
+            "editable": ("editable", ["eq"]),
+            "focusable": ("focusable", ["eq"]),
+            "resizable": ("resizable", ["eq"]),
+            "visible": ("visible", ["eq"]),
+            "selectable": ("selectable", ["eq"]),
+            "multiselectable": ("multiselectable", ["eq"]),
+            "collapsed": ("collapsed", ["eq"]),
+            "checked": ("checked", ["eq"]),
+            "enabled": ("enabled", ["eq"]),
+            "focused": ("focused", ["eq"]),
+            "selected": ("selected", ["eq"]),
+            "showing": ("showing", ["eq"]),
+            "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
+            "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
+        }
+        return self._matches(snapshot, rules, *filters, **criteria)
+
+    def find_all_elements(self) -> list['JABElement']:
+        found = [self]
+        children = self.children()
+        for child in children:
+            found.extend(child.find_all_elements())
+        return found
+
+    def find_elements(self, *filters: Callable[['JABElement'], bool], **criteria) -> list['JABElement']:
+        # return empty list if no filters or criteria
+        if len(filters) == 0 and len(criteria) == 0:
+            return []
+        found = []
+        releasing = []
+        children = self.children()
+        for child in children:
+            matched = child.matches(*filters, **criteria)
+            if matched:
+                found.append(child)
+            else:
+                releasing.append(child)
+            # looking for deep elements
+            found.extend(child.find_elements(*filters, **criteria))
+        # release all mismatched elements
+        for child in releasing:
+            child.release()
+        return found
+
+    def find_element(self, *filters: Callable[['JABElement'], bool], **criteria) -> Optional['JABElement']:
+        # return None if no filters or criteria
+        if len(filters) == 0 and len(criteria) == 0:
+            return None
+        found = None
+        releasing = []
+        children = self.children()
+        for child in children:
+            matched = child.matches(*filters, **criteria)
+            if matched:
+                found = child
+                break
+            else:
+                releasing.append(child)
+        # looking for deep elements if not found
+        if not found:
+            for child in children:
+                found = child.find_element(*filters, **criteria)
+                if found:
+                    break
+        # release all mismatched elements
+        for child in releasing:
+            child.release()
+        return found
 
     def release(self):
         self._jab.releaseJavaObject(self._vmid, self._ctx)

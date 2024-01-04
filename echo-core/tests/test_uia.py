@@ -46,6 +46,13 @@ class UIATestSuite(unittest.TestCase):
         text_elem = root.find_element(role=Role.EDIT)
         text_elem.wait(lambda x: x.text == 'SB', timeout=10, interval=1)
 
+    def test_screenshot(self):
+        root = self.get_root()
+        root.screenshot("./screenshots/root.png")
+
+        elem = root.find_element(role=Role.TEXT)
+        elem.screenshot("./screenshots/text.png")
+
     def test_any(self):
         app = Application(backend='uia')
         app.connect(handle=self.handle)
