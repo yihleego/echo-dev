@@ -36,7 +36,49 @@ class UIATestSuite(unittest.TestCase):
 
         elems = root.find_all_elements()
         for e in elems:
-            print("-" * e.depth, e)
+            print(e)
+
+    def test_find_elements_by_kwargs(self):
+        root = self.root
+
+        text_elems = root.find_elements(role=Role.TEXT)
+        for e in text_elems:
+            s = str(uuid.uuid4())
+            print("old text", e)
+            e.input(s)
+            print('new text', e.text)
+            assert e.text == s
+
+        button_elems = root.find_elements(role=Role.BUTTON, name="Click")
+        for e in button_elems:
+            print("button", e)
+            e.click()
+            print('clicked', e)
+
+        role_like_elems = root.find_elements(role_like="pane")
+        for e in role_like_elems:
+            print("found role_like", e)
+
+        name_like_elems = root.find_elements(name_like="Click")
+        for e in name_like_elems:
+            print("found name_like", e)
+
+        enabled_elems = root.find_elements(enabled=True)
+        for e in enabled_elems:
+            print("found enabled", e)
+
+        kwargs_elems = root.find_elements(**{"role": Role.BUTTON, "name": "Click"})
+        for e in kwargs_elems:
+            print("found kwargs", e)
+
+    def test_find_elements_by_filters(self):
+        root = self.root
+
+        elems = root.find_elements(
+            lambda e: e.name == "Click",
+            lambda e: e.role == Role.BUTTON)
+        for e in elems:
+            print("filtered", e)
 
     def test_text(self):
         root = self.root
@@ -93,11 +135,14 @@ class UIATestSuite(unittest.TestCase):
         root = self.root
 
         child = root.child(0)
+        assert child is not None
+
         parent = child.parent()
         assert parent == root
 
         print('root', root)
         print('child', child)
+        print('parent', parent)
 
     def test_screenshot(self):
         root = self.root
@@ -113,4 +158,4 @@ class UIATestSuite(unittest.TestCase):
         root = self.root
 
         text_elem = root.find_element(role=Role.EDIT)
-        text_elem.wait(lambda x: x.text == 'SB', timeout=10, interval=1)
+        text_elem.wait(lambda x: x.text == 'EXIT', timeout=10, interval=1)

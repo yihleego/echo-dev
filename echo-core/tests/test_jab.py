@@ -89,8 +89,6 @@ class JABTestSuite(unittest.TestCase):
             print("filtered", e)
             e.release()
 
-        root.release()
-
     def test_text(self):
         root = self.root
 
@@ -103,44 +101,54 @@ class JABTestSuite(unittest.TestCase):
             print('emoji', e.text, res)
             e.release()
 
-        root.release()
-
     def test_button(self):
         root = self.root
 
         elems = root.find_elements(role=Role.PUSH_BUTTON)
         for e in elems:
-            res = e.click()
-            print('click', res, e)
-            e.release()
-
-        root.release()
+            print("button", e)
+            e.click()
+            print('clicked', e)
 
     def test_checkbox(self):
         root = self.root
 
         elems = root.find_elements(role=Role.CHECK_BOX)
         for e in elems:
-            print('before', e.checked)
-            res = e.click()
-            print('after', e.checked, res)
-            e.release()
+            checked = e.checked
+            print('checked', e.checked, e)
+            e.click()
+            print('checked', e.checked, e)
+            assert e.checked != checked
 
         print(len(root.find_elements(checked=True)))
 
-        root.release()
+    def test_radiobutton(self):
+        root = self.root
+
+        elems = root.find_elements(role=Role.RADIO_BUTTON)
+        for e in elems:
+            selected = e.selected
+            print('selected', e.selected, e)
+            e.click()
+            print('selected', e.selected, e)
+            if not selected:
+                assert e.selected != selected
+
+        print(len(root.find_elements(selected=True)))
 
     def test_parent_is_root(self):
         root = self.root
 
         child = root.child(0)
+        assert child is not None
+
         parent = child.parent()
         assert parent == root
 
         print('root', root)
         print('child', child)
-
-        root.release()
+        print('parent', parent)
 
     def test_screenshot(self):
         root = self.root
@@ -154,4 +162,9 @@ class JABTestSuite(unittest.TestCase):
 
         button_elem.release()
         text_elem.release()
-        root.release()
+
+    def test_wait(self):
+        root = self.root
+
+        text_elem = root.find_element(role=Role.TEXT)
+        text_elem.wait(lambda x: x.text == 'EXIT', timeout=10, interval=1)
