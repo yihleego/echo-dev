@@ -272,8 +272,8 @@ class JABElementSnapshot(JABElementProperties):
 
 
 class JABElement(JABElementProperties, Element):
-    def __init__(self, jab: JAB, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, process_name: str, root: 'JABElement' = None, parent: 'JABElement' = None):
-        self._jab: JAB = jab
+    def __init__(self, lib: JAB, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, process_name: str, root: 'JABElement' = None, parent: 'JABElement' = None):
+        self._lib: JAB = lib
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
         self._handle: int = handle
@@ -306,7 +306,9 @@ class JABElement(JABElementProperties, Element):
     @property
     def info(self) -> Optional[AccessibleContextInfo]:
         aci = AccessibleContextInfo()
-        res = self._jab.getAccessibleContextInfo(self._vmid, self._ctx, aci)
+        res = self._lib.getAccessibleContextInfo(self._vmid, self._ctx, aci)
+        if not res:
+            raise Exception("Failed to get info")
         return aci
 
     @property
@@ -314,7 +316,7 @@ class JABElement(JABElementProperties, Element):
         if not self.info.accessibleText:
             return None
         ati = AccessibleTextInfo()
-        res = self._jab.getAccessibleTextInfo(self._vmid, self._ctx, ati)
+        res = self._lib.getAccessibleTextInfo(self._vmid, self._ctx, ati)
         if not res:
             return None
         if ati.charCount <= 0:
@@ -323,14 +325,14 @@ class JABElement(JABElementProperties, Element):
         chars_end = ati.charCount - 1
         chars_len = ati.charCount
         buffer = create_string_buffer((chars_len + 1) * 2)
-        res = self._jab.getAccessibleTextRange(self._vmid, self._ctx, chars_start, chars_end, buffer, chars_len)
+        res = self._lib.getAccessibleTextRange(self._vmid, self._ctx, chars_start, chars_end, buffer, chars_len)
         if not res:
             return None
         return buffer[:chars_len * 2].decode("utf_16", errors="replace")
 
     @property
     def depth(self) -> int:
-        return self._jab.getObjectDepth(self._vmid, self._ctx)
+        return self._lib.getObjectDepth(self._vmid, self._ctx)
 
     def root(self) -> 'JABElement':
         return self._root
@@ -343,7 +345,7 @@ class JABElement(JABElementProperties, Element):
         if self._parent is not None and not self._parent._released:
             return self._parent
         # get parent from context
-        parent_ctx = self._jab.getAccessibleParentFromContext(self._vmid, self._ctx)
+        parent_ctx = self._lib.getAccessibleParentFromContext(self._vmid, self._ctx)
         if parent_ctx == 0:
             return None
         self._parent = JABElement.create_element(ctx=parent_ctx, root=self._root)
@@ -354,18 +356,18 @@ class JABElement(JABElementProperties, Element):
         if count <= 0 or count <= index:
             return None
         vci = VisibleChildrenInfo()
-        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        res = self._lib.getVisibleChildren(self._vmid, self._ctx, 0, vci)
         if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
             return None
         ctx = AccessibleContext(vci.children[index])
         return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
 
     def children(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> list['JABElement']:
-        count = self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+        count = self._lib.getVisibleChildrenCount(self._vmid, self._ctx)
         if count <= 0:
             return []
         vci = VisibleChildrenInfo()
-        res = self._jab.getVisibleChildren(self._vmid, self._ctx, 0, vci)
+        res = self._lib.getVisibleChildren(self._vmid, self._ctx, 0, vci)
         if not res or vci.returnedChildrenCount <= 0:
             return []
         res = []
@@ -382,23 +384,24 @@ class JABElement(JABElementProperties, Element):
 
     @property
     def children_count(self) -> int:
-        return self._jab.getVisibleChildrenCount(self._vmid, self._ctx)
+        return self._lib.getVisibleChildrenCount(self._vmid, self._ctx)
 
     def click(self, button="left") -> bool:
         # TODO I don't know why 'click' does not work
         return self._do_action(action_names=['单击', 'click'])
 
     def input(self, text: str) -> bool:
-        res = self._jab.setTextContents(self._vmid, self._ctx, c_wchar_p(text))
+        res = self._lib.setTextContents(self._vmid, self._ctx, c_wchar_p(text))
         return bool(res)
 
     def set_focus(self) -> bool:
-        res = self._jab.requestFocus(self._vmid, self._ctx)
+        res = self._lib.requestFocus(self._vmid, self._ctx)
         return bool(res)
 
-    def matches(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
+    def matches(self, ignore_case=False, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
         """
         Match element by criteria.
+        :param ignore_case: two strings are considered equal ignoring case
         :param filters: filters
         :key role: role equals
         :key role_like: role name contains
@@ -467,7 +470,7 @@ class JABElement(JABElementProperties, Element):
             "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
             "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
         }
-        return self._matches(snapshot, rules, *filters, **criteria)
+        return self._matches(snapshot, rules, ignore_case, *filters, **criteria)
 
     def find_all_elements(self) -> list['JABElement']:
         found = [self]
@@ -522,14 +525,14 @@ class JABElement(JABElementProperties, Element):
         return found
 
     def release(self):
-        self._jab.releaseJavaObject(self._vmid, self._ctx)
+        self._lib.releaseJavaObject(self._vmid, self._ctx)
         self._released = True
 
     def _do_action(self, action_names: list[str]) -> bool:
         if not action_names or not self.info.accessibleAction:
             return False
         aa = AccessibleActions()
-        res = self._jab.getAccessibleActions(self._vmid, self._ctx, aa)
+        res = self._lib.getAccessibleActions(self._vmid, self._ctx, aa)
         if not res:
             return False
         for index in range(aa.actionsCount):
@@ -540,34 +543,34 @@ class JABElement(JABElementProperties, Element):
             aatd.actions[0].name = name
             aatd.actionsCount = 1
             failure = c_int(0)
-            res = self._jab.doAccessibleActions(self._vmid, self._ctx, aatd, failure)
+            res = self._lib.doAccessibleActions(self._vmid, self._ctx, aatd, failure)
             if res and failure:
                 return True
         return False
 
     @staticmethod
-    def create_root(jab: JAB, handle: int) -> Optional['JABElement']:
+    def create_root(lib: JAB, handle: int) -> Optional['JABElement']:
         process_id = win32.get_process_id_from_handle(handle)
         process_name = win32.get_process_name_by_process_id(process_id)
-        if jab.isJavaWindow(HWND(handle)):
+        if lib.isJavaWindow(HWND(handle)):
             vmid = c_long()
             ctx = AccessibleContext()
-            if jab.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
-                return JABElement(jab=jab, vmid=vmid, ctx=ctx, handle=handle, process_id=process_id, process_name=process_name)
+            if lib.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
+                return JABElement(lib=lib, vmid=vmid, ctx=ctx, handle=handle, process_id=process_id, process_name=process_name)
         return None
 
     @staticmethod
     def create_element(ctx: AccessibleContext, root: 'JABElement', parent: 'JABElement' = None) -> 'JABElement':
-        return JABElement(jab=root._jab, vmid=root._vmid, ctx=ctx, handle=root._handle, process_id=root._process_id, root=root, parent=parent)
+        return JABElement(lib=root._lib, vmid=root._vmid, ctx=ctx, handle=root._handle, process_id=root._process_id, process_name=root._process_name, root=root, parent=parent)
 
 
 class JABDriver(Driver):
     def __init__(self):
-        self._jab = JAB()
+        self._lib = JAB()
 
     def find_window(self, handle: int) -> Optional[JABElement]:
-        return JABElement.create_root(jab=self._jab, handle=handle)
+        return JABElement.create_root(lib=self._lib, handle=handle)
 
     def close(self):
-        if self._jab:
-            self._jab.stop()
+        if self._lib:
+            self._lib.stop()

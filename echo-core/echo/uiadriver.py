@@ -245,9 +245,10 @@ class UIAElement(Element):
         self._window.set_focus()
         return True
 
-    def matches(self, *filters: Callable[['UIAElement'], bool], **criteria) -> bool:
+    def matches(self, ignore_case=False, *filters: Callable[['UIAElement'], bool], **criteria) -> bool:
         """
         Match element by criteria.
+        :param ignore_case: two strings are considered equal ignoring case
         :param filters: filters
         :key role: role equals
         :key role_like: role name contains
@@ -294,7 +295,7 @@ class UIAElement(Element):
             "selected": ("selected", ["eq"]),
             "enabled": ("enabled", ["eq"]),
         }
-        return self._matches(snapshot, rules, *filters, **criteria)
+        return self._matches(snapshot, rules, ignore_case, *filters, **criteria)
 
     def find_all_elements(self) -> list['UIAElement']:
         found = [self]

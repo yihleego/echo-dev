@@ -51,11 +51,14 @@ class Element(ABC):
                 err = TimeoutError("timed out")
                 raise err
 
-    def _matches(self, snapshot, rules, *filters: Callable[[any], bool], **criteria) -> bool:
+    def _matches(self, obj, rules, ignore_case=False, *filters: Callable[[any], bool], **criteria) -> bool:
         if len(filters) == 0 and len(criteria) == 0:
             return False
 
         def _do_expr(expr, fixed, value):
+            if ignore_case:
+                fixed = fixed.lower()
+                value = value.lower()
             if expr == "eq":
                 return fixed == value
             if expr == "like":
@@ -92,7 +95,7 @@ class Element(ABC):
 
         if filters:
             for filter in filters:
-                if not filter(snapshot):
+                if not filter(obj):
                     return False
         if criteria:
             data = {}
@@ -110,7 +113,7 @@ class Element(ABC):
                 cri_val = criteria.get(key)
                 if cri_val is None:
                     continue
-                prop_val = _do_prop(snapshot, prop)
+                prop_val = _do_prop(obj, prop)
                 if prop_val is None:
                     return False
                 if not _do_expr(expr, prop_val, cri_val):
