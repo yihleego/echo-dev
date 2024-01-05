@@ -216,6 +216,7 @@ class JABElementProperties(ABC):
 
     @property
     def checked(self) -> bool:
+        # checkbox, radiobutton
         return State.CHECKED in self.info.states_en_US
 
     @property

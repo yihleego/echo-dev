@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import threading
+import time
 import unittest
 import uuid
 
@@ -39,6 +42,8 @@ class JABTestSuite(unittest.TestCase):
         for e in elems:
             print(f"{'--' * e.depth}{str(e)}")
             e.release()
+
+        assert len(elems) > 0
 
     def test_find_elements_by_criteria(self):
         root = self.root
@@ -89,6 +94,8 @@ class JABTestSuite(unittest.TestCase):
             print("found", e)
             e.release()
 
+        assert len(elems) > 0
+
     def test_find_elements_by_filters_and_criteria(self):
         root = self.root
 
@@ -98,6 +105,8 @@ class JABTestSuite(unittest.TestCase):
             name_like="click")
         for e in elems:
             print("found", e)
+
+        assert len(elems) > 0
 
     def test_text(self):
         root = self.root
@@ -120,6 +129,8 @@ class JABTestSuite(unittest.TestCase):
             e.click()
             print('clicked', e)
 
+        assert len(elems) > 0
+
     def test_checkbox(self):
         root = self.root
 
@@ -131,21 +142,21 @@ class JABTestSuite(unittest.TestCase):
             print('checked', e.checked, e)
             assert e.checked != checked
 
-        print(len(root.find_elements(checked=True)))
+        assert len(root.find_elements(checked=True)) > 0
 
     def test_radiobutton(self):
         root = self.root
 
         elems = root.find_elements(role=Role.RADIO_BUTTON)
         for e in elems:
-            selected = e.selected
-            print('selected', e.selected, e)
+            checked = e.checked
+            print('checked', e.checked, e)
             e.click()
-            print('selected', e.selected, e)
-            if not selected:
-                assert e.selected != selected
+            print('checked', e.checked, e)
+            if not checked:
+                assert e.checked != checked
 
-        print(len(root.find_elements(selected=True)))
+        assert len(root.find_elements(checked=True)) > 0
 
     def test_parent_is_root(self):
         root = self.root
@@ -173,8 +184,20 @@ class JABTestSuite(unittest.TestCase):
         button_elem.release()
         text_elem.release()
 
+        assert os.path.exists("./screenshots/jab/root.png")
+        assert os.path.exists("./screenshots/jab/text.png")
+        assert os.path.exists("./screenshots/jab/button.png")
+
     def test_wait(self):
         root = self.root
 
         text_elem = root.find_element(role=Role.TEXT)
-        text_elem.wait(lambda x: x.text == 'EXIT', timeout=10, interval=1)
+        text_elem.input("nothing")
+
+        def _async_edit():
+            time.sleep(3)
+            text_elem.input("EXIT")
+
+        threading.Thread(target=_async_edit).start()
+
+        text_elem.wait(lambda x: x.text == "EXIT", timeout=5, interval=1)

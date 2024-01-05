@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import threading
+import time
 import unittest
 import uuid
 
@@ -37,6 +40,8 @@ class UIATestSuite(unittest.TestCase):
         elems = root.find_all_elements()
         for e in elems:
             print(f"{'--' * e.depth}{str(e)}")
+
+        assert len(elems) > 0
 
     def test_find_elements_by_criteria(self):
         root = self.root
@@ -80,6 +85,8 @@ class UIATestSuite(unittest.TestCase):
         for e in elems:
             print("found", e)
 
+        assert len(elems) > 0
+
     def test_find_elements_by_filters_and_criteria(self):
         root = self.root
 
@@ -89,6 +96,8 @@ class UIATestSuite(unittest.TestCase):
             name_like="click")
         for e in elems:
             print("found", e)
+
+        assert len(elems) > 0
 
     def test_text(self):
         root = self.root
@@ -108,11 +117,13 @@ class UIATestSuite(unittest.TestCase):
     def test_button(self):
         root = self.root
 
-        button_elems = root.find_elements(role=Role.BUTTON)
-        for e in button_elems:
+        elems = root.find_elements(role=Role.BUTTON, name_like="click", ignore_case=True)
+        for e in elems:
             print("button", e)
             res = e.click()
             print('clicked', res, e)
+
+        assert len(elems) > 0
 
     def test_checkbox(self):
         root = self.root
@@ -125,7 +136,7 @@ class UIATestSuite(unittest.TestCase):
             print('checked', e.checked, e)
             assert e.checked != checked
 
-        print(len(root.find_elements(checked=True)))
+        assert len(root.find_elements(checked=True)) > 0
 
     def test_radiobutton(self):
         root = self.root
@@ -139,7 +150,7 @@ class UIATestSuite(unittest.TestCase):
             if not selected:
                 assert e.selected != selected
 
-        print(len(root.find_elements(selected=True)))
+        assert len(root.find_elements(selected=True)) > 0
 
     def test_parent_is_root(self):
         root = self.root
@@ -164,8 +175,20 @@ class UIATestSuite(unittest.TestCase):
         button_elem = root.find_element(role=Role.BUTTON)
         button_elem.screenshot("./screenshots/uia/button.png")
 
+        assert os.path.exists("./screenshots/uia/root.png")
+        assert os.path.exists("./screenshots/uia/edit.png")
+        assert os.path.exists("./screenshots/uia/button.png")
+
     def test_wait(self):
         root = self.root
 
         text_elem = root.find_element(role=Role.EDIT)
-        text_elem.wait(lambda x: x.text == 'EXIT', timeout=10, interval=1)
+        text_elem.input("nothing")
+
+        def _async_edit():
+            time.sleep(3)
+            text_elem.input("EXIT")
+
+        threading.Thread(target=_async_edit).start()
+
+        text_elem.wait(lambda x: x.text == "EXIT", timeout=5, interval=1)

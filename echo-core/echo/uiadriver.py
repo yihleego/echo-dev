@@ -155,6 +155,7 @@ class UIAElement(Element):
 
     @property
     def checked(self) -> bool:
+        # checkbox
         role = self.role
         if role == Role.CHECK_BOX and isinstance(self._window, ButtonWrapper):
             return self._window.get_toggle_state() == 1
@@ -170,6 +171,7 @@ class UIAElement(Element):
 
     @property
     def selected(self) -> bool:
+        # radiobutton
         try:
             return self._window.is_selected() == 1
         except NoPatternInterfaceError:
@@ -226,10 +228,23 @@ class UIAElement(Element):
 
     def click(self, button="left") -> bool:
         if isinstance(self._window, ButtonWrapper):
-            self._window.click()
-        else:
-            self._window.set_focus()
-            self._window.click_input(button)
+            try:
+                role = self.role
+                if role == Role.BUTTON:
+                    self._window.click()
+                elif role == Role.CHECK_BOX:
+                    self._window.toggle()
+                elif role == Role.RADIO_BUTTON:
+                    self._window.select()
+                else:
+                    return False
+                return True
+            except NoPatternInterfaceError:
+                # fallthrough
+                pass
+        # fallback
+        self._window.set_focus()
+        self._window.click_input(button)
         return True
 
     def input(self, text: str) -> bool:
