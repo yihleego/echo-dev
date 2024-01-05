@@ -150,9 +150,9 @@ def get_process_name_by_process_id(process_id):
     try:
         process = psutil.Process(process_id)
         return process.name()
-    except psutil.NoSuchProcess as e:
+    except psutil.NoSuchProcess:
         return f"Process with PID {process_id} not found"
-    except psutil.AccessDenied as e:
+    except psutil.AccessDenied:
         return f"Access denied to process with PID {process_id}"
 
 

@@ -83,8 +83,8 @@ class JABTestSuite(unittest.TestCase):
         root = self.root
 
         elems = root.find_elements(
-            lambda e: e.name == "Click",
-            lambda e: e.role == Role.PUSH_BUTTON)
+            lambda x: x.name == "Click",
+            lambda x: x.role == Role.PUSH_BUTTON)
         for e in elems:
             print("filtered", e)
             e.release()

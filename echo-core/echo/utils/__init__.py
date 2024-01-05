@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import to_string
+from .common import to_string, deep_to_lower, deep_to_upper, deep_strip
 from .deprecated import deprecated
 from .singleton import singleton
 
 __all__ = [
-    "to_string",
+    "to_string", "deep_to_lower", "deep_to_upper", "deep_strip",
     "deprecated",
     "singleton",
 ]

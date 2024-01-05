@@ -21,7 +21,7 @@ from typing import Callable
 
 from PIL import Image, ImageGrab
 
-from .utils import win32
+from .utils import win32, deep_to_lower
 
 
 class Element(ABC):
@@ -57,8 +57,8 @@ class Element(ABC):
 
         def _do_expr(expr, fixed, value):
             if ignore_case:
-                fixed = fixed.lower()
-                value = value.lower()
+                fixed = deep_to_lower(fixed)
+                value = deep_to_lower(value)
             if expr == "eq":
                 return fixed == value
             if expr == "like":
