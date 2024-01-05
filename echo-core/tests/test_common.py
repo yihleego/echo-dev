@@ -77,3 +77,10 @@ class CommonTestSuite(unittest.TestCase):
         assert t3 == ("Value1", "Value2")
         assert t4 == {"Value1", "Value2"}
         assert t5 == {"Key": "Value"}
+
+    def test_kwargs(self):
+        def _inner(**kwargs):
+            print(kwargs)
+            assert "a" in kwargs
+
+        _inner(a=None)

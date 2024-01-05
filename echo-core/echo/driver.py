@@ -14,14 +14,13 @@
 # limitations under the License.
 
 import os
-import re
 import time
 from abc import ABC, abstractmethod
 from typing import Callable
 
 from PIL import Image, ImageGrab
 
-from .utils import win32, deep_to_lower
+from .utils import win32
 
 
 class Element(ABC):
@@ -50,75 +49,6 @@ class Element(ABC):
             else:
                 err = TimeoutError("timed out")
                 raise err
-
-    def _matches(self, obj, rules, ignore_case=False, *filters: Callable[[any], bool], **criteria) -> bool:
-        if len(filters) == 0 and len(criteria) == 0:
-            return False
-
-        def _do_expr(expr, fixed, value):
-            if ignore_case:
-                fixed = deep_to_lower(fixed)
-                value = deep_to_lower(value)
-            if expr == "eq":
-                return fixed == value
-            if expr == "like":
-                return fixed.find(value) >= 0
-            if expr == "in":
-                return fixed in value
-            if expr == "in_like":
-                for v in value:
-                    if fixed.find(v) >= 0:
-                        return True
-                return False
-            if expr == "regex":
-                return re.match(value, fixed) is not None
-            if expr == "gt":
-                return fixed > value
-            if expr == "gte":
-                return fixed >= value
-            if expr == "lt":
-                return fixed < value
-            if expr == "lte":
-                return fixed <= value
-            raise ValueError(f"unknown expression: {expr}")
-
-        def _do_prop(obj, prop):
-            if "." not in prop:
-                return getattr(obj, prop)
-            val = obj
-            levels = prop.split(".")
-            for level in levels:
-                if not val:
-                    return None
-                val = getattr(val, level)
-            return val
-
-        if filters:
-            for filter in filters:
-                if not filter(obj):
-                    return False
-        if criteria:
-            data = {}
-            for key, (prop, exprs) in rules.items():
-                for expr in exprs:
-                    fullkey = key if expr == "eq" else key + "_" + expr
-                    if fullkey in criteria:
-                        data[fullkey] = (prop, expr)
-                        break
-            if len(criteria) != len(data):
-                diff = criteria.keys() - data.keys()
-                if len(diff) > 0:
-                    raise Exception(f"Unsupported key(s): {', '.join(diff)}")
-            for key, (prop, expr) in data.items():
-                cri_val = criteria.get(key)
-                if cri_val is None:
-                    continue
-                prop_val = _do_prop(obj, prop)
-                if prop_val is None:
-                    return False
-                if not _do_expr(expr, prop_val, cri_val):
-                    return False
-        return True
 
     def set_foreground(self) -> bool:
         self.show()

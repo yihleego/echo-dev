@@ -22,7 +22,7 @@ from typing import Optional, Callable
 
 from .driver import Driver, Element
 from .jab import *
-from .utils import win32, to_string
+from .utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 
 
 class Role(str, Enum):
@@ -260,15 +260,15 @@ class JABElementSnapshot(JABElementProperties):
         return self._elem.depth
 
     def root(self) -> 'JABElementSnapshot':
-        return JABElementSnapshot(self._elem.root())
+        return self._elem.root().snapshot()
 
     def parent(self) -> Optional['JABElementSnapshot']:
         parent = self._elem.parent()
-        return JABElementSnapshot(parent) if parent else None
+        return parent.snapshot() if parent else None
 
     def children(self) -> list['JABElementSnapshot']:
         children = self._elem.children()
-        return [JABElementSnapshot(child) for child in children]
+        return [child.snapshot() for child in children]
 
 
 class JABElement(JABElementProperties, Element):
@@ -444,33 +444,33 @@ class JABElement(JABElementProperties, Element):
         :key depth: depth equals
         :return: True if matched
         """
-        snapshot = JABElementSnapshot(self)
+        snapshot = self.snapshot()
         rules = {
-            "role": ("role", ["eq", "like", "in", "in_like", "regex"]),
-            "name": ("name", ["eq", "like", "in", "in_like", "regex"]),
-            "description": ("description", ["eq", "like", "in", "in_like", "regex"]),
-            "x": ("x", ["eq", "gt", "gte", "lt", "lte"]),
-            "y": ("y", ["eq", "gt", "gte", "lt", "lte"]),
-            "width": ("width", ["eq", "gt", "gte", "lt", "lte"]),
-            "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
-            "index_in_parent": ("index_in_parent", ["eq", "gt", "gte", "lt", "lte"]),
-            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
-            "editable": ("editable", ["eq"]),
-            "focusable": ("focusable", ["eq"]),
-            "resizable": ("resizable", ["eq"]),
-            "visible": ("visible", ["eq"]),
-            "selectable": ("selectable", ["eq"]),
-            "multiselectable": ("multiselectable", ["eq"]),
-            "collapsed": ("collapsed", ["eq"]),
-            "checked": ("checked", ["eq"]),
-            "enabled": ("enabled", ["eq"]),
-            "focused": ("focused", ["eq"]),
-            "selected": ("selected", ["eq"]),
-            "showing": ("showing", ["eq"]),
-            "children_count": ("children_count", ["eq", "gt", "gte", "lt", "lte"]),
-            "depth": ("depth", ["eq", "gt", "gte", "lt", "lte"]),
+            "role": STR_EXPRS,
+            "name": STR_EXPRS,
+            "description": STR_EXPRS,
+            "text": STR_EXPRS,
+            "x": INT_EXPRS,
+            "y": INT_EXPRS,
+            "width": INT_EXPRS,
+            "height": INT_EXPRS,
+            "index_in_parent": INT_EXPRS,
+            "editable": BOOL_EXPRS,
+            "focusable": BOOL_EXPRS,
+            "resizable": BOOL_EXPRS,
+            "visible": BOOL_EXPRS,
+            "selectable": BOOL_EXPRS,
+            "multiselectable": BOOL_EXPRS,
+            "collapsed": BOOL_EXPRS,
+            "checked": BOOL_EXPRS,
+            "enabled": BOOL_EXPRS,
+            "focused": BOOL_EXPRS,
+            "selected": BOOL_EXPRS,
+            "showing": BOOL_EXPRS,
+            "children_count": INT_EXPRS,
+            "depth": INT_EXPRS,
         }
-        return self._matches(snapshot, rules, ignore_case, *filters, **criteria)
+        return matches(snapshot, rules, ignore_case, *filters, **criteria)
 
     def find_all_elements(self) -> list['JABElement']:
         found = [self]
@@ -523,6 +523,9 @@ class JABElement(JABElementProperties, Element):
         for child in releasing:
             child.release()
         return found
+
+    def snapshot(self) -> JABElementSnapshot:
+        return JABElementSnapshot(self)
 
     def release(self):
         self._lib.releaseJavaObject(self._vmid, self._ctx)

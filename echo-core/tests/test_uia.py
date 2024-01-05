@@ -41,10 +41,10 @@ class UIATestSuite(unittest.TestCase):
     def test_find_elements_by_kwargs(self):
         root = self.root
 
-        text_elems = root.find_elements(role=Role.TEXT)
+        text_elems = root.find_elements(role=Role.EDIT)
         for e in text_elems:
             s = str(uuid.uuid4())
-            print("old text", e)
+            print("old text", e.text)
             e.input(s)
             print('new text', e.text)
             assert e.text == s

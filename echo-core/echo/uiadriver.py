@@ -24,7 +24,7 @@ from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
 from .driver import Driver, Element
-from .utils import win32, to_string
+from .utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 
 
 class Role(str, Enum):
@@ -282,20 +282,20 @@ class UIAElement(Element):
         """
         snapshot = self
         rules = {
-            "role": ("role", ["eq", "like", "in", "in_like", "regex"]),
-            "name": ("name", ["eq", "like", "in", "in_like", "regex"]),
-            "description": ("description", ["eq", "like", "in", "in_like", "regex"]),
-            "x": ("x", ["eq", "gt", "gte", "lt", "lte"]),
-            "y": ("y", ["eq", "gt", "gte", "lt", "lte"]),
-            "width": ("width", ["eq", "gt", "gte", "lt", "lte"]),
-            "height": ("height", ["eq", "gt", "gte", "lt", "lte"]),
-            "text": ("text", ["eq", "like", "in", "in_like", "regex"]),
-            "visible": ("visible", ["eq"]),
-            "checked": ("checked", ["eq"]),
-            "selected": ("selected", ["eq"]),
-            "enabled": ("enabled", ["eq"]),
+            "role": STR_EXPRS,
+            "name": STR_EXPRS,
+            "description": STR_EXPRS,
+            "text": STR_EXPRS,
+            "x": INT_EXPRS,
+            "y": INT_EXPRS,
+            "width": INT_EXPRS,
+            "height": INT_EXPRS,
+            "visible": BOOL_EXPRS,
+            "checked": BOOL_EXPRS,
+            "selected": BOOL_EXPRS,
+            "enabled": BOOL_EXPRS,
         }
-        return self._matches(snapshot, rules, ignore_case, *filters, **criteria)
+        return matches(snapshot, rules, ignore_case, *filters, **criteria)
 
     def find_all_elements(self) -> list['UIAElement']:
         found = [self]
