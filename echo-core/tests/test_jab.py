@@ -37,10 +37,10 @@ class JABTestSuite(unittest.TestCase):
 
         elems = root.find_all_elements()
         for e in elems:
-            print("-" * e.depth, e)
+            print(f"{'--' * e.depth}{str(e)}")
             e.release()
 
-    def test_find_elements_by_kwargs(self):
+    def test_find_elements_by_criteria(self):
         root = self.root
 
         text_elems = root.find_elements(role=Role.TEXT)
@@ -86,8 +86,18 @@ class JABTestSuite(unittest.TestCase):
             lambda x: x.name == "Click",
             lambda x: x.role == Role.PUSH_BUTTON)
         for e in elems:
-            print("filtered", e)
+            print("found", e)
             e.release()
+
+    def test_find_elements_by_filters_and_criteria(self):
+        root = self.root
+
+        elems = root.find_elements(
+            lambda x: x.role == Role.PUSH_BUTTON,
+            ignore_case=True,
+            name_like="click")
+        for e in elems:
+            print("found", e)
 
     def test_text(self):
         root = self.root

@@ -80,6 +80,7 @@ class UIAElement(Element):
         self._process_name: str = process_name
         self._root: UIAElement = root or self  # TODO
         self._parent: Optional[UIAElement] = parent
+        self._virtual_depth: int = parent.depth + 1 if parent else 0
 
     @property
     def handle(self) -> int:
@@ -177,6 +178,10 @@ class UIAElement(Element):
             raise e
 
     @property
+    def depth(self) -> int:
+        return self._virtual_depth
+
+    @property
     def text(self) -> Optional[str]:
         role = self.role
         if role == Role.EDIT and isinstance(self._window, EditWrapper):
@@ -203,12 +208,12 @@ class UIAElement(Element):
             return None
         return UIAElement.create_element(window=children[index], root=self._root, parent=self)
 
-    def children(self, *filters: Callable[['UIAElement'], bool], **criteria) -> list['UIAElement']:
+    def children(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
         res = []
         for child_window in self._window.children():
             child = UIAElement.create_element(window=child_window, root=self._root, parent=self)
             if filters or criteria:
-                matched = child.matches(*filters, **criteria)
+                matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
                 if matched:
                     res.append(child)
             else:
@@ -245,11 +250,11 @@ class UIAElement(Element):
         self._window.set_focus()
         return True
 
-    def matches(self, ignore_case=False, *filters: Callable[['UIAElement'], bool], **criteria) -> bool:
+    def matches(self, *filters: Callable[['UIAElement'], bool], ignore_case=False, **criteria) -> bool:
         """
         Match element by criteria.
-        :param ignore_case: two strings are considered equal ignoring case
         :param filters: filters
+        :param ignore_case: two strings are considered equal ignoring case
         :key role: role equals
         :key role_like: role name contains
         :key role_in: role name in list
@@ -295,7 +300,7 @@ class UIAElement(Element):
             "selected": BOOL_EXPRS,
             "enabled": BOOL_EXPRS,
         }
-        return matches(snapshot, rules, ignore_case, *filters, **criteria)
+        return matches(snapshot, filters, rules, ignore_case, **criteria)
 
     def find_all_elements(self) -> list['UIAElement']:
         found = [self]
@@ -304,39 +309,39 @@ class UIAElement(Element):
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, *filters: Callable[['UIAElement'], bool], **criteria) -> list['UIAElement']:
+    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
         # return empty list if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return []
         found = []
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, **criteria)
+            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found.append(child)
             # looking for deep elements
-            found.extend(child.find_elements(*filters, **criteria))
+            found.extend(child.find_elements(*filters, ignore_case=ignore_case, **criteria))
         return found
 
-    def find_element(self, *filters: Callable[['UIAElement'], bool], **criteria) -> Optional['UIAElement']:
+    def find_element(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> Optional['UIAElement']:
         # return None if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return None
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, **criteria)
+            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 return child
         # looking for deep elements if not found
         for child in children:
-            found = child.find_element(*filters, **criteria)
+            found = child.find_element(*filters, ignore_case=ignore_case, **criteria)
             if found is not None:
                 return found
         return None
 
     def __str__(self) -> str:
         return to_string(self, 'role', 'name', 'description', 'automation_id', 'class_name',
-                         'rectangle', 'text', 'visible', 'checked', 'enabled', 'selected')
+                         'rectangle', 'text', 'visible', 'checked', 'enabled', 'selected', 'depth')
 
     @staticmethod
     def create_root(app: Application, window: UIAWrapper, handle: int) -> Optional['UIAElement']:

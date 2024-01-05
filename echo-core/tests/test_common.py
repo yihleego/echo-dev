@@ -15,7 +15,7 @@
 
 import unittest
 
-from echo.utils import deep_to_lower, deep_to_upper, deep_strip
+from echo.utils import deep_to_lower, deep_to_upper, deep_strip, matches, STR_EXPRS, INT_EXPRS
 
 
 class CommonTestSuite(unittest.TestCase):
@@ -78,9 +78,51 @@ class CommonTestSuite(unittest.TestCase):
         assert t4 == {"Value1", "Value2"}
         assert t5 == {"Key": "Value"}
 
-    def test_kwargs(self):
-        def _inner(**kwargs):
-            print(kwargs)
-            assert "a" in kwargs
+    def test_matches(self):
+        class User:
+            def __init__(self, name, age):
+                self.name = name
+                self.age = age
+                self.job = None
 
-        _inner(a=None)
+        user = User('Echo', 18)
+        rules = {
+            "name": STR_EXPRS,
+            "age": INT_EXPRS,
+            "job": STR_EXPRS
+        }
+        assert matches(user, filters=[lambda x: x.name == "Echo"])
+        assert matches(user, filters=(lambda x: x.name == "Echo",))
+        assert matches(user, rules=rules, name="Echo")
+        assert matches(user, rules=rules, name="echo", ignore_case=True)
+        assert matches(user, rules=rules, name_like="ch")
+        assert matches(user, rules=rules, name_in=["Echo", "RPA"])
+        assert matches(user, rules=rules, name_in=["echo", "rpa"], ignore_case=True)
+        assert matches(user, rules=rules, name_in_like=["ch", "RPA"])
+        assert matches(user, rules=rules, name_in_like=["echo", "rpa"], ignore_case=True)
+        assert matches(user, rules=rules, name_regex="^E.*o$")
+        assert matches(user, rules=rules, age=18)
+        assert matches(user, rules=rules, age_gt=17)
+        assert matches(user, rules=rules, age_gte=17)
+        assert matches(user, rules=rules, age_gte=18)
+        assert ~matches(user, rules=rules, age_gte=19)
+        assert matches(user, rules=rules, age_lt=19)
+        assert matches(user, rules=rules, age_lte=19)
+        assert matches(user, rules=rules, age_lte=18)
+        assert ~matches(user, rules=rules, age_lte=17)
+        assert matches(user, rules=rules, job_null=True)
+        assert ~matches(user, rules=rules, job_null=False)
+        assert matches(user, rules=rules, job_null=1)
+        assert ~matches(user, rules=rules, job_null=0)
+
+    def test_kwargs(self):
+        def _inner(*arg, val=None, **kwargs):
+            print('arg', arg)
+            print('kwargs', kwargs)
+            print('val', val)
+            assert arg == (1, 2)
+            assert kwargs == {'a': None, 'b': 'b'}
+            assert "a" in kwargs
+            assert val is not None
+
+        _inner(1, 2, a=None, b='b', val=1)

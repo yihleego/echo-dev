@@ -36,9 +36,9 @@ class UIATestSuite(unittest.TestCase):
 
         elems = root.find_all_elements()
         for e in elems:
-            print(e)
+            print(f"{'--' * e.depth}{str(e)}")
 
-    def test_find_elements_by_kwargs(self):
+    def test_find_elements_by_criteria(self):
         root = self.root
 
         text_elems = root.find_elements(role=Role.EDIT)
@@ -55,7 +55,7 @@ class UIATestSuite(unittest.TestCase):
             e.click()
             print('clicked', e)
 
-        role_like_elems = root.find_elements(role_like="pane")
+        role_like_elems = root.find_elements(role_like="bar", ignore_case=True)
         for e in role_like_elems:
             print("found role_like", e)
 
@@ -78,7 +78,17 @@ class UIATestSuite(unittest.TestCase):
             lambda x: x.name == "Click",
             lambda x: x.role == Role.BUTTON)
         for e in elems:
-            print("filtered", e)
+            print("found", e)
+
+    def test_find_elements_by_filters_and_criteria(self):
+        root = self.root
+
+        elems = root.find_elements(
+            lambda x: x.role == Role.BUTTON,
+            ignore_case=True,
+            name_like="click")
+        for e in elems:
+            print("found", e)
 
     def test_text(self):
         root = self.root

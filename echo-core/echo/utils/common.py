@@ -72,11 +72,18 @@ INT_EXPRS = [Expr.EQ, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
 BOOL_EXPRS = [Expr.EQ]
 
 
-def matches(obj: any, rules: dict[str, Union[list[Expr], tuple[str, tuple[Expr]]]], ignore_case: bool = False, *filters: Callable[[any], bool], **criteria) -> bool:
-    if len(filters) == 0 and len(criteria) == 0:
+def matches(obj: any,
+            filters: Union[list[Callable[[any], bool]], tuple[Callable[[any], bool], ...]] = None,
+            rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None, ignore_case: bool = False, **criteria) -> bool:
+    if not filters and not criteria:
         return False
 
     def _do_expr(expr, fixed, value):
+        if fixed is None:
+            if expr == Expr.NULL:
+                return bool(value)
+            else:
+                return False
         if ignore_case:
             fixed = deep_to_lower(fixed)
             value = deep_to_lower(value)
@@ -101,8 +108,6 @@ def matches(obj: any, rules: dict[str, Union[list[Expr], tuple[str, tuple[Expr]]
             return fixed < value
         elif expr == Expr.LTE:
             return fixed <= value
-        elif expr == Expr.NULL:
-            return fixed is None
         raise ValueError(f"unknown expression: {expr}")
 
     def _do_prop(obj, prop):
@@ -130,9 +135,9 @@ def matches(obj: any, rules: dict[str, Union[list[Expr], tuple[str, tuple[Expr]]
             else:
                 raise ValueError(f"invalid rules, must be 'dict[str, list]' or 'dict[str, tuple[str, list]]', but given {rules}")
             for expr in exprs:
-                key = key if expr == Expr.EQ else key + "_" + expr
-                if key in criteria:
-                    data[key] = (prop, expr)
+                _key = key if expr == Expr.EQ else key + "_" + expr
+                if _key in criteria:
+                    data[_key] = (prop, expr)
                     break
         if len(criteria) != len(data):
             diff = criteria.keys() - data.keys()
@@ -143,8 +148,6 @@ def matches(obj: any, rules: dict[str, Union[list[Expr], tuple[str, tuple[Expr]]
             if cri_val is None:
                 continue
             prop_val = _do_prop(obj, prop)
-            if prop_val is None:
-                return False
             if not _do_expr(expr, prop_val, cri_val):
                 return False
     return True

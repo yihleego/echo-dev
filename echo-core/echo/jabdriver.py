@@ -362,7 +362,7 @@ class JABElement(JABElementProperties, Element):
         ctx = AccessibleContext(vci.children[index])
         return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
 
-    def children(self, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> list['JABElement']:
+    def children(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
         count = self._lib.getVisibleChildrenCount(self._vmid, self._ctx)
         if count <= 0:
             return []
@@ -375,7 +375,7 @@ class JABElement(JABElementProperties, Element):
             ctx = AccessibleContext(vci.children[idx])
             child = JABElement.create_element(ctx=ctx, root=self._root, parent=self)
             if filters or criteria:
-                matched = child.matches(*filters, **criteria)
+                matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
                 if matched:
                     res.append(child)
             else:
@@ -398,11 +398,11 @@ class JABElement(JABElementProperties, Element):
         res = self._lib.requestFocus(self._vmid, self._ctx)
         return bool(res)
 
-    def matches(self, ignore_case=False, *filters: Callable[[JABElementSnapshot], bool], **criteria) -> bool:
+    def matches(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case=False, **criteria) -> bool:
         """
         Match element by criteria.
-        :param ignore_case: two strings are considered equal ignoring case
         :param filters: filters
+        :param ignore_case: two strings are considered equal ignoring case
         :key role: role equals
         :key role_like: role name contains
         :key role_in: role name in list
@@ -470,7 +470,7 @@ class JABElement(JABElementProperties, Element):
             "children_count": INT_EXPRS,
             "depth": INT_EXPRS,
         }
-        return matches(snapshot, rules, ignore_case, *filters, **criteria)
+        return matches(snapshot, filters, rules, ignore_case, **criteria)
 
     def find_all_elements(self) -> list['JABElement']:
         found = [self]
@@ -479,7 +479,7 @@ class JABElement(JABElementProperties, Element):
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, *filters: Callable[['JABElement'], bool], **criteria) -> list['JABElement']:
+    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
         # return empty list if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return []
@@ -487,19 +487,19 @@ class JABElement(JABElementProperties, Element):
         releasing = []
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, **criteria)
+            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found.append(child)
             else:
                 releasing.append(child)
             # looking for deep elements
-            found.extend(child.find_elements(*filters, **criteria))
+            found.extend(child.find_elements(*filters, ignore_case=ignore_case, **criteria))
         # release all mismatched elements
         for child in releasing:
             child.release()
         return found
 
-    def find_element(self, *filters: Callable[['JABElement'], bool], **criteria) -> Optional['JABElement']:
+    def find_element(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> Optional['JABElement']:
         # return None if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return None
@@ -507,7 +507,7 @@ class JABElement(JABElementProperties, Element):
         releasing = []
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, **criteria)
+            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found = child
                 break
@@ -516,7 +516,7 @@ class JABElement(JABElementProperties, Element):
         # looking for deep elements if not found
         if not found:
             for child in children:
-                found = child.find_element(*filters, **criteria)
+                found = child.find_element(*filters, ignore_case=ignore_case, **criteria)
                 if found:
                     break
         # release all mismatched elements
