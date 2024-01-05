@@ -20,7 +20,7 @@ import time
 import unittest
 import uuid
 
-from echo.uiadriver import UIADriver, Role
+from echo.uia.driver import UIADriver, Role
 from echo.utils import win32
 
 

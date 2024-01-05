@@ -16,10 +16,6 @@
 
 __version__ = "2.0.2"
 
-from .jab import JAB, \
-    AccessBridgeVersionInfo, AccessibleContextInfo, AccessibleTextInfo, AccessibleTextItemsInfo, \
-    AccessibleTextSelectionInfo, AccessibleTextRectInfo, AccessibleTextAttributesInfo, AccessibleTableInfo, \
-    AccessibleTableCellInfo, AccessibleRelationInfo, AccessibleRelationSetInfo, AccessibleHyperlinkInfo, \
-    AccessibleHypertextInfo, AccessibleKeyBindingInfo, AccessibleKeyBindings, AccessibleIconInfo, \
-    AccessibleIcons, AccessibleActionInfo, AccessibleActions, AccessibleActionsToDo, VisibleChildrenInfo, \
-    AccessibleContext, AccessibleText, AccessibleValue, AccessibleSelection, BOOL, JOBJECT64
+from .driver import JABDriver, JABElement
+
+__all__ = ['JABDriver', 'JABElement']

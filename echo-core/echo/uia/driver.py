@@ -24,8 +24,8 @@ from pywinauto.controls.uiawrapper import UIAWrapper
 from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
-from .driver import Driver, Element
-from .utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.driver import Driver, Element
+from echo.utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 
 
 class Role(str, Enum):

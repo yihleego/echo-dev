@@ -653,7 +653,7 @@ class VisibleChildrenInfo(Structure):
     ]
 
 
-class JAB:
+class JABLib:
     def __init__(self, dll_path=None):
         self._loaded: bool = False
         self._started: bool = False

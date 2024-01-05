@@ -15,15 +15,13 @@
 
 
 from abc import ABC, abstractmethod
-from ctypes import create_string_buffer, c_wchar_p, c_int, c_long
-from ctypes.wintypes import HWND
+from ctypes import create_string_buffer
 from enum import Enum
 from functools import cached_property
-from typing import Optional, Callable
 
-from .driver import Driver, Element
-from .jab import *
-from .utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.driver import Driver, Element
+from echo.utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from .lib import *
 
 
 class Role(str, Enum):
@@ -274,8 +272,8 @@ class JABElementSnapshot(JABElementProperties):
 
 
 class JABElement(JABElementProperties, Element):
-    def __init__(self, lib: JAB, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, process_name: str, root: 'JABElement' = None, parent: 'JABElement' = None):
-        self._lib: JAB = lib
+    def __init__(self, lib: JABLib, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, process_name: str, root: 'JABElement' = None, parent: 'JABElement' = None):
+        self._lib: JABLib = lib
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
         self._handle: int = handle
@@ -554,7 +552,7 @@ class JABElement(JABElementProperties, Element):
         return False
 
     @staticmethod
-    def create_root(lib: JAB, handle: int) -> Optional['JABElement']:
+    def create_root(lib: JABLib, handle: int) -> Optional['JABElement']:
         process_id = win32.get_process_id_from_handle(handle)
         process_name = win32.get_process_name_by_process_id(process_id)
         if lib.isJavaWindow(HWND(handle)):
@@ -571,7 +569,7 @@ class JABElement(JABElementProperties, Element):
 
 class JABDriver(Driver):
     def __init__(self):
-        self._lib = JAB()
+        self._lib = JABLib()
 
     def find_window(self, handle: int) -> Optional[JABElement]:
         return JABElement.create_root(lib=self._lib, handle=handle)

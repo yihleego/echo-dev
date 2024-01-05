@@ -15,3 +15,7 @@
 
 
 __version__ = "0.0.1"
+
+from .driver import UIADriver, UIAElement
+
+__all__ = ['UIADriver', 'UIAElement']

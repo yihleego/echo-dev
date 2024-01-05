@@ -16,11 +16,17 @@
 
 import unittest
 
+from echo.cv.driver import CVDriver
+from echo.utils import win32
+
 
 class CVTestSuite(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="Simple FX")
+        self.driver = CVDriver()
+        self.root = self.driver.find_window(handle=self.handle)
+        assert self.root is not None
 
     def tearDown(self):
-        pass
+        self.driver.close()

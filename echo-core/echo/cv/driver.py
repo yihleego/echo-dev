@@ -14,12 +14,18 @@
 # limitations under the License.
 
 
-from .driver import Driver, Element
+from typing import Optional
 
-
-class CVDriver(Driver):
-    pass
+from echo.driver import Driver, Element
 
 
 class CVElement(Element):
     pass
+
+
+class CVDriver(Driver):
+    def find_window(self, handle: int) -> Optional[CVElement]:
+        return None
+
+    def close(self):
+        pass
