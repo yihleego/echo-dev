@@ -14,14 +14,13 @@
 # limitations under the License.
 
 
-import os
 import time
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from PIL import Image, ImageGrab
+from PIL import Image
 
-from .utils import win32
+from .utils import win32, screenshot
 
 
 class Element(ABC):
@@ -40,6 +39,11 @@ class Element(ABC):
     @abstractmethod
     def rectangle(self) -> tuple[int, int, int, int]:
         pass
+
+    def screenshot(self, filename: str = None) -> Image:
+        self.set_foreground()
+        time.sleep(0.06)
+        return screenshot(self.rectangle, filename)
 
     def wait(self, predicate: Callable[[any], bool], timeout=None, interval=None):
         start = time.perf_counter()
@@ -81,17 +85,6 @@ class Element(ABC):
 
     def is_normal(self) -> bool:
         return win32.get_window_placement(self.handle).showCmd == win32.SW_SHOWNORMAL
-
-    def screenshot(self, filename: str = None) -> Image:
-        self.set_foreground()
-        time.sleep(0.06)
-        image = ImageGrab.grab(self.rectangle)
-        dirname = os.path.dirname(filename)
-        if filename:
-            if not os.path.exists(dirname):
-                os.makedirs(dirname, exist_ok=True)
-            image.save(filename)
-        return filename
 
 
 class Driver(ABC):

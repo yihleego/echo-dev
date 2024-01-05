@@ -76,10 +76,10 @@ class UIAElement(Element):
     def __init__(self, app: Application, window: UIAWrapper, handle: int, process_id: int, process_name: str, root: 'UIAElement' = None, parent: 'UIAElement' = None):
         self._app: Application = app
         self._window: UIAWrapper = window
-        self._handle: int = handle
+        self._handle: int = window.element_info.handle or handle
         self._process_id: int = process_id
         self._process_name: str = process_name
-        self._root: UIAElement = root or self  # TODO
+        self._root: UIAElement = root or self  # TODO root
         self._parent: Optional[UIAElement] = parent
         self._virtual_depth: int = parent.depth + 1 if parent else 0
 

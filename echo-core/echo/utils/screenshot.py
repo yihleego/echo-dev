@@ -14,16 +14,16 @@
 # limitations under the License.
 
 
-from .common import to_string, deep_to_lower, deep_to_upper, deep_strip, \
-    matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
-from .deprecated import deprecated
-from .screenshot import screenshot
-from .singleton import singleton
+import os
 
-__all__ = [
-    "deprecated",
-    "singleton",
-    "screenshot",
-    "to_string", "deep_to_lower", "deep_to_upper", "deep_strip",
-    "matches", "STR_EXPRS", "INT_EXPRS", "BOOL_EXPRS"
-]
+from PIL import Image, ImageGrab
+
+
+def screenshot(rect: tuple[int, int, int, int], filename: str = None) -> Image:
+    image = ImageGrab.grab(rect)
+    if filename:
+        dirname = os.path.dirname(filename)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
+        image.save(filename)
+    return filename

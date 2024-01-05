@@ -281,7 +281,7 @@ class JABElement(JABElementProperties, Element):
         self._handle: int = handle
         self._process_id: int = process_id
         self._process_name: str = process_name
-        self._root: JABElement = root or self  # TODO
+        self._root: JABElement = root or self  # TODO root
         self._parent: Optional[JABElement] = parent
         self._released: bool = False
 

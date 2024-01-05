@@ -14,9 +14,11 @@
 # limitations under the License.
 
 
+import os
 import unittest
 
 from echo.utils import deep_to_lower, deep_to_upper, deep_strip, matches, STR_EXPRS, INT_EXPRS
+from echo.utils.screenshot import screenshot
 
 
 class CommonTestSuite(unittest.TestCase):
@@ -127,3 +129,10 @@ class CommonTestSuite(unittest.TestCase):
             assert val is not None
 
         _inner(1, 2, a=None, b='b', val=1)
+
+    def test_screenshot(self):
+        rect = (0, 0, 100, 100)
+        filename = "./screenshots/common/img.png"
+        image = screenshot(rect, filename)
+        assert image is not None
+        assert os.path.exists(filename)
