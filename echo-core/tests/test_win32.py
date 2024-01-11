@@ -49,7 +49,7 @@ class CommonTestSuite(unittest.TestCase):
 
         # window
         window_filename = "./screenshots/win32/window.png"
-        window_image = win32.screenshot(handle=0xD034C, filename=window_filename)
+        window_image = win32.screenshot(handle=self.handle, filename=window_filename)
 
         assert fullscreen_image is not None
         assert window_image is not None

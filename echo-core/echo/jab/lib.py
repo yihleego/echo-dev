@@ -697,18 +697,17 @@ class JABLib:
         self._paths = paths
 
     def install(self):
-        src = 'lib'
         for fn, dst in self._paths:
             dst_path = os.path.join(dst, fn)
             if not os.path.exists(dst_path):
-                src_path = os.path.join(src, fn)
+                src_path = os.path.join('lib', fn)
                 shutil.copy(src_path, dst_path)
 
     def uninstall(self):
         for fn, dst in self._paths:
-            path = os.path.join(dst, fn)
-            if os.path.exists(path):
-                os.remove(path)
+            dst_path = os.path.join(dst, fn)
+            if os.path.exists(dst_path):
+                os.remove(dst_path)
 
     def load(self, dll_path):
         if self._loaded:
