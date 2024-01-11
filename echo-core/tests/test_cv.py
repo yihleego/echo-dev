@@ -40,18 +40,16 @@ class CVTestSuite(unittest.TestCase):
 
         t = Template("screenshots/uia/button.png")
 
-        image = win32.screenshot()
-        cv2_image = pil_2_cv2(image)
-        pos1 = t.match_in(cv2_image)
+        fullscreen_image = win32.screenshot()
+        pos1 = t.match_in(pil_2_cv2(fullscreen_image))
         print('pos1', pos1)
 
-        image = win32.screenshot(self.handle)
-        cv2_image = pil_2_cv2(image)
-        pos2 = t.match_in(cv2_image)
+        window_image = win32.screenshot(self.handle)
+        pos2 = t.match_in(pil_2_cv2(window_image))
         print('pos2', pos2)
 
         rect = self.root.rectangle
         pos3 = (pos2[0] + rect[0], pos2[1] + rect[1])
-        print('pos3', pos3)
+        print('pos3', pos3, 'rect', rect)
 
         mouse.click(coords=pos3)
