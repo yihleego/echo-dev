@@ -26,4 +26,4 @@ def screenshot(rect: tuple[int, int, int, int], filename: str = None) -> Image:
         if not os.path.exists(dirname):
             os.makedirs(dirname, exist_ok=True)
         image.save(filename)
-    return filename
+    return image
