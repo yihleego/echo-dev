@@ -479,12 +479,15 @@ class JABElement(JABElementProperties, Element):
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
+    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> list['JABElement']:
         # return empty list if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return []
         found = []
         releasing = []
+        if include_self:
+            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+                found.append(self)
         children = self.children()
         for child in children:
             matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
@@ -493,21 +496,24 @@ class JABElement(JABElementProperties, Element):
             else:
                 releasing.append(child)
             # looking for deep elements
-            found.extend(child.find_elements(*filters, ignore_case=ignore_case, **criteria))
+            found.extend(child.find_elements(*filters, ignore_case=ignore_case, include_self=False, **criteria))
         # release all mismatched elements
         for child in releasing:
             child.release()
         return found
 
-    def find_element(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> Optional['JABElement']:
+    def find_element(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> Optional['JABElement']:
         # return None if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return None
+        if include_self:
+            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+                return self
         found = None
         releasing = []
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
+            matched = child.matches(*filters, ignore_case=ignore_case, include_self=False, **criteria)
             if matched:
                 found = child
                 break
@@ -568,11 +574,18 @@ class JABElement(JABElementProperties, Element):
 
 
 class JABDriver(Driver):
-    def __init__(self):
+    def __init__(self, handle: int):
         self._lib = JABLib()
+        self._handle = handle
 
-    def find_window(self, handle: int) -> Optional[JABElement]:
-        return JABElement.create_root(lib=self._lib, handle=handle)
+    def root(self) -> Optional[JABElement]:
+        return JABElement.create_root(lib=self._lib, handle=self._handle)
+
+    def find_window(self, *filters: Callable[[JABElement], bool], ignore_case: bool = False, **criteria) -> list[JABElement]:
+        root = self.root()
+        if root is None:
+            return []
+        return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
 
     def close(self):
         if self._lib:

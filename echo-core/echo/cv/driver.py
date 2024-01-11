@@ -59,8 +59,15 @@ class CVElement(Element):
 
 
 class CVDriver(Driver):
-    def find_window(self, handle: int) -> Optional[CVElement]:
-        return CVElement.create_root(handle=handle)
+    def __init__(self, handle: int):
+        self._handle = handle
+
+    def root(self) -> Optional[CVElement]:
+        return CVElement.create_root(handle=self._handle)
+
+    def find_window(self, filename: str) -> list[CVElement]:
+        # TODO
+        pass
 
     def close(self):
         pass

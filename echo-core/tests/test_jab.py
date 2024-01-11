@@ -28,8 +28,8 @@ class JABTestSuite(unittest.TestCase):
 
     def setUp(self):
         self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Swing Example")
-        self.driver = JABDriver()
-        self.root = self.driver.find_window(handle=self.handle)
+        self.driver = JABDriver(self.handle)
+        self.root = self.driver.root()
         assert self.root is not None
 
     def tearDown(self):

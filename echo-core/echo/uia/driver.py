@@ -325,24 +325,30 @@ class UIAElement(Element):
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
+    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> list['UIAElement']:
         # return empty list if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return []
         found = []
+        if include_self:
+            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+                found.append(self)
         children = self.children()
         for child in children:
             matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found.append(child)
             # looking for deep elements
-            found.extend(child.find_elements(*filters, ignore_case=ignore_case, **criteria))
+            found.extend(child.find_elements(*filters, ignore_case=ignore_case, include_self=False, **criteria))
         return found
 
-    def find_element(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> Optional['UIAElement']:
+    def find_element(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> Optional['UIAElement']:
         # return None if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return None
+        if include_self:
+            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+                return self
         children = self.children()
         for child in children:
             matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
@@ -350,7 +356,7 @@ class UIAElement(Element):
                 return child
         # looking for deep elements if not found
         for child in children:
-            found = child.find_element(*filters, ignore_case=ignore_case, **criteria)
+            found = child.find_element(*filters, ignore_case=ignore_case, include_self=False, **criteria)
             if found is not None:
                 return found
         return None
@@ -372,11 +378,20 @@ class UIAElement(Element):
 
 
 class UIADriver(Driver):
-    def find_window(self, handle: int) -> Optional[UIAElement]:
+    def __init__(self, handle: int):
+        self._handle = handle
+
+    def root(self) -> Optional[UIAElement]:
         app = Application(backend='uia')
-        app.connect(handle=handle)
+        app.connect(handle=self._handle)
         window = app.top_window()
-        return UIAElement.create_root(app=app, window=window.wrapper_object(), handle=handle)
+        return UIAElement.create_root(app=app, window=window.wrapper_object(), handle=self._handle)
+
+    def find_window(self, *filters: Callable[[UIAElement], bool], ignore_case: bool = False, **criteria) -> list[UIAElement]:
+        root = self.root()
+        if root is None:
+            return []
+        return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
 
     def close(self):
         pass

@@ -28,8 +28,8 @@ class UIATestSuite(unittest.TestCase):
 
     def setUp(self):
         self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="Simple FX")
-        self.driver = UIADriver()
-        self.root = self.driver.find_window(handle=self.handle)
+        self.driver = UIADriver(self.handle)
+        self.root = self.driver.root()
         assert self.root is not None
 
     def tearDown(self):
