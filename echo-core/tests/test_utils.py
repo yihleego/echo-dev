@@ -131,7 +131,7 @@ class CommonTestSuite(unittest.TestCase):
         _inner(1, 2, a=None, b='b', val=1)
 
     def test_screenshot(self):
-        rect = (0, 0, 100, 100)
+        rect = (10, 10, 100, 100)
         filename = "./screenshots/common/img.png"
         image = screenshot(rect, filename)
         assert image is not None
