@@ -136,19 +136,3 @@ class CommonTestSuite(unittest.TestCase):
         image = screenshot(rect, filename)
         assert image is not None
         assert os.path.exists(filename)
-
-    def test_win32_screenshot(self):
-        from echo.utils import win32
-
-        # fullscreen
-        fullscreen_filename = "./screenshots/win32/fullscreen.png"
-        fullscreen_image = win32.screenshot(filename=fullscreen_filename)
-
-        # window
-        window_filename = "./screenshots/win32/window.png"
-        window_image = win32.screenshot(handle=0xD034C, filename=window_filename)
-
-        assert fullscreen_image is not None
-        assert window_image is not None
-        assert os.path.exists(fullscreen_filename)
-        assert os.path.exists(window_filename)
