@@ -98,11 +98,11 @@ def set_foreground(handle: int, process_id: int = None) -> bool:
     return bool(res)
 
 
-def get_window_rect(handle: int) -> RECT:
+def get_window_rect(handle: int) -> tuple[int, int, int, int]:
     # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect
     rect = RECT()
     windll.user32.GetWindowRect(handle, byref(rect))
-    return rect
+    return rect.left, rect.top, rect.right, rect.bottom
 
 
 def move_window(handle: int, process_id: int = None, x: int = None, y: int = None, width: int = None, height: int = None, repaint=True):
