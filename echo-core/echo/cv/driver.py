@@ -40,6 +40,10 @@ class CVElement(Element):
     def process_name(self) -> str:
         return self._process_name
 
+    @property
+    def rectangle(self) -> tuple[int, int, int, int]:
+        return win32.get_window_rect(self.handle)
+
     def __str__(self) -> str:
         return to_string(self, 'handle', 'process_id', 'process_name')
 
