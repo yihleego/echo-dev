@@ -14,9 +14,12 @@
 # limitations under the License.
 
 
+import os
 import time
 from ctypes import Structure, windll, sizeof, byref
 from ctypes.wintypes import HWND, DWORD, UINT, POINT, RECT
+
+from PIL import Image
 
 SW_HIDE = 0
 SW_SHOWNORMAL = 1
@@ -167,14 +170,24 @@ def wait_thread_idle(process_id: int, handle: int):
     windll.kernel32.CloseHandle(process)
 
 
-def screenshot(handle: int, filename: str) -> str:
+def screenshot(handle: int = None, filename: str = None) -> Image:
     # https://stackoverflow.com/questions/19695214/screenshot-of-inactive-window-printwindow-win32gui
     import win32gui
     import win32ui
-    from PIL import Image
+    import win32api
+    import win32con
 
-    rect = win32gui.GetWindowRect(handle)
-    w, h = rect[2] - rect[0], rect[3] - rect[1]
+    if handle:
+        fullscreen = False
+        rect = win32gui.GetWindowRect(handle)
+        x, y, w, h = rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]
+    else:
+        fullscreen = True
+        handle = win32gui.GetDesktopWindow()
+        x = win32api.GetSystemMetrics(win32con.SM_XVIRTUALSCREEN)
+        y = win32api.GetSystemMetrics(win32con.SM_YVIRTUALSCREEN)
+        w = win32api.GetSystemMetrics(win32con.SM_CXVIRTUALSCREEN)
+        h = win32api.GetSystemMetrics(win32con.SM_CYVIRTUALSCREEN)
 
     window_dc = win32gui.GetWindowDC(handle)
     created_dc = win32ui.CreateDCFromHandle(window_dc)
@@ -185,9 +198,12 @@ def screenshot(handle: int, filename: str) -> str:
 
     compatible_dc.SelectObject(bitmap)
 
-    res = windll.user32.PrintWindow(handle, compatible_dc.GetSafeHdc(), 2)
-    if not res:
-        raise Exception()
+    if fullscreen:
+        compatible_dc.BitBlt((0, 0), (w, h), created_dc, (x, y), win32con.SRCCOPY)
+    else:
+        res = windll.user32.PrintWindow(handle, compatible_dc.GetSafeHdc(), 2)
+        if not res:
+            raise Exception()
 
     bitmap_info = bitmap.GetInfo()
     buffer = bitmap.GetBitmapBits(True)
@@ -199,5 +215,10 @@ def screenshot(handle: int, filename: str) -> str:
     created_dc.DeleteDC()
     win32gui.ReleaseDC(handle, window_dc)
 
-    image.save(filename)
-    return filename
+    if filename:
+        dirname = os.path.dirname(filename)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
+        image.save(filename)
+
+    return image
