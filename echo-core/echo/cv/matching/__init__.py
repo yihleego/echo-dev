@@ -15,12 +15,15 @@
 
 
 from .keypoint_matching import KAZEMatching, BRISKMatching, AKAZEMatching, ORBMatching, BRIEFMatching, SIFTMatching, SURFMatching
-from .template_matching import TemplateMatching, MultiScaleTemplateMatching, MultiScaleTemplateMatchingPre
+from .matching import Matched, Matching
+from .template_matching import TemplateMatching, MultiScaleTemplateMatching, PresetMultiScaleTemplateMatching
 
 __all__ = [
+    'Matched',
+    'Matching',
     'TemplateMatching',
     'MultiScaleTemplateMatching',
-    'MultiScaleTemplateMatchingPre',
+    'PresetMultiScaleTemplateMatching',
     'KAZEMatching',
     'BRISKMatching',
     'AKAZEMatching',
