@@ -18,6 +18,11 @@ class KeypointMatching(Matching, ABC):
     # 参数: SIFT识别时只找出一对相似特征点时的置信度(confidence)
     ONE_POINT_CONFI = 0.5
 
+    def __init__(self, im_search, im_source, threshold: float = 0.8, rgb: bool = True):
+        super().__init__(im_search, im_source, threshold, rgb)
+        self.detector = None
+        self.matcher = None
+
     @abstractmethod
     def init_detector(self):
         raise NotImplementedError
@@ -63,7 +68,7 @@ class KeypointMatching(Matching, ABC):
         confidence = self._cal_confidence(resize_img)
 
         best_match = generate_result(middle_point, pypts, confidence)
-        # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.METHOD_NAME, self.threshold, best_match))
+        # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.name, self.threshold, best_match))
         return best_match if confidence >= self.threshold else None
 
     def show_match_image(self):
@@ -355,12 +360,12 @@ class BRIEFMatching(KeypointMatching):
 
 
 class SIFTMatching(KeypointMatching):
+    # SIFT识别特征点匹配，参数设置:
+    FLANN_INDEX_KDTREE = 0
+
     @property
     def name(self):
         return "SIFT Matching"
-
-    # SIFT识别特征点匹配，参数设置:
-    FLANN_INDEX_KDTREE = 0
 
     def init_detector(self):
         """Init keypoint detector object."""
@@ -393,16 +398,16 @@ class SIFTMatching(KeypointMatching):
 
 
 class SURFMatching(KeypointMatching):
-    @property
-    def name(self):
-        return "SURF Matching"
-
     # 是否检测方向不变性:0检测/1不检测
     UPRIGHT = 0
     # SURF算子的Hessian Threshold
     HESSIAN_THRESHOLD = 400
     # SURF识别特征点匹配方法设置:
     FLANN_INDEX_KDTREE = 0
+
+    @property
+    def name(self):
+        return "SURF Matching"
 
     def init_detector(self):
         """Init keypoint detector object."""

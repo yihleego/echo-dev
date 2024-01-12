@@ -129,70 +129,20 @@ class MultiScaleTemplateMatching(Matching):
 
     def find_best(self):
         """函数功能：找到最优结果."""
-        if not self.resolution:
-            return None
         # 第一步：校验图像输入
         if not self.check_image_size(self.im_source, self.im_search):
             return None
-        if self.resolution[0] < self.im_search.shape[1] or self.resolution[1] < self.im_search.shape[0]:
-            raise TemplateInputError("error: resolution is too small.")
+
         # 第二步：计算模板匹配的结果矩阵res
-        if self.record_pos is not None:
-            area, self.resolution = self._get_area_scope(self.im_source, self.im_search, self.record_pos, self.resolution)
-            self.im_source = crop_image(self.im_source, area)
-            if not self.check_image_size(self.im_source, self.im_search):
-                return None
-        r_min, r_max = self._get_ratio_scope(
-            self.im_source, self.im_search, self.resolution)
         s_gray, i_gray = img_mat_rgb_2_gray(self.im_search), img_mat_rgb_2_gray(self.im_source)
-        confidence, max_loc, w, h, _ = self.multi_scale_search(
-            i_gray, s_gray, ratio_min=r_min, ratio_max=r_max, step=self.scale_step,
-            threshold=self.threshold, time_out=1.0)
-        if self.record_pos is not None:
-            max_loc = (max_loc[0] + area[0], max_loc[1] + area[1])
+        confidence, max_loc, w, h, _ = self.multi_scale_search(i_gray, s_gray, ratio_min=0.01, ratio_max=0.99, src_max=self.scale_max, step=self.scale_step, threshold=self.threshold)
 
         # 求取识别位置: 目标中心 + 目标区域:
         middle_point, rectangle = self._get_target_rectangle(max_loc, w, h)
         best_match = generate_result(middle_point, rectangle, confidence)
-        # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.METHOD_NAME, self.threshold, best_match))
+        # LOGGING.debug("[%s] threshold=%s, result=%s" %(self.METHOD_NAME, self.threshold, best_match))
 
         return best_match if confidence >= self.threshold else None
-
-    def _get_ratio_scope(self, src, templ, resolution):
-        """预测缩放比的上下限."""
-        H, W = src.shape[0], src.shape[1]
-        th, tw = templ.shape[0], templ.shape[1]
-        w, h = resolution
-        rmin = min(H / h, W / w)  # 新旧模板比下限
-        rmax = max(H / h, W / w)  # 新旧模板比上限
-        ratio = max(th / H, tw / W)  # 小图大图比
-        r_min = ratio * rmin
-        r_max = ratio * rmax
-        return max(r_min, self.scale_step), min(r_max, 0.99)
-
-    def get_predict_point(self, record_pos, screen_resolution):
-        """预测缩放后的点击位置点."""
-        delta_x, delta_y = record_pos
-        _w, _h = screen_resolution
-        target_x = delta_x * _w + _w * 0.5
-        target_y = delta_y * _w + _h * 0.5
-        return target_x, target_y
-
-    def _get_area_scope(self, src, templ, record_pos, resolution):
-        """预测搜索区域."""
-        H, W = src.shape[0], src.shape[1]
-        th, tw = templ.shape[0], templ.shape[1]
-        w, h = resolution
-        x, y = self.get_predict_point(record_pos, (W, H))
-        predict_x_radius = max(int(tw * W / (w)), self.deviation)
-        predict_y_radius = max(int(th * H / (h)), self.deviation)
-        area = (
-            max(x - predict_x_radius, 0),
-            max(y - predict_y_radius, 0),
-            min(x + predict_x_radius, W),
-            min(y + predict_y_radius, H),
-        )
-        return area, (w * (area[3] - area[1]) / W, h * (area[2] - area[0]) / H)
 
     def _get_confidence_from_matrix(self, max_loc, w, h):
         """根据结果矩阵求出confidence."""
@@ -276,3 +226,82 @@ class MultiScaleTemplateMatching(Matching):
         omax_loc, ow, oh = self._org_size(max_loc, w, h, tr, sr)
         confidence = self._get_confidence_from_matrix(omax_loc, ow, oh)
         return confidence, omax_loc, ow, oh, max_r
+
+
+class MultiScaleTemplateMatchingPre(MultiScaleTemplateMatching):
+    """基于截图预设条件的多尺度模板匹配."""
+
+    DEVIATION = 150
+
+    @property
+    def name(self):
+        return "Multi-scale Template Matching Pre"
+
+    def find_best_result(self):
+        """函数功能：找到最优结果."""
+        if self.resolution != ():
+            # 第一步：校验图像输入
+            if not self.check_image_size(self.im_source, self.im_search):
+                return None
+
+            if self.resolution[0] < self.im_search.shape[1] or self.resolution[1] < self.im_search.shape[0]:
+                raise TemplateInputError("error: resolution is too small.")
+            # 第二步：计算模板匹配的结果矩阵res
+            if not self.record_pos is None:
+                area, self.resolution = self._get_area_scope(self.im_source, self.im_search, self.record_pos, self.resolution)
+                self.im_source = crop_image(self.im_source, area)
+                if not self.check_image_size(self.im_source, self.im_search):
+                    return None
+            r_min, r_max = self._get_ratio_scope(
+                self.im_source, self.im_search, self.resolution)
+            s_gray, i_gray = img_mat_rgb_2_gray(self.im_search), img_mat_rgb_2_gray(self.im_source)
+            confidence, max_loc, w, h, _ = self.multi_scale_search(
+                i_gray, s_gray, ratio_min=r_min, ratio_max=r_max, step=self.scale_step,
+                threshold=self.threshold, time_out=1.0)
+            if not self.record_pos is None:
+                max_loc = (max_loc[0] + area[0], max_loc[1] + area[1])
+
+            # 求取识别位置: 目标中心 + 目标区域:
+            middle_point, rectangle = self._get_target_rectangle(max_loc, w, h)
+            best_match = generate_result(middle_point, rectangle, confidence)
+            # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.METHOD_NAME, self.threshold, best_match))
+
+            return best_match if confidence >= self.threshold else None
+        else:
+            return None
+
+    def _get_ratio_scope(self, src, templ, resolution):
+        """预测缩放比的上下限."""
+        H, W = src.shape[0], src.shape[1]
+        th, tw = templ.shape[0], templ.shape[1]
+        w, h = resolution
+        rmin = min(H / h, W / w)  # 新旧模板比下限
+        rmax = max(H / h, W / w)  # 新旧模板比上限
+        ratio = max(th / H, tw / W)  # 小图大图比
+        r_min = ratio * rmin
+        r_max = ratio * rmax
+        return max(r_min, self.scale_step), min(r_max, 0.99)
+
+    def get_predict_point(self, record_pos, screen_resolution):
+        """预测缩放后的点击位置点."""
+        delta_x, delta_y = record_pos
+        _w, _h = screen_resolution
+        target_x = delta_x * _w + _w * 0.5
+        target_y = delta_y * _w + _h * 0.5
+        return target_x, target_y
+
+    def _get_area_scope(self, src, templ, record_pos, resolution):
+        """预测搜索区域."""
+        H, W = src.shape[0], src.shape[1]
+        th, tw = templ.shape[0], templ.shape[1]
+        w, h = resolution
+        x, y = self.get_predict_point(record_pos, (W, H))
+        predict_x_radius = max(int(tw * W / (w)), self.DEVIATION)
+        predict_y_radius = max(int(th * H / (h)), self.DEVIATION)
+        area = (
+            max(x - predict_x_radius, 0),
+            max(y - predict_y_radius, 0),
+            min(x + predict_x_radius, W),
+            min(y + predict_y_radius, H),
+        )
+        return area, (w * (area[3] - area[1]) / W, h * (area[2] - area[0]) / H)
