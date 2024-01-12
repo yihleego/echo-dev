@@ -70,8 +70,8 @@ class CVTestSuite(TestCase):
     def test_multi_scale_template_matching(self):
         self._test_find_best(MultiScaleTemplateMatching)
 
-    def test_multi_scale_template_matching_pre(self):
-        self._test_find_best(MultiScaleTemplateMatchingPre)
+    def test_preset_multi_scale_template_matching(self):
+        self._test_find_best(PresetMultiScaleTemplateMatching)
 
     def test_kaze_matching(self):
         self._test_find_best(KAZEMatching)
