@@ -17,14 +17,14 @@
 import os
 import threading
 import time
-import unittest
 import uuid
+from unittest import TestCase
 
-from echo.uia.driver import UIADriver, Role
+from echo.uia import UIADriver, Role
 from echo.utils import win32
 
 
-class UIATestSuite(unittest.TestCase):
+class UIATestSuite(TestCase):
 
     def setUp(self):
         self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="Simple FX")

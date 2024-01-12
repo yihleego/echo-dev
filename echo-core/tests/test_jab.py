@@ -17,14 +17,14 @@
 import os
 import threading
 import time
-import unittest
 import uuid
+from unittest import TestCase
 
-from echo.jab.driver import JABDriver, Role
+from echo.jab import JABDriver, Role
 from echo.utils import win32
 
 
-class JABTestSuite(unittest.TestCase):
+class JABTestSuite(TestCase):
 
     def setUp(self):
         self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Swing Example")

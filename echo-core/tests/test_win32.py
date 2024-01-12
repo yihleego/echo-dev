@@ -16,12 +16,12 @@
 
 import os
 import time
-import unittest
+from unittest import TestCase
 
 from echo.utils import win32
 
 
-class CommonTestSuite(unittest.TestCase):
+class CommonTestSuite(TestCase):
 
     def setUp(self):
         self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="Simple FX")

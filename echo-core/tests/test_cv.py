@@ -12,44 +12,66 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
-import unittest
-
-from pywinauto import mouse
-
-from echo.cv.aircv.utils import pil_2_cv2
-from echo.cv.cv import Template
-from echo.cv.driver import CVDriver
-from echo.utils import win32
 
 
-class CVTestSuite(unittest.TestCase):
+from unittest import TestCase, skip
+
+from echo.cv.aircv import imread
+from echo.cv.matching import *
+
+
+class CVTestSuite(TestCase):
 
     def setUp(self):
-        self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="Simple FX")
-        self.driver = CVDriver(self.handle)
-        self.root = self.driver.root()
-        assert self.root is not None
+        pass
 
     def tearDown(self):
-        self.driver.close()
+        pass
 
-    def test_cv(self):
-        self.root.set_foreground()
-        time.sleep(0.2)
+    def _test_find(self, cls, find_all=True, find_best=True):
+        configs = [
+            ("pypi_copy", imread("test_cv/sample_pypi_part_copy.png"), imread("test_cv/sample_pypi_full.png")),
+            ("pypi_logo", imread("test_cv/sample_pypi_part_logo.png"), imread("test_cv/sample_pypi_full.png")),
+            ("pypi_title", imread("test_cv/sample_pypi_part_title.png"), imread("test_cv/sample_pypi_full.png")),
+            ("pypi_version", imread("test_cv/sample_pypi_part_version.png"), imread("test_cv/sample_pypi_full.png")),
+        ]
+        for c in configs:
+            matching = cls(c[1], c[2])
+            if find_all:
+                results = matching.find_all()
+                print(f'[{matching.name}] {c[0]} found all({len(results)}): {results}')
+            if find_best:
+                best = matching.find_best()
+                print(f'[{matching.name}] {c[0]} found best: {best}')
+            print('')
 
-        t = Template("screenshots/uia/button.png")
+    def test_template_matching(self):
+        self._test_find(TemplateMatching)
 
-        fullscreen_image = win32.screenshot()
-        pos1 = t.match_in(pil_2_cv2(fullscreen_image))
-        print('pos1', pos1)
+    def test_multi_scale_template_matching(self):
+        self._test_find(MultiScaleTemplateMatching, find_all=False)
 
-        window_image = win32.screenshot(self.handle)
-        pos2 = t.match_in(pil_2_cv2(window_image))
-        print('pos2', pos2)
+    def test_multi_scale_template_matching_pre(self):
+        self._test_find(MultiScaleTemplateMatchingPre, find_all=False)
 
-        rect = self.root.rectangle
-        pos3 = (pos2[0] + rect[0], pos2[1] + rect[1])
-        print('pos3', pos3, 'rect', rect)
+    def test_kaze_matching(self):
+        self._test_find(KAZEMatching, find_all=False)
 
-        mouse.click(coords=pos3)
+    def test_brisk_matching(self):
+        self._test_find(BRISKMatching, find_all=False)
+
+    def test_akaze_matching(self):
+        self._test_find(AKAZEMatching, find_all=False)
+
+    def test_orb_matching(self):
+        self._test_find(ORBMatching, find_all=False)
+
+    def test_brief_matching(self):
+        self._test_find(BRIEFMatching, find_all=False)
+
+    def test_sift_matching(self):
+        self._test_find(SIFTMatching, find_all=False)
+
+    @skip("surf is not supported")
+    def test_surf_matching(self):
+        self._test_find(SURFMatching, find_all=False)

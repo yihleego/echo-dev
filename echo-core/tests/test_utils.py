@@ -15,13 +15,13 @@
 
 
 import os
-import unittest
+from unittest import TestCase
 
 from echo.utils import deep_to_lower, deep_to_upper, deep_strip, matches, STR_EXPRS, INT_EXPRS
 from echo.utils.screenshot import screenshot
 
 
-class CommonTestSuite(unittest.TestCase):
+class CommonTestSuite(TestCase):
 
     def setUp(self):
         pass
