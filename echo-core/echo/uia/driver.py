@@ -15,7 +15,6 @@
 
 
 from _ctypes import COMError
-from enum import Enum
 from typing import Optional, Callable
 
 from pywinauto.application import Application
@@ -26,50 +25,6 @@ from pywinauto.uia_element_info import UIAElementInfo
 
 from echo.driver import Driver, Element
 from echo.utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
-
-
-class Role(str, Enum):
-    APP_BAR = "AppBar"
-    BUTTON = "Button"
-    CALENDAR = "Calendar"
-    CHECK_BOX = "CheckBox"
-    COMBO_BOX = "ComboBox"
-    CUSTOM = "Custom"
-    DATA_GRID = "DataGrid"
-    DATA_ITEM = "DataItem"
-    DOCUMENT = "Document"
-    EDIT = "Edit"
-    GROUP = "Group"
-    HEADER = "Header"
-    HEADER_ITEM = "HeaderItem"
-    HYPERLINK = "Hyperlink"
-    IMAGE = "Image"
-    LIST = "List"
-    LIST_ITEM = "ListItem"
-    MENU_BAR = "MenuBar"
-    MENU = "Menu"
-    MENU_ITEM = "MenuItem"
-    PANE = "Pane"
-    PROGRESS_BAR = "ProgressBar"
-    RADIO_BUTTON = "RadioButton"
-    SCROLL_BAR = "ScrollBar"
-    SEMANTIC_ZOOM = "SemanticZoom"
-    SEPARATOR = "Separator"
-    SLIDER = "Slider"
-    SPINNER = "Spinner"
-    SPLIT_BUTTON = "SplitButton"
-    STATUS_BAR = "StatusBar"
-    TAB = "Tab"
-    TAB_ITEM = "TabItem"
-    TABLE = "Table"
-    TEXT = "Text"
-    THUMB = "Thumb"
-    TITLE_BAR = "TitleBar"
-    TOOL_BAR = "ToolBar"
-    TOOL_TIP = "ToolTip"
-    TREE = "Tree"
-    TREE_ITEM = "TreeItem"
-    WINDOW = "Window"
 
 
 class UIAElement(Element):
