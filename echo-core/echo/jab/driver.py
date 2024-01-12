@@ -19,12 +19,31 @@ from ctypes import create_string_buffer
 from functools import cached_property
 
 from echo.driver import Driver, Element
-from echo.utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.utils import to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from . import Role
 from .lib import *
 
 
-class JABElementProperties(ABC):
+class JABDriver(Driver):
+    def __init__(self, handle: int, process_id: int = None, process_name: str = None):
+        super().__init__(handle, process_id, process_name)
+        self._lib = JABLib()
 
+    def root(self) -> Optional['JABElement']:
+        return JABElement.create_root(lib=self._lib, driver=self)
+
+    def find_window(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
+        root = self.root()
+        if root is None:
+            return []
+        return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
+
+    def close(self):
+        if self._lib:
+            self._lib.stop()
+
+
+class JABElementProperties(ABC):
     @property
     @abstractmethod
     def info(self) -> AccessibleContextInfo:
@@ -102,52 +121,52 @@ class JABElementProperties(ABC):
 
     @property
     def editable(self) -> bool:
-        return 'editable' in self.info.states_en_US
+        return Role.EDITABLE in self.info.states_en_US
 
     @property
     def focusable(self) -> bool:
-        return 'focusable' in self.info.states_en_US
+        return Role.FOCUSABLE in self.info.states_en_US
 
     @property
     def resizable(self) -> bool:
-        return 'resizable' in self.info.states_en_US
+        return Role.RESIZABLE in self.info.states_en_US
 
     @property
     def visible(self) -> bool:
-        return 'visible' in self.info.states_en_US
+        return Role.VISIBLE in self.info.states_en_US
 
     @property
     def selectable(self) -> bool:
-        return 'selectable' in self.info.states_en_US
+        return Role.SELECTABLE in self.info.states_en_US
 
     @property
     def multiselectable(self) -> bool:
-        return 'multiselectable' in self.info.states_en_US
+        return Role.MULTISELECTABLE in self.info.states_en_US
 
     @property
     def collapsed(self) -> bool:
-        return 'collapsed' in self.info.states_en_US
+        return Role.COLLAPSED in self.info.states_en_US
 
     @property
     def checked(self) -> bool:
         # checkbox, radiobutton
-        return 'checked' in self.info.states_en_US
+        return Role.CHECKED in self.info.states_en_US
 
     @property
     def enabled(self) -> bool:
-        return 'enabled' in self.info.states_en_US
+        return Role.ENABLED in self.info.states_en_US
 
     @property
     def focused(self) -> bool:
-        return 'focused' in self.info.states_en_US
+        return Role.FOCUSED in self.info.states_en_US
 
     @property
     def selected(self) -> bool:
-        return 'selected' in self.info.states_en_US
+        return Role.SELECTED in self.info.states_en_US
 
     @property
     def showing(self) -> bool:
-        return 'showing' in self.info.states_en_US
+        return Role.SHOWING in self.info.states_en_US
 
     def __str__(self) -> str:
         return to_string(self, 'role', 'name', 'description', 'index_in_parent',
@@ -187,28 +206,32 @@ class JABElementSnapshot(JABElementProperties):
 
 
 class JABElement(JABElementProperties, Element):
-    def __init__(self, lib: JABLib, vmid: c_long, ctx: AccessibleContext, handle: int, process_id: int, process_name: str, root: 'JABElement' = None, parent: 'JABElement' = None):
+    def __init__(self, lib: JABLib, vmid: c_long, ctx: AccessibleContext, driver: JABDriver, root: 'JABElement' = None, parent: 'JABElement' = None):
         self._lib: JABLib = lib
         self._vmid: c_long = vmid
         self._ctx: AccessibleContext = ctx
-        self._handle: int = handle
-        self._process_id: int = process_id
-        self._process_name: str = process_name
+        self._driver: JABDriver = driver
         self._root: JABElement = root or self  # TODO root
         self._parent: Optional[JABElement] = parent
         self._released: bool = False
 
-    @property
-    def handle(self) -> int:
-        return self._handle
+    @staticmethod
+    def create_root(lib: JABLib, driver: JABDriver) -> Optional['JABElement']:
+        handle = driver.handle
+        if lib.isJavaWindow(HWND(handle)):
+            vmid = c_long()
+            ctx = AccessibleContext()
+            if lib.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
+                return JABElement(lib=lib, vmid=vmid, ctx=ctx, driver=driver)
+        return None
+
+    @staticmethod
+    def create_element(ctx: AccessibleContext, root: 'JABElement', parent: 'JABElement' = None) -> 'JABElement':
+        return JABElement(lib=root._lib, vmid=root._vmid, ctx=ctx, driver=root._driver, root=root, parent=parent)
 
     @property
-    def process_id(self) -> int:
-        return self._process_id
-
-    @property
-    def process_name(self) -> str:
-        return self._process_name
+    def driver(self) -> JABDriver:
+        return self.driver
 
     @property
     def vmid(self) -> c_long:
@@ -471,37 +494,3 @@ class JABElement(JABElementProperties, Element):
             if res and failure:
                 return True
         return False
-
-    @staticmethod
-    def create_root(lib: JABLib, handle: int) -> Optional['JABElement']:
-        process_id = win32.get_process_id_from_handle(handle)
-        process_name = win32.get_process_name_by_process_id(process_id)
-        if lib.isJavaWindow(HWND(handle)):
-            vmid = c_long()
-            ctx = AccessibleContext()
-            if lib.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
-                return JABElement(lib=lib, vmid=vmid, ctx=ctx, handle=handle, process_id=process_id, process_name=process_name)
-        return None
-
-    @staticmethod
-    def create_element(ctx: AccessibleContext, root: 'JABElement', parent: 'JABElement' = None) -> 'JABElement':
-        return JABElement(lib=root._lib, vmid=root._vmid, ctx=ctx, handle=root._handle, process_id=root._process_id, process_name=root._process_name, root=root, parent=parent)
-
-
-class JABDriver(Driver):
-    def __init__(self, handle: int):
-        self._lib = JABLib()
-        self._handle = handle
-
-    def root(self) -> Optional[JABElement]:
-        return JABElement.create_root(lib=self._lib, handle=self._handle)
-
-    def find_window(self, *filters: Callable[[JABElement], bool], ignore_case: bool = False, **criteria) -> list[JABElement]:
-        root = self.root()
-        if root is None:
-            return []
-        return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
-
-    def close(self):
-        if self._lib:
-            self._lib.stop()
