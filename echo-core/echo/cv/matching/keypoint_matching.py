@@ -27,36 +27,38 @@ class KeypointMatching(Matching, ABC):
     def init_detector(self):
         raise NotImplementedError
 
-    def find_all(self):
+    def find_all(self) -> list[Matched]:
         raise NotImplementedError
 
-    def find_best(self):
+    def find_best(self) -> Optional[Matched]:
         """基于kaze进行图像识别，只筛选出最优区域."""
         # 第一步：检验图像是否正常：
         if not self.check_image_valid(self.im_source, self.im_search):
             return None
 
+        self.start_perf_count()
+
         # 第二步：获取特征点集并匹配出特征点对: 返回值 good, pypts, kp_sch, kp_src
-        self.kp_sch, self.kp_src, self.good = self._get_key_points()
+        kp_sch, kp_src, good = self._get_key_points()
+        good_len = len(good)
 
         # 第三步：根据匹配点对(good),提取出来识别区域:
-        if len(self.good) in [0, 1]:
+        if good_len in (0, 1):
             # 匹配点对为0,无法提取识别区域;为1则无法获取目标区域,直接返回None作为匹配结果:
             return None
-        elif len(self.good) in [2, 3]:
+        elif good_len in (2, 3):
             # 匹配点对为2或3,根据点对求出目标区域,据此算出可信度:
-            if len(self.good) == 2:
-                origin_result = self._handle_two_good_points(self.kp_sch, self.kp_src, self.good)
+            if good_len == 2:
+                origin_result = self._handle_two_good_points(kp_sch, kp_src, good)
             else:
-                origin_result = self._handle_three_good_points(self.kp_sch, self.kp_src, self.good)
+                origin_result = self._handle_three_good_points(kp_sch, kp_src, good)
             # 某些特殊情况下直接返回None作为匹配结果:
             if origin_result is None:
-                return origin_result
-            else:
-                middle_point, pypts, w_h_range = origin_result
+                return None
+            middle_point, pypts, w_h_range = origin_result
         else:
             # 匹配点对 >= 4个，使用单矩阵映射求出目标区域，据此算出可信度：
-            middle_point, pypts, w_h_range = self._many_good_pts(self.kp_sch, self.kp_src, self.good)
+            middle_point, pypts, w_h_range = self._many_good_pts(kp_sch, kp_src, good)
 
         # 第四步：根据识别区域，求出结果可信度，并将结果进行返回:
         # 对识别结果进行合理性校验: 小于5个像素的，或者缩放超过5倍的，一律视为不合法直接raise.
@@ -66,29 +68,11 @@ class KeypointMatching(Matching, ABC):
         target_img = self.im_source[y_min:y_max, x_min:x_max]
         resize_img = cv2.resize(target_img, (w, h))
         confidence = self._cal_confidence(resize_img)
-
-        best_match = generate_result(middle_point, pypts, confidence)
-        # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.name, self.threshold, best_match))
-        return best_match if confidence >= self.threshold else None
-
-    def show_match_image(self):
-        """Show how the keypoints matches."""
-        from random import random
-        h_sch, w_sch = self.im_search.shape[:2]
-        h_src, w_src = self.im_source.shape[:2]
-
-        # first you have to do the matching
-        self.find_best()
-        # then initialize the result image:
-        matching_info_img = np.zeros([max(h_sch, h_src), w_sch + w_src, 3], np.uint8)
-        matching_info_img[:h_sch, :w_sch, :] = self.im_search
-        matching_info_img[:h_src, w_sch:, :] = self.im_source
-        # render the match image at last:
-        for m in self.good:
-            color = tuple([int(random() * 255) for _ in range(3)])
-            cv2.line(matching_info_img, (int(self.kp_sch[m.queryIdx].pt[0]), int(self.kp_sch[m.queryIdx].pt[1])), (int(self.kp_src[m.trainIdx].pt[0] + w_sch), int(self.kp_src[m.trainIdx].pt[1])), color)
-
-        return matching_info_img
+        if confidence < self.threshold:
+            return None
+        rectangle = (x_min, y_min, x_max, x_min)
+        best_match = Matched(rectangle, confidence, self.end_perf_count())
+        return best_match
 
     def _cal_confidence(self, resize_img):
         """计算confidence."""

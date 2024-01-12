@@ -14,12 +14,20 @@
 # limitations under the License.
 
 
+import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Optional
 
 import cv2
 import numpy as np
-from PIL import Image
+
+
+@dataclass
+class Matched:
+    rectangle: tuple[int, int, int, int]  # left, top, right, bottom
+    confidence: float  # 0.0 ~ 1.0
+    cost: float  # seconds
 
 
 class Matching(ABC):
@@ -29,6 +37,7 @@ class Matching(ABC):
         self.im_search = im_search
         self.threshold: float = threshold
         self.rgb: bool = rgb
+        self.perf_count_last = 0
 
     @property
     @abstractmethod
@@ -36,11 +45,11 @@ class Matching(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def find_all(self) -> list:
+    def find_all(self) -> list[Matched]:
         raise NotImplementedError
 
     @abstractmethod
-    def find_best(self) -> Optional[any]:
+    def find_best(self) -> Optional[Matched]:
         raise NotImplementedError
 
     def check_image_valid(self, im_source, im_search) -> bool:
@@ -56,13 +65,14 @@ class Matching(ABC):
         h_source, w_source = im_source.shape[:2]
         return h_search <= h_source and w_search <= w_source
 
+    def start_perf_count(self):
+        self.perf_count_last = time.perf_counter()
 
-def generate_result(middle_point, pypts, confi):
-    """Format the result: 定义图像识别结果格式."""
-    ret = dict(result=middle_point,
-               rectangle=pypts,
-               confidence=confi)
-    return ret
+    def end_perf_count(self) -> float:
+        cur = time.perf_counter()
+        res = cur - self.perf_count_last
+        self.perf_count_last = cur
+        return res
 
 
 def img_mat_rgb_2_gray(img_mat):
@@ -72,41 +82,6 @@ def img_mat_rgb_2_gray(img_mat):
     """
     assert isinstance(img_mat[0][0], np.ndarray), "input must be instance of np.ndarray"
     return cv2.cvtColor(img_mat, cv2.COLOR_BGR2GRAY)
-
-
-def pil_2_cv2(pil_image):
-    open_cv_image = np.array(pil_image)
-    # Convert RGB to BGR (method-1):
-    open_cv_image = cv2.cvtColor(open_cv_image, cv2.COLOR_RGB2BGR)
-    # Convert RGB to BGR (method-2):
-    # b, g, r = cv2.split(open_cv_image)
-    # open_cv_image = cv2.merge([r, g, b])
-    return open_cv_image
-
-
-def cv2_2_pil(cv2_image):
-    cv2_im = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2RGB)
-    pil_im = Image.fromarray(cv2_im)
-    return pil_im
-
-
-def compress_image(pil_img, path, quality, max_size=None):
-    """
-    Save the picture and compress
-
-    :param pil_img: PIL image
-    :param path: save path
-    :param quality: the image quality, integer in range [1, 99]
-    :param max_size: the maximum size of the picture, e.g 1200
-    :return:
-    """
-    if max_size:
-        # The picture will be saved in a size <= max_size*max_size
-        pil_img.thumbnail((max_size, max_size), Image.LANCZOS)
-    quality = int(round(quality))
-    if quality <= 0 or quality >= 100:
-        raise Exception("SNAPSHOT_QUALITY (" + str(quality) + ") should be an integer in the range [1,99]")
-    pil_img.save(path, quality=quality, optimize=True)
 
 
 def cal_ccoeff_confidence(im_source, im_search):

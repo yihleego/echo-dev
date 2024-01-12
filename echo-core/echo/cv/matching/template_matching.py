@@ -113,10 +113,10 @@ class MultiScaleTemplateMatching(Matching):
     def name(self):
         return "Multi-scale Template Matching"
 
-    def find_all(self):
+    def find_all(self) -> list[Matched]:
         raise NotImplementedError
 
-    def find_best(self):
+    def find_best(self) -> Optional[Matched]:
         """函数功能：找到最优结果."""
         # 第一步：校验图像输入
         if not self.check_image_size(self.im_source, self.im_search):
@@ -236,18 +236,17 @@ class PresetMultiScaleTemplateMatching(MultiScaleTemplateMatching):
         r_min, r_max = self._get_ratio_scope(
             self.im_source, self.im_search, self.resolution)
         s_gray, i_gray = img_mat_rgb_2_gray(self.im_search), img_mat_rgb_2_gray(self.im_source)
-        confidence, max_loc, w, h, _ = self.multi_scale_search(
-            i_gray, s_gray, ratio_min=r_min, ratio_max=r_max, step=self.scale_step,
-            threshold=self.threshold, time_out=1.0)
+        confidence, max_loc, w, h, _ = self.multi_scale_search(i_gray, s_gray, ratio_min=r_min, ratio_max=r_max, step=self.scale_step, threshold=self.threshold, time_out=1.0)
+        if confidence < self.threshold:
+            return None
+
         if self.record_pos is not None:
             max_loc = (max_loc[0] + area[0], max_loc[1] + area[1])
 
         # 求取识别位置: 目标中心 + 目标区域:
         rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
         best_match = Matched(rectangle, confidence, self.end_perf_count())
-        # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.METHOD_NAME, self.threshold, best_match))
-
-        return best_match if confidence >= self.threshold else None
+        return best_match
 
     def _get_ratio_scope(self, src, templ, resolution):
         """预测缩放比的上下限."""
