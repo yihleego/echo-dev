@@ -16,7 +16,7 @@
 
 from unittest import TestCase, skip
 
-from echo.cv.aircv import imread
+from echo.cv.cv import imread
 from echo.cv.matching import *
 
 
@@ -38,7 +38,7 @@ class CVTestSuite(TestCase):
         for c in configs:
             matching = cls(c[1], c[2])
             results = matching.find_all()
-            print(f'[{matching.name}] {c[0]} found all({len(results)}): {results}')
+            print(f'[{cls.__name__}] {c[0]} found all({len(results)}): {results}')
             print('')
 
     def _test_find_best(self, cls):
@@ -59,7 +59,7 @@ class CVTestSuite(TestCase):
         for c in configs:
             matching = cls(c[1], c[2])
             best = matching.find_best()
-            print(f'[{matching.name}] {c[0]} found best: {best}')
+            print(f'[{cls.__name__}] {c[0]} found best: {best}')
             print('')
 
     def test_template_matching(self):

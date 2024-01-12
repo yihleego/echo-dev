@@ -63,16 +63,8 @@ class FileNotExistError(BaseError):
     """Image does not exist."""
 
 
-class HomographyError(BaseError):
-    """In homography, find no mask, should kill points which is duplicate."""
-
-
 class NoModuleError(BaseError):
     """Resolution input is not right."""
-
-
-class MatchResultCheckError(BaseError):
-    """Exception raised for errors 0 keypoint found in the input images."""
 
 
 class TemplateInputError(BaseError):

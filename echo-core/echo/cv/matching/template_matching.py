@@ -27,10 +27,6 @@ class TemplateMatching(Matching):
         super().__init__(im_search, im_source, threshold, rgb)
         self.max_result_size = max_result_size
 
-    @property
-    def name(self):
-        return "Template Matching"
-
     def find_all(self) -> list[Matched]:
         """基于模板匹配查找多个目标区域的方法."""
         # 第一步：校验图像输入
@@ -108,10 +104,6 @@ class MultiScaleTemplateMatching(Matching):
         self.scale_max = scale_max
         self.scale_step = scale_step
         self.deviation = deviation
-
-    @property
-    def name(self):
-        return "Multi-scale Template Matching"
 
     def find_all(self) -> list[Matched]:
         raise NotImplementedError
@@ -208,10 +200,6 @@ class PresetMultiScaleTemplateMatching(MultiScaleTemplateMatching):
     """基于截图预设条件的多尺度模板匹配."""
 
     DEVIATION = 150
-
-    @property
-    def name(self):
-        return "Preset Multi-scale Template Matching"
 
     def find_best_result(self):
         """函数功能：找到最优结果."""

@@ -39,11 +39,6 @@ class Matching(ABC):
         self.rgb: bool = rgb
         self.perf_count_last = 0
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        raise NotImplementedError
-
     @abstractmethod
     def find_all(self) -> list[Matched]:
         raise NotImplementedError

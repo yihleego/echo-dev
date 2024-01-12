@@ -7,7 +7,26 @@ No need for opencv-contrib module.
 """
 
 from .matching import *
-from ..aircv import HomographyError, MatchResultCheckError, NoModuleError
+
+
+class BaseError(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+
+class HomographyError(BaseError):
+    """In homography, find no mask, should kill points which is duplicate."""
+
+
+class NoModuleError(BaseError):
+    """Resolution input is not right."""
+
+
+class MatchResultCheckError(BaseError):
+    """Exception raised for errors 0 keypoint found in the input images."""
 
 
 class KeypointMatching(Matching, ABC):
@@ -240,7 +259,7 @@ class KeypointMatching(Matching, ABC):
             raise HomographyError("OpenCV error in _find_homography()...")
         else:
             if mask is None:
-                raise HomographyError("In _find_homography(), find no transfomation matrix...")
+                raise HomographyError("In _find_homography(), find no transformation matrix...")
             else:
                 return M, mask
 
@@ -250,16 +269,13 @@ class KeypointMatching(Matching, ABC):
         tar_width, tar_height = x_max - x_min, y_max - y_min
         # 如果src_img中的矩形识别区域的宽和高的像素数＜5，则判定识别失效。认为提取区域待不可能小于5个像素。(截图一般不可能小于5像素)
         if tar_width < 5 or tar_height < 5:
-            raise MatchResultCheckError("In src_image, Taget area: width or height < 5 pixel.")
+            raise MatchResultCheckError("In src_image, Target area: width or height < 5 pixel.")
         # 如果矩形识别区域的宽和高，与sch_img的宽高差距超过5倍(屏幕像素差不可能有5倍)，认定为识别错误。
         if tar_width < 0.2 * w or tar_width > 5 * w or tar_height < 0.2 * h or tar_height > 5 * h:
             raise MatchResultCheckError("Target area is 5 times bigger or 0.2 times smaller than sch_img.")
 
 
 class KAZEMatching(KeypointMatching):
-    @property
-    def name(self):
-        return "KAZE Matching"
 
     def init_detector(self):
         """Init keypoint detector object."""
@@ -269,9 +285,6 @@ class KAZEMatching(KeypointMatching):
 
 
 class BRISKMatching(KeypointMatching):
-    @property
-    def name(self):
-        return "BRISK Matching"
 
     def init_detector(self):
         """Init keypoint detector object."""
@@ -281,9 +294,6 @@ class BRISKMatching(KeypointMatching):
 
 
 class AKAZEMatching(KeypointMatching):
-    @property
-    def name(self):
-        return "AKAZE Matching"
 
     def init_detector(self):
         """Init keypoint detector object."""
@@ -293,9 +303,6 @@ class AKAZEMatching(KeypointMatching):
 
 
 class ORBMatching(KeypointMatching):
-    @property
-    def name(self):
-        return "ORB Matching"
 
     def init_detector(self):
         """Init keypoint detector object."""
@@ -305,9 +312,6 @@ class ORBMatching(KeypointMatching):
 
 
 class BRIEFMatching(KeypointMatching):
-    @property
-    def name(self):
-        return "BRIEF Matching"
 
     def init_detector(self):
         """Init keypoint detector object."""
@@ -320,8 +324,8 @@ class BRIEFMatching(KeypointMatching):
             except:
                 import traceback
                 traceback.print_exc()
-                print("to use %s, you should build contrib with opencv3.0" % self.name)
-                raise NoModuleError("There is no %s module in your OpenCV environment !" % self.name)
+                print("to use BRIEF, you should build contrib with opencv3.0")
+                raise NoModuleError("There is no BRIEF module in your OpenCV environment !")
         else:
             # OpenCV2.x
             self.star_detector = cv2.FeatureDetector_create("STAR")
@@ -348,10 +352,6 @@ class SIFTMatching(KeypointMatching):
     # SIFT识别特征点匹配，参数设置:
     FLANN_INDEX_KDTREE = 0
 
-    @property
-    def name(self):
-        return "SIFT Matching"
-
     def init_detector(self):
         """Init keypoint detector object."""
         if check_cv_version_is_new():
@@ -363,7 +363,7 @@ class SIFTMatching(KeypointMatching):
                     self.detector = cv2.xfeatures2d.SIFT_create(edgeThreshold=10)
                 except:
                     raise NoModuleError(
-                        "There is no %s module in your OpenCV environment, need contrib module!" % self.name)
+                        "There is no SIFT module in your OpenCV environment, need contrib module!")
         else:
             # OpenCV2.x
             self.detector = cv2.SIFT(edgeThreshold=10)
@@ -390,10 +390,6 @@ class SURFMatching(KeypointMatching):
     # SURF识别特征点匹配方法设置:
     FLANN_INDEX_KDTREE = 0
 
-    @property
-    def name(self):
-        return "SURF Matching"
-
     def init_detector(self):
         """Init keypoint detector object."""
         # BRIEF is a feature descriptor, recommand CenSurE as a fast detector:
@@ -402,7 +398,7 @@ class SURFMatching(KeypointMatching):
             try:
                 self.detector = cv2.xfeatures2d.SURF_create(self.HESSIAN_THRESHOLD, upright=self.UPRIGHT)
             except:
-                raise NoModuleError("There is no %s module in your OpenCV environment, need contribmodule!" % self.name)
+                raise NoModuleError("There is no SURF module in your OpenCV environment, need contribmodule!")
         else:
             # OpenCV2.x
             self.detector = cv2.SURF(self.HESSIAN_THRESHOLD, upright=self.UPRIGHT)
