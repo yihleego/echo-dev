@@ -1,10 +1,25 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2024 Echo Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import cv2
 import numpy as np
 from PIL import Image
-
-from echo.cv.aircv import TemplateInputError
 
 
 class Matching(ABC):
@@ -21,12 +36,25 @@ class Matching(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def find_all_results(self):
+    def find_all(self) -> list:
         raise NotImplementedError
 
     @abstractmethod
-    def find_best_result(self):
+    def find_best(self) -> Optional[any]:
         raise NotImplementedError
+
+    def check_image_valid(self, im_source, im_search) -> bool:
+        return im_source is not None \
+            and im_search is not None \
+            and im_source.any() \
+            and im_search.any()
+
+    def check_image_size(self, im_source, im_search) -> bool:
+        # 图像格式, 确保输入图像为指定的矩阵格式:
+        # 图像大小, 检查截图宽、高是否大于了截屏的宽、高:
+        h_search, w_search = im_search.shape[:2]
+        h_source, w_source = im_source.shape[:2]
+        return h_search <= h_source and w_search <= w_source
 
 
 def generate_result(middle_point, pypts, confi):
@@ -35,24 +63,6 @@ def generate_result(middle_point, pypts, confi):
                rectangle=pypts,
                confidence=confi)
     return ret
-
-
-def check_image_valid(im_source, im_search):
-    """Check if the input images valid or not."""
-    if im_source is not None and im_source.any() and im_search is not None and im_search.any():
-        return True
-    else:
-        return False
-
-
-def check_source_larger_than_search(im_source, im_search):
-    """检查图像识别的输入."""
-    # 图像格式, 确保输入图像为指定的矩阵格式:
-    # 图像大小, 检查截图宽、高是否大于了截屏的宽、高:
-    h_search, w_search = im_search.shape[:2]
-    h_source, w_source = im_source.shape[:2]
-    if h_search > h_source or w_search > w_source:
-        raise TemplateInputError("error: in template match, found im_search bigger than im_source.")
 
 
 def img_mat_rgb_2_gray(img_mat):
