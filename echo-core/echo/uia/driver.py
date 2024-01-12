@@ -24,31 +24,47 @@ from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
 from echo.driver import Driver, Element
-from echo.utils import win32, to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.utils import to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from . import Role
+
+
+class UIADriver(Driver):
+    def root(self) -> Optional['UIAElement']:
+        app = Application(backend='uia')
+        app.connect(handle=self.handle)
+        window = app.top_window()
+        return UIAElement.create_root(app=app, window=window.wrapper_object(), driver=self)
+
+    def find_window(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
+        root = self.root()
+        if root is None:
+            return []
+        return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
+
+    def close(self):
+        pass
 
 
 class UIAElement(Element):
-    def __init__(self, app: Application, window: UIAWrapper, handle: int, process_id: int, process_name: str, root: 'UIAElement' = None, parent: 'UIAElement' = None):
+    def __init__(self, app: Application, window: UIAWrapper, driver: UIADriver, root: 'UIAElement' = None, parent: 'UIAElement' = None):
         self._app: Application = app
         self._window: UIAWrapper = window
-        self._handle: int = window.element_info.handle or handle
-        self._process_id: int = process_id
-        self._process_name: str = process_name
+        self._driver: UIADriver = driver
         self._root: UIAElement = root or self  # TODO root
         self._parent: Optional[UIAElement] = parent
         self._virtual_depth: int = parent.depth + 1 if parent else 0
 
-    @property
-    def handle(self) -> int:
-        return self._handle
+    @staticmethod
+    def create_root(app: Application, window: UIAWrapper, driver: UIADriver) -> Optional['UIAElement']:
+        return UIAElement(app=app, window=window, driver=driver)
+
+    @staticmethod
+    def create_element(window: UIAWrapper, root: 'UIAElement', parent: 'UIAElement' = None) -> 'UIAElement':
+        return UIAElement(app=root._app, window=window, driver=root._driver, root=root, parent=parent)
 
     @property
-    def process_id(self) -> int:
-        return self._process_id
-
-    @property
-    def process_name(self) -> str:
-        return self._process_name
+    def driver(self) -> UIADriver:
+        return self.driver
 
     @property
     def info(self) -> UIAElementInfo:
@@ -319,34 +335,3 @@ class UIAElement(Element):
     def __str__(self) -> str:
         return to_string(self, 'role', 'name', 'description', 'automation_id', 'class_name',
                          'rectangle', 'text', 'visible', 'checked', 'enabled', 'selected', 'depth')
-
-    @staticmethod
-    def create_root(app: Application, window: UIAWrapper, handle: int) -> Optional['UIAElement']:
-        process_id = win32.get_process_id_from_handle(handle)
-        process_name = win32.get_process_name_by_process_id(process_id)
-        return UIAElement(app=app, window=window, handle=handle, process_id=process_id, process_name=process_name)
-
-    @staticmethod
-    def create_element(window: UIAWrapper, root: 'UIAElement', parent: 'UIAElement' = None) -> 'UIAElement':
-        return UIAElement(app=root._app, window=window, handle=root._handle,
-                          process_id=root._process_id, process_name=root._process_name, root=root, parent=parent)
-
-
-class UIADriver(Driver):
-    def __init__(self, handle: int):
-        self._handle = handle
-
-    def root(self) -> Optional[UIAElement]:
-        app = Application(backend='uia')
-        app.connect(handle=self._handle)
-        window = app.top_window()
-        return UIAElement.create_root(app=app, window=window.wrapper_object(), handle=self._handle)
-
-    def find_window(self, *filters: Callable[[UIAElement], bool], ignore_case: bool = False, **criteria) -> list[UIAElement]:
-        root = self.root()
-        if root is None:
-            return []
-        return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
-
-    def close(self):
-        pass
