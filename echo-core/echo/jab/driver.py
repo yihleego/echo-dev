@@ -21,7 +21,7 @@ from functools import cached_property
 from echo.driver import Driver, Element
 from echo.utils import to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 from . import Role
-from .lib import *
+from .jab import *
 
 
 class JABDriver(Driver):
