@@ -7,7 +7,7 @@ No need for opencv-contrib module.
 """
 
 from .matching import *
-from ..aircv import NoMatchPointError, HomographyError, MatchResultCheckError, NoModuleError
+from ..aircv import HomographyError, MatchResultCheckError, NoModuleError
 
 
 class KeypointMatching(Matching, ABC):
@@ -119,8 +119,9 @@ class KeypointMatching(Matching, ABC):
         kp_src, des_src = self.get_keypoints_and_descriptors(self.im_source)
         # When apply knnmatch , make sure that number of features in both test and
         #       query image is greater than or equal to number of nearest neighbors in knn match.
-        if len(kp_sch) < 2 or len(kp_src) < 2:
-            raise NoMatchPointError("Not enough feature points in input images !")
+        # FIXME
+        # if len(kp_sch) < 2 or len(kp_src) < 2:
+        #    raise NoMatchPointError("Not enough feature points in input images !")
         # match descriptors (特征值匹配)
         matches = self.match_keypoints(des_sch, des_src)
 
