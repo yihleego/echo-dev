@@ -1,32 +1,27 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-"""
-Detect keypoints with KAZE/AKAZE/BRISK/ORB.
-No need for opencv-contrib module.
-"""
-
-from .matching import *
-
-
-class BaseError(Exception):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return repr(self.value)
+# Copyright (c) 2024 Echo Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 
-class HomographyError(BaseError):
-    """In homography, find no mask, should kill points which is duplicate."""
+from abc import ABC, abstractmethod
+from typing import Optional
 
+import cv2
+import numpy as np
 
-class NoModuleError(BaseError):
-    """Resolution input is not right."""
-
-
-class MatchResultCheckError(BaseError):
-    """Exception raised for errors 0 keypoint found in the input images."""
+from .matching import Matched, Matching, cal_rgb_confidence, cal_ccoeff_confidence, check_cv_version_is_new
+from ..errors import HomographyError, MatchResultCheckError, NoModuleError
 
 
 class KeypointMatching(Matching, ABC):

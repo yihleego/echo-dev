@@ -24,51 +24,9 @@ import numpy as np
 from PIL import Image
 from six import PY2, PY3
 
+from .errors import TargetNotFoundError, InvalidMatchingMethodError, NoModuleError, BaseError, FileNotExistError, TemplateInputError
 from .matching.keypoint_matching import KAZEMatching, BRISKMatching, AKAZEMatching, ORBMatching, SIFTMatching, SURFMatching, BRIEFMatching
 from .matching.template_matching import TemplateMatching, MultiScaleTemplateMatching
-
-
-class BaseError(Exception):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return repr(self.value)
-
-
-class AirtestError(BaseError):
-    """
-        This is Airtest BaseError
-    """
-    pass
-
-
-class InvalidMatchingMethodError(BaseError):
-    """
-        This is InvalidMatchingMethodError BaseError
-        When an invalid matching method is used in settings.
-    """
-    pass
-
-
-class TargetNotFoundError(AirtestError):
-    """
-        This is TargetNotFoundError BaseError
-        When something is not found
-    """
-    pass
-
-
-class FileNotExistError(BaseError):
-    """Image does not exist."""
-
-
-class NoModuleError(BaseError):
-    """Resolution input is not right."""
-
-
-class TemplateInputError(BaseError):
-    """Exception raised for errors 0 keypoint found in the input images."""
 
 
 def cocos_min_strategy(w, h, sch_resolution, src_resolution, design_resolution=(960, 640)):
@@ -474,17 +432,6 @@ def img_mat_rgb_2_gray(img_mat):
     """
     assert isinstance(img_mat[0][0], np.ndarray), "input must be instance of np.ndarray"
     return cv2.cvtColor(img_mat, cv2.COLOR_BGR2GRAY)
-
-
-def img_2_string(img):
-    _, png = cv2.imencode('.png', img)
-    return png.tostring()
-
-
-def string_2_img(pngstr):
-    nparr = np.frombuffer(pngstr, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    return img
 
 
 def pil_2_cv2(pil_image):

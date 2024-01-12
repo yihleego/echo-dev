@@ -246,7 +246,7 @@ class JABElement(JABElementProperties, Element):
         aci = AccessibleContextInfo()
         res = self._lib.getAccessibleContextInfo(self._vmid, self._ctx, aci)
         if not res:
-            raise Exception("Failed to get info")
+            raise Exception("failed to get info")
         return aci
 
     @property
