@@ -15,9 +15,11 @@
 
 
 import time
+from typing import Optional
 
-from .matching import *
-from ..aircv import TemplateInputError
+import cv2
+
+from .matching import Matched, Matching, img_mat_rgb_2_gray, cal_rgb_confidence, cal_ccoeff_confidence, crop_image
 
 
 class TemplateMatching(Matching):
@@ -29,11 +31,12 @@ class TemplateMatching(Matching):
     def name(self):
         return "Template Matching"
 
-    def find_all(self):
+    def find_all(self) -> list[Matched]:
         """基于模板匹配查找多个目标区域的方法."""
         # 第一步：校验图像输入
         if not self.check_image_size(self.im_source, self.im_search):
             return []
+        self.start_perf_count()
         # 第二步：计算模板匹配的结果矩阵res
         res = self._get_template_result_matrix()
         # 第三步：依次获取匹配结果
@@ -47,20 +50,21 @@ class TemplateMatching(Matching):
             if confidence < self.threshold or len(result) > self.max_result_size:
                 break
             # 求取识别位置: 目标中心 + 目标区域:
-            middle_point, rectangle = self._get_target_rectangle(max_loc, w, h)
-            one_good_match = generate_result(middle_point, rectangle, confidence)
-            result.append(one_good_match)
+            rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
+            good_match = Matched(rectangle, confidence, self.end_perf_count())
+            result.append(good_match)
             # 屏蔽已经取出的最优结果,进入下轮循环继续寻找:
-            # cv2.floodFill(res, None, max_loc, (-1000,), max(max_val, 0), flags=cv2.FLOODFILL_FIXED_RANGE)
             cv2.rectangle(res, (int(max_loc[0] - w / 2), int(max_loc[1] - h / 2)), (int(max_loc[0] + w / 2), int(max_loc[1] + h / 2)), (0, 0, 0), -1)
+            self.start_perf_count()
         return result
 
-    def find_best(self):
+    def find_best(self) -> Optional[Matched]:
         """基于kaze进行图像识别，只筛选出最优区域."""
         """函数功能：找到最优结果."""
         # 第一步：校验图像输入
         if not self.check_image_size(self.im_source, self.im_search):
             return None
+        self.start_perf_count()
         # 第二步：计算模板匹配的结果矩阵res
         res = self._get_template_result_matrix()
         # 第三步：依次获取匹配结果
@@ -68,12 +72,12 @@ class TemplateMatching(Matching):
         h, w = self.im_search.shape[:2]
         # 求取可信度:
         confidence = self._get_confidence_from_matrix(max_loc, max_val, w, h)
+        if confidence < self.threshold:
+            return None
         # 求取识别位置: 目标中心 + 目标区域:
-        middle_point, rectangle = self._get_target_rectangle(max_loc, w, h)
-        best_match = generate_result(middle_point, rectangle, confidence)
-        # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.METHOD_NAME, self.threshold, best_match))
-
-        return best_match if confidence >= self.threshold else None
+        rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
+        best_match = Matched(rectangle, confidence, self.end_perf_count())
+        return best_match
 
     def _get_confidence_from_matrix(self, max_loc, max_val, w, h):
         """根据结果矩阵求出confidence."""
@@ -92,21 +96,6 @@ class TemplateMatching(Matching):
         # 灰度识别: cv2.matchTemplate( )只能处理灰度图片参数
         s_gray, i_gray = img_mat_rgb_2_gray(self.im_search), img_mat_rgb_2_gray(self.im_source)
         return cv2.matchTemplate(i_gray, s_gray, cv2.TM_CCOEFF_NORMED)
-
-    def _get_target_rectangle(self, left_top_pos, w, h):
-        """根据左上角点和宽高求出目标区域."""
-        x_min, y_min = left_top_pos
-        # 中心位置的坐标:
-        x_middle, y_middle = int(x_min + w / 2), int(y_min + h / 2)
-        # 左下(min,max)->右下(max,max)->右上(max,min)
-        left_bottom_pos, right_bottom_pos = (x_min, y_min + h), (x_min + w, y_min + h)
-        right_top_pos = (x_min + w, y_min)
-        # 点击位置:
-        middle_point = (x_middle, y_middle)
-        # 识别目标区域: 点序:左上->左下->右下->右上, 左上(min,min)右下(max,max)
-        rectangle = (left_top_pos, left_bottom_pos, right_bottom_pos, right_top_pos)
-
-        return middle_point, rectangle
 
 
 class MultiScaleTemplateMatching(Matching):
@@ -133,16 +122,18 @@ class MultiScaleTemplateMatching(Matching):
         if not self.check_image_size(self.im_source, self.im_search):
             return None
 
+        self.start_perf_count()
+
         # 第二步：计算模板匹配的结果矩阵res
         s_gray, i_gray = img_mat_rgb_2_gray(self.im_search), img_mat_rgb_2_gray(self.im_source)
         confidence, max_loc, w, h, _ = self.multi_scale_search(i_gray, s_gray, ratio_min=0.01, ratio_max=0.99, src_max=self.scale_max, step=self.scale_step, threshold=self.threshold)
+        if confidence < self.threshold:
+            return None
 
         # 求取识别位置: 目标中心 + 目标区域:
-        middle_point, rectangle = self._get_target_rectangle(max_loc, w, h)
-        best_match = generate_result(middle_point, rectangle, confidence)
-        # LOGGING.debug("[%s] threshold=%s, result=%s" %(self.METHOD_NAME, self.threshold, best_match))
-
-        return best_match if confidence >= self.threshold else None
+        rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
+        best_match = Matched(rectangle, confidence, self.end_perf_count())
+        return best_match
 
     def _get_confidence_from_matrix(self, max_loc, w, h):
         """根据结果矩阵求出confidence."""
@@ -156,21 +147,6 @@ class MultiScaleTemplateMatching(Matching):
             confidence = cal_ccoeff_confidence(cv2.resize(img_crop, (sch_w, sch_h)), self.im_search)
 
         return confidence
-
-    def _get_target_rectangle(self, left_top_pos, w, h):
-        """根据左上角点和宽高求出目标区域."""
-        x_min, y_min = left_top_pos
-        # 中心位置的坐标:
-        x_middle, y_middle = int(x_min + w / 2), int(y_min + h / 2)
-        # 左下(min,max)->右下(max,max)->右上(max,min)
-        left_bottom_pos, right_bottom_pos = (x_min, y_min + h), (x_min + w, y_min + h)
-        right_top_pos = (x_min + w, y_min)
-        # 点击位置:
-        middle_point = (x_middle, y_middle)
-        # 识别目标区域: 点序:左上->左下->右下->右上, 左上(min,min)右下(max,max)
-        rectangle = (left_top_pos, left_bottom_pos, right_bottom_pos, right_top_pos)
-
-        return middle_point, rectangle
 
     @staticmethod
     def _resize_by_ratio(src, templ, ratio=1.0, templ_min=10, src_max=800):
@@ -228,47 +204,50 @@ class MultiScaleTemplateMatching(Matching):
         return confidence, omax_loc, ow, oh, max_r
 
 
-class MultiScaleTemplateMatchingPre(MultiScaleTemplateMatching):
+class PresetMultiScaleTemplateMatching(MultiScaleTemplateMatching):
     """基于截图预设条件的多尺度模板匹配."""
 
     DEVIATION = 150
 
     @property
     def name(self):
-        return "Multi-scale Template Matching Pre"
+        return "Preset Multi-scale Template Matching"
 
     def find_best_result(self):
         """函数功能：找到最优结果."""
-        if self.resolution != ():
-            # 第一步：校验图像输入
+        if not self.resolution:
+            return None
+
+        # 第一步：校验图像输入
+        if not self.check_image_size(self.im_source, self.im_search):
+            return None
+
+        if self.resolution[0] < self.im_search.shape[1] or self.resolution[1] < self.im_search.shape[0]:
+            return None
+
+        self.start_perf_count()
+
+        # 第二步：计算模板匹配的结果矩阵res
+        if self.record_pos is not None:
+            area, self.resolution = self._get_area_scope(self.im_source, self.im_search, self.record_pos, self.resolution)
+            self.im_source = crop_image(self.im_source, area)
             if not self.check_image_size(self.im_source, self.im_search):
                 return None
+        r_min, r_max = self._get_ratio_scope(
+            self.im_source, self.im_search, self.resolution)
+        s_gray, i_gray = img_mat_rgb_2_gray(self.im_search), img_mat_rgb_2_gray(self.im_source)
+        confidence, max_loc, w, h, _ = self.multi_scale_search(
+            i_gray, s_gray, ratio_min=r_min, ratio_max=r_max, step=self.scale_step,
+            threshold=self.threshold, time_out=1.0)
+        if self.record_pos is not None:
+            max_loc = (max_loc[0] + area[0], max_loc[1] + area[1])
 
-            if self.resolution[0] < self.im_search.shape[1] or self.resolution[1] < self.im_search.shape[0]:
-                raise TemplateInputError("error: resolution is too small.")
-            # 第二步：计算模板匹配的结果矩阵res
-            if not self.record_pos is None:
-                area, self.resolution = self._get_area_scope(self.im_source, self.im_search, self.record_pos, self.resolution)
-                self.im_source = crop_image(self.im_source, area)
-                if not self.check_image_size(self.im_source, self.im_search):
-                    return None
-            r_min, r_max = self._get_ratio_scope(
-                self.im_source, self.im_search, self.resolution)
-            s_gray, i_gray = img_mat_rgb_2_gray(self.im_search), img_mat_rgb_2_gray(self.im_source)
-            confidence, max_loc, w, h, _ = self.multi_scale_search(
-                i_gray, s_gray, ratio_min=r_min, ratio_max=r_max, step=self.scale_step,
-                threshold=self.threshold, time_out=1.0)
-            if not self.record_pos is None:
-                max_loc = (max_loc[0] + area[0], max_loc[1] + area[1])
+        # 求取识别位置: 目标中心 + 目标区域:
+        rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
+        best_match = Matched(rectangle, confidence, self.end_perf_count())
+        # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.METHOD_NAME, self.threshold, best_match))
 
-            # 求取识别位置: 目标中心 + 目标区域:
-            middle_point, rectangle = self._get_target_rectangle(max_loc, w, h)
-            best_match = generate_result(middle_point, rectangle, confidence)
-            # LOGGING.debug("[%s] threshold=%s, result=%s" % (self.METHOD_NAME, self.threshold, best_match))
-
-            return best_match if confidence >= self.threshold else None
-        else:
-            return None
+        return best_match if confidence >= self.threshold else None
 
     def _get_ratio_scope(self, src, templ, resolution):
         """预测缩放比的上下限."""
@@ -296,8 +275,8 @@ class MultiScaleTemplateMatchingPre(MultiScaleTemplateMatching):
         th, tw = templ.shape[0], templ.shape[1]
         w, h = resolution
         x, y = self.get_predict_point(record_pos, (W, H))
-        predict_x_radius = max(int(tw * W / (w)), self.DEVIATION)
-        predict_y_radius = max(int(th * H / (h)), self.DEVIATION)
+        predict_x_radius = max(int(tw * W / w), self.DEVIATION)
+        predict_y_radius = max(int(th * H / h), self.DEVIATION)
         area = (
             max(x - predict_x_radius, 0),
             max(y - predict_y_radius, 0),
