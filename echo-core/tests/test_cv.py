@@ -28,50 +28,69 @@ class CVTestSuite(TestCase):
     def tearDown(self):
         pass
 
-    def _test_find(self, cls, find_all=True, find_best=True):
+    def _test_find_all(self, cls):
         configs = [
-            ("pypi_copy", imread("test_cv/sample_pypi_part_copy.png"), imread("test_cv/sample_pypi_full.png")),
-            ("pypi_logo", imread("test_cv/sample_pypi_part_logo.png"), imread("test_cv/sample_pypi_full.png")),
-            ("pypi_title", imread("test_cv/sample_pypi_part_title.png"), imread("test_cv/sample_pypi_full.png")),
-            ("pypi_version", imread("test_cv/sample_pypi_part_version.png"), imread("test_cv/sample_pypi_full.png")),
+            ("pypi_copy", imread("samples/sample_pypi_part_copy.png"), imread("samples/sample_pypi_full_duplicate.png")),
+            ("pypi_logo", imread("samples/sample_pypi_part_logo.png"), imread("samples/sample_pypi_full_duplicate.png")),
+            ("pypi_title", imread("samples/sample_pypi_part_title.png"), imread("samples/sample_pypi_full_duplicate.png")),
+            ("pypi_version", imread("samples/sample_pypi_part_version.png"), imread("samples/sample_pypi_full_duplicate.png")),
         ]
         for c in configs:
             matching = cls(c[1], c[2])
-            if find_all:
-                results = matching.find_all()
-                print(f'[{matching.name}] {c[0]} found all({len(results)}): {results}')
-            if find_best:
-                best = matching.find_best()
-                print(f'[{matching.name}] {c[0]} found best: {best}')
+            results = matching.find_all()
+            print(f'[{matching.name}] {c[0]} found all({len(results)}): {results}')
+            print('')
+
+    def _test_find_best(self, cls):
+        configs = [
+            ("pypi_copy", imread("samples/sample_pypi_part_copy.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_copy_small", imread("samples/sample_pypi_part_copy_small.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_copy_large", imread("samples/sample_pypi_part_copy_large.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_logo", imread("samples/sample_pypi_part_logo.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_logo_small", imread("samples/sample_pypi_part_logo_small.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_logo_large", imread("samples/sample_pypi_part_logo_large.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_title", imread("samples/sample_pypi_part_title.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_title_small", imread("samples/sample_pypi_part_title_small.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_title_large", imread("samples/sample_pypi_part_title_large.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_version", imread("samples/sample_pypi_part_version.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_version_small", imread("samples/sample_pypi_part_version_small.png"), imread("samples/sample_pypi_full.png")),
+            ("pypi_version_large", imread("samples/sample_pypi_part_version_large.png"), imread("samples/sample_pypi_full.png")),
+        ]
+        for c in configs:
+            matching = cls(c[1], c[2])
+            best = matching.find_best()
+            print(f'[{matching.name}] {c[0]} found best: {best}')
             print('')
 
     def test_template_matching(self):
-        self._test_find(TemplateMatching)
+        self._test_find_all(TemplateMatching)
+        print('=' * 100, '\n')
+        self._test_find_best(TemplateMatching)
 
     def test_multi_scale_template_matching(self):
-        self._test_find(MultiScaleTemplateMatching, find_all=False)
+        self._test_find_best(MultiScaleTemplateMatching)
 
     def test_multi_scale_template_matching_pre(self):
-        self._test_find(MultiScaleTemplateMatchingPre, find_all=False)
+        self._test_find_best(MultiScaleTemplateMatchingPre)
 
     def test_kaze_matching(self):
-        self._test_find(KAZEMatching, find_all=False)
+        self._test_find_best(KAZEMatching)
 
     def test_brisk_matching(self):
-        self._test_find(BRISKMatching, find_all=False)
+        self._test_find_best(BRISKMatching)
 
     def test_akaze_matching(self):
-        self._test_find(AKAZEMatching, find_all=False)
+        self._test_find_best(AKAZEMatching)
 
     def test_orb_matching(self):
-        self._test_find(ORBMatching, find_all=False)
+        self._test_find_best(ORBMatching)
 
     def test_brief_matching(self):
-        self._test_find(BRIEFMatching, find_all=False)
+        self._test_find_best(BRIEFMatching)
 
     def test_sift_matching(self):
-        self._test_find(SIFTMatching, find_all=False)
+        self._test_find_best(SIFTMatching)
 
     @skip("surf is not supported")
     def test_surf_matching(self):
-        self._test_find(SURFMatching, find_all=False)
+        self._test_find_best(SURFMatching)
