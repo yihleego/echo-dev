@@ -14,7 +14,8 @@
 # limitations under the License.
 
 
-from .common import to_string, deep_to_lower, deep_to_upper, deep_strip, \
+from .common import is_linux, is_mac, is_windows, \
+    to_string, deep_to_lower, deep_to_upper, deep_strip, \
     matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 from .deprecated import deprecated
 from .screenshot import screenshot
@@ -24,6 +25,7 @@ __all__ = [
     "deprecated",
     "singleton",
     "screenshot",
+    'is_linux', 'is_mac', 'is_windows',
     "to_string", "deep_to_lower", "deep_to_upper", "deep_strip",
     "matches", "STR_EXPRS", "INT_EXPRS", "BOOL_EXPRS"
 ]

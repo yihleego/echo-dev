@@ -20,40 +20,38 @@ from typing import Callable
 
 from PIL import Image
 
-from .utils import win32, screenshot
+from .utils import is_windows, screenshot, to_string
+
+if is_windows():
+    from .utils import win32
 
 
-class Element(ABC):
+class Driver(ABC):
+    def __init__(self, handle: int, process_id: int = None, process_name: str = None):
+        self._handle = handle
+        if not process_id:
+            process_id = win32.get_process_id_from_handle(handle)
+        if not process_name:
+            process_name = win32.get_process_name_by_process_id(process_id)
+        self._process_id = process_id
+        self._process_name = process_name
 
     @property
-    @abstractmethod
     def handle(self) -> int:
-        pass
+        return self._handle
 
     @property
-    @abstractmethod
     def process_id(self) -> int:
-        pass
+        return self._process_id
 
     @property
-    @abstractmethod
-    def rectangle(self) -> tuple[int, int, int, int]:
-        pass
+    def process_name(self) -> str:
+        return self._process_name
 
     def screenshot(self, filename: str = None) -> Image:
         self.set_foreground()
         time.sleep(0.06)
-        return screenshot(self.rectangle, filename)
-
-    def wait(self, predicate: Callable[[any], bool], timeout=None, interval=None):
-        start = time.perf_counter()
-        while not predicate(self):
-            time_left = timeout - (time.perf_counter() - start)
-            if time_left > 0:
-                time.sleep(min(interval, time_left))
-            else:
-                err = TimeoutError("timed out")
-                raise err
+        return win32.screenshot(self.handle, filename)
 
     def set_foreground(self) -> bool:
         self.show()
@@ -86,6 +84,47 @@ class Element(ABC):
     def is_normal(self) -> bool:
         return win32.get_window_placement(self.handle).showCmd == win32.SW_SHOWNORMAL
 
+    def __str__(self) -> str:
+        return to_string(self, 'handle', 'process_id', 'process_name')
 
-class Driver(ABC):
-    pass
+
+class Element(ABC):
+    @property
+    @abstractmethod
+    def driver(self) -> Driver:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def rectangle(self) -> tuple[int, int, int, int]:
+        raise NotImplementedError
+
+    @property
+    def handle(self) -> int:
+        return self.driver.handle
+
+    @property
+    def process_id(self) -> int:
+        return self.driver.process_id
+
+    @property
+    def process_name(self) -> str:
+        return self.driver.process_name
+
+    def screenshot(self, filename: str = None) -> Image:
+        self.driver.set_foreground()
+        time.sleep(0.06)
+        return screenshot(self.rectangle, filename)
+
+    def wait(self, predicate: Callable[[any], bool], timeout=None, interval=None):
+        start = time.perf_counter()
+        while not predicate(self):
+            time_left = timeout - (time.perf_counter() - start)
+            if time_left > 0:
+                time.sleep(min(interval, time_left))
+            else:
+                err = TimeoutError("timed out")
+                raise err
+
+    def __str__(self) -> str:
+        return to_string(self, 'rectangle')

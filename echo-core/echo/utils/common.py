@@ -14,9 +14,24 @@
 # limitations under the License.
 
 
+import platform
 import re
 from enum import Enum
 from typing import Union, Callable
+
+_system = platform.system().lower()
+
+
+def is_linux() -> bool:
+    return _system.find("linux") >= 0
+
+
+def is_mac() -> bool:
+    return _system.find("darwin") >= 0 or _system.find("mac") >= 0
+
+
+def is_windows() -> bool:
+    return _system.find("windows") >= 0
 
 
 def to_string(obj, *keys) -> str:
