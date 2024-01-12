@@ -16,10 +16,10 @@
 
 __version__ = "0.0.1"
 
-from .cv.driver import CVDriver, CVElement
+from .cv import CVDriver, CVElement
 from .driver import Driver, Element
-from .jab.driver import JABDriver, JABElement, Role, State
-from .uia.driver import UIADriver, UIAElement, Role
+from .jab import JABDriver, JABElement, Role, State
+from .uia import UIADriver, UIAElement, Role
 
 __all__ = [
     'Driver', 'Element',
