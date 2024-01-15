@@ -260,6 +260,29 @@ class UIAElement(Element):
                 res.append(child)
         return res
 
+    def previous(self) -> Optional['UIAElement']:
+        parent = self.parent()
+        children_in_children = parent.children()
+        for i in range(len(children_in_children)):
+            if children_in_children[i]._window == self._window:
+                if i > 0:
+                    return children_in_children[i - 1]
+                else:
+                    return None
+        return None
+
+    def next(self) -> Optional['UIAElement']:
+        parent = self.parent()
+        children_in_children = parent.children()
+        size = len(children_in_children)
+        for i in range(size):
+            if children_in_children[i]._window == self._window:
+                if i < size:
+                    return children_in_children[i + 1]
+                else:
+                    return None
+        return None
+
     @property
     def children_count(self) -> int:
         return len(self._window.children())
@@ -344,6 +367,8 @@ class UIAElement(Element):
             "name": STR_EXPRS,
             "description": STR_EXPRS,
             "text": STR_EXPRS,
+            "automation_id": STR_EXPRS,
+            "class_name": STR_EXPRS,
             "x": INT_EXPRS,
             "y": INT_EXPRS,
             "width": INT_EXPRS,

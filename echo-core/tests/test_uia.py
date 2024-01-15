@@ -166,6 +166,32 @@ class UIATestSuite(TestCase):
         print('child', child)
         print('parent', parent)
 
+    def test_parent(self):
+        root = self.root
+
+        elem = root.find_element(role=Role.BUTTON, name="Click")
+        assert elem is not None
+
+        parent = elem.parent()
+        assert parent is not None
+
+        print('child', elem)
+        print('parent', parent)
+
+    def test_previous_next(self):
+        root = self.root
+
+        elem = root.find_element(role=Role.BUTTON, name="Click")
+        assert elem is not None
+
+        previous = elem.previous()
+        next = elem.next()
+        assert previous is not None
+        assert next is not None
+
+        print('previous', previous)
+        print('next', next)
+
     def test_screenshot(self):
         root = self.root
         root.screenshot("./screenshots/uia/root.png")

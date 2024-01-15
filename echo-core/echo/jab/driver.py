@@ -205,52 +205,52 @@ class JABElementProperties(ABC):
 
     @property
     def editable(self) -> bool:
-        return Role.EDITABLE in self.info.states_en_US
+        return State.EDITABLE in self.info.states_en_US
 
     @property
     def focusable(self) -> bool:
-        return Role.FOCUSABLE in self.info.states_en_US
+        return State.FOCUSABLE in self.info.states_en_US
 
     @property
     def resizable(self) -> bool:
-        return Role.RESIZABLE in self.info.states_en_US
+        return State.RESIZABLE in self.info.states_en_US
 
     @property
     def visible(self) -> bool:
-        return Role.VISIBLE in self.info.states_en_US
+        return State.VISIBLE in self.info.states_en_US
 
     @property
     def selectable(self) -> bool:
-        return Role.SELECTABLE in self.info.states_en_US
+        return State.SELECTABLE in self.info.states_en_US
 
     @property
     def multiselectable(self) -> bool:
-        return Role.MULTISELECTABLE in self.info.states_en_US
+        return State.MULTISELECTABLE in self.info.states_en_US
 
     @property
     def collapsed(self) -> bool:
-        return Role.COLLAPSED in self.info.states_en_US
+        return State.COLLAPSED in self.info.states_en_US
 
     @property
     def checked(self) -> bool:
         # checkbox, radiobutton
-        return Role.CHECKED in self.info.states_en_US
+        return State.CHECKED in self.info.states_en_US
 
     @property
     def enabled(self) -> bool:
-        return Role.ENABLED in self.info.states_en_US
+        return State.ENABLED in self.info.states_en_US
 
     @property
     def focused(self) -> bool:
-        return Role.FOCUSED in self.info.states_en_US
+        return State.FOCUSED in self.info.states_en_US
 
     @property
     def selected(self) -> bool:
-        return Role.SELECTED in self.info.states_en_US
+        return State.SELECTED in self.info.states_en_US
 
     @property
     def showing(self) -> bool:
-        return Role.SHOWING in self.info.states_en_US
+        return State.SHOWING in self.info.states_en_US
 
     def __str__(self) -> str:
         return to_string(self, 'role', 'name', 'description', 'index_in_parent',
@@ -404,6 +404,14 @@ class JABElement(JABElementProperties, Element):
                 res.append(child)
         return res
 
+    def previous(self) -> Optional['JABElement']:
+        parent = self.parent()
+        return parent.child(self.index_in_parent - 1) if parent is not None else None
+
+    def next(self) -> Optional['JABElement']:
+        parent = self.parent()
+        return parent.child(self.index_in_parent + 1) if parent is not None else None
+
     @property
     def children_count(self) -> int:
         return self._lib.getVisibleChildrenCount(self._vmid, self._ctx)
@@ -535,7 +543,7 @@ class JABElement(JABElementProperties, Element):
         releasing = []
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, ignore_case=ignore_case, include_self=False, **criteria)
+            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found = child
                 break
@@ -544,7 +552,7 @@ class JABElement(JABElementProperties, Element):
         # looking for deep elements if not found
         if not found:
             for child in children:
-                found = child.find_element(*filters, ignore_case=ignore_case, **criteria)
+                found = child.find_element(*filters, ignore_case=ignore_case, include_self=False, **criteria)
                 if found:
                     break
         # release all mismatched elements
