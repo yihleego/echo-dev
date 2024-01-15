@@ -375,32 +375,23 @@ class JABElement(JABElementProperties, Element):
         return self._parent
 
     def child(self, index: int) -> Optional['JABElement']:
-        count = self.children_count
-        if count <= 0 or count <= index:
+        ctx = self._lib.getAccessibleChildFromContext(self._vmid, self._ctx, c_int(index))
+        if ctx == 0:
             return None
-        vci = VisibleChildrenInfo()
-        res = self._lib.getVisibleChildren(self._vmid, self._ctx, 0, vci)
-        if not res or vci.returnedChildrenCount <= 0 or vci.returnedChildrenCount <= index:
-            return None
-        ctx = AccessibleContext(vci.children[index])
         return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
 
     def children(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
-        count = self._lib.getVisibleChildrenCount(self._vmid, self._ctx)
-        if count <= 0:
-            return []
-        vci = VisibleChildrenInfo()
-        res = self._lib.getVisibleChildren(self._vmid, self._ctx, 0, vci)
-        if not res or vci.returnedChildrenCount <= 0:
-            return []
         res = []
-        for idx in range(vci.returnedChildrenCount):
-            ctx = AccessibleContext(vci.children[idx])
+        count = self.children_count
+        for index in range(count):
+            ctx = self._lib.getAccessibleChildFromContext(self._vmid, self._ctx, c_int(index))
             child = JABElement.create_element(ctx=ctx, root=self._root, parent=self)
             if filters or criteria:
                 matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
                 if matched:
                     res.append(child)
+                else:
+                    child.release()
             else:
                 res.append(child)
         return res
@@ -415,7 +406,7 @@ class JABElement(JABElementProperties, Element):
 
     @property
     def children_count(self) -> int:
-        return self._lib.getVisibleChildrenCount(self._vmid, self._ctx)
+        return self.info.childrenCount
 
     def click(self, button="left") -> bool:
         # TODO I don't know why 'click' does not work
@@ -569,8 +560,6 @@ class JABElement(JABElementProperties, Element):
         self._released = True
 
     def _do_action(self, action_names: list[str]) -> bool:
-        if not action_names or not self.info.accessibleAction:
-            return False
         aa = AccessibleActions()
         res = self._lib.getAccessibleActions(self._vmid, self._ctx, aa)
         if not res:

@@ -222,3 +222,41 @@ def screenshot(handle: int = None, filename: str = None) -> Image:
         image.save(filename)
 
     return image
+
+
+def draw_outline(rect: tuple[int, int, int, int], msg=None, color=0x0000ff):
+    import ctypes
+    import win32gui
+    from pywinauto import win32structures
+    from pywinauto import win32defines
+    # create the pen (outline)
+    pen_handle = ctypes.windll.gdi32.CreatePen(win32defines.PS_SOLID, 3, color)
+
+    # create the brush (inside)
+    brush = win32structures.LOGBRUSH()
+    brush.lbStyle = win32defines.BS_NULL
+    brush.lbHatch = win32defines.HS_DIAGCROSS
+    brush_handle = ctypes.windll.gdi32.CreateBrushIndirect(ctypes.byref(brush))
+
+    font = win32structures.LOGFONTW()
+    font.lfHeight = 20
+    font.lfWeight = win32defines.FW_BOLD
+    font_handle = ctypes.windll.gdi32.CreateFontIndirectW(ctypes.byref(font))
+
+    # get the Device Context
+    dc = ctypes.windll.gdi32.CreateDCW("DISPLAY", None, None, None)
+
+    # push our objects into it
+    ctypes.windll.gdi32.SelectObject(dc, brush_handle)
+    ctypes.windll.gdi32.SelectObject(dc, pen_handle)
+    ctypes.windll.gdi32.SelectObject(dc, font_handle)
+    win32gui.SetTextColor(dc, color)
+    win32gui.SetBkMode(dc, win32defines.TRANSPARENT)
+
+    ctypes.windll.gdi32.Rectangle(dc, rect[0], rect[1], rect[2], rect[3])
+    if msg:
+        ctypes.windll.gdi32.TextOutW(dc, rect[0], rect[1] - font.lfHeight, msg, len(msg))
+
+    ctypes.windll.gdi32.DeleteObject(brush_handle)
+    ctypes.windll.gdi32.DeleteObject(pen_handle)
+    ctypes.windll.gdi32.DeleteDC(dc)
