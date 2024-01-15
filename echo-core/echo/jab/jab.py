@@ -945,14 +945,14 @@ class JABLib:
     def setTextContents(self, vmID: c_long, ac: AccessibleContext, text: c_wchar_p) -> BOOL:
         return self._lib.setTextContents(vmID, ac, text)
 
-    def getParentWithRole(self, vmID: c_long, ac: AccessibleContext, role: wchar_t) -> AccessibleContext:
-        return self._lib.getParentWithRole(vmID, ac, byref(role))
+    def getParentWithRole(self, vmID: c_long, ac: AccessibleContext, role: c_wchar_p) -> AccessibleContext:
+        return self._lib.getParentWithRole(vmID, ac, role)
 
     def getTopLevelObject(self, vmID: c_long, ac: AccessibleContext) -> AccessibleContext:
         return self._lib.getTopLevelObject(vmID, ac)
 
-    def getParentWithRoleElseRoot(self, vmID: c_long, ac: AccessibleContext, role: wchar_t) -> AccessibleContext:
-        return self._lib.getParentWithRoleElseRoot(vmID, ac, byref(role))
+    def getParentWithRoleElseRoot(self, vmID: c_long, ac: AccessibleContext, role: c_wchar_p) -> AccessibleContext:
+        return self._lib.getParentWithRoleElseRoot(vmID, ac, role)
 
     def getObjectDepth(self, vmID: c_long, ac: AccessibleContext) -> int:
         return self._lib.getObjectDepth(vmID, ac)

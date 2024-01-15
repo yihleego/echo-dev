@@ -48,7 +48,7 @@ class CVElement(Element):
 
     @property
     def driver(self) -> CVDriver:
-        return self.driver
+        return self._driver
 
     @property
     def rectangle(self) -> tuple[int, int, int, int]:

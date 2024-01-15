@@ -315,7 +315,7 @@ class JABElement(JABElementProperties, Element):
 
     @property
     def driver(self) -> JABDriver:
-        return self.driver
+        return self._driver
 
     @property
     def vmid(self) -> c_long:
@@ -370,6 +370,7 @@ class JABElement(JABElementProperties, Element):
         parent_ctx = self._lib.getAccessibleParentFromContext(self._vmid, self._ctx)
         if parent_ctx == 0:
             return None
+        parent_ctx = AccessibleContext(parent_ctx)
         self._parent = JABElement.create_element(ctx=parent_ctx, root=self._root)
         return self._parent
 

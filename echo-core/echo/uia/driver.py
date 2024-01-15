@@ -130,7 +130,7 @@ class UIAElement(Element):
 
     @property
     def driver(self) -> UIADriver:
-        return self.driver
+        return self._driver
 
     @property
     def info(self) -> UIAElementInfo:
