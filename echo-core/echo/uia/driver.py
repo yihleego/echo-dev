@@ -15,6 +15,7 @@
 
 
 from _ctypes import COMError
+from enum import Enum
 from typing import Optional, Callable
 
 from pywinauto.application import Application
@@ -25,7 +26,50 @@ from pywinauto.uia_element_info import UIAElementInfo
 
 from echo.driver import Driver, Element
 from echo.utils import to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
-from . import Role
+
+
+class Role(str, Enum):
+    APP_BAR = "AppBar"
+    BUTTON = "Button"
+    CALENDAR = "Calendar"
+    CHECK_BOX = "CheckBox"
+    COMBO_BOX = "ComboBox"
+    CUSTOM = "Custom"
+    DATA_GRID = "DataGrid"
+    DATA_ITEM = "DataItem"
+    DOCUMENT = "Document"
+    EDIT = "Edit"
+    GROUP = "Group"
+    HEADER = "Header"
+    HEADER_ITEM = "HeaderItem"
+    HYPERLINK = "Hyperlink"
+    IMAGE = "Image"
+    LIST = "List"
+    LIST_ITEM = "ListItem"
+    MENU_BAR = "MenuBar"
+    MENU = "Menu"
+    MENU_ITEM = "MenuItem"
+    PANE = "Pane"
+    PROGRESS_BAR = "ProgressBar"
+    RADIO_BUTTON = "RadioButton"
+    SCROLL_BAR = "ScrollBar"
+    SEMANTIC_ZOOM = "SemanticZoom"
+    SEPARATOR = "Separator"
+    SLIDER = "Slider"
+    SPINNER = "Spinner"
+    SPLIT_BUTTON = "SplitButton"
+    STATUS_BAR = "StatusBar"
+    TAB = "Tab"
+    TAB_ITEM = "TabItem"
+    TABLE = "Table"
+    TEXT = "Text"
+    THUMB = "Thumb"
+    TITLE_BAR = "TitleBar"
+    TOOL_BAR = "ToolBar"
+    TOOL_TIP = "ToolTip"
+    TREE = "Tree"
+    TREE_ITEM = "TreeItem"
+    WINDOW = "Window"
 
 
 class UIADriver(Driver):
@@ -35,7 +79,7 @@ class UIADriver(Driver):
         window = app.top_window()
         return UIAElement.create_root(app=app, window=window.wrapper_object(), driver=self)
 
-    def find_window(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
+    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
         root = self.root()
         if root is None:
             return []
@@ -53,6 +97,9 @@ class UIAElement(Element):
         self._root: UIAElement = root or self  # TODO root
         self._parent: Optional[UIAElement] = parent
         self._virtual_depth: int = parent.depth + 1 if parent else 0
+        self._handle: Optional[int] = None
+        self._process_id: Optional[int] = None
+        self._process_name: Optional[str] = None
 
     @staticmethod
     def create_root(app: Application, window: UIAWrapper, driver: UIADriver) -> Optional['UIAElement']:
@@ -61,6 +108,25 @@ class UIAElement(Element):
     @staticmethod
     def create_element(window: UIAWrapper, root: 'UIAElement', parent: 'UIAElement' = None) -> 'UIAElement':
         return UIAElement(app=root._app, window=window, driver=root._driver, root=root, parent=parent)
+
+    @property
+    def handle(self) -> int:
+        if not self._handle:
+            self._handle = self.info.handle
+        return self._handle
+
+    @property
+    def process_id(self) -> int:
+        if not self._process_id:
+            self._process_id = self.info.process_id
+        return self._process_id
+
+    @property
+    def process_name(self) -> str:
+        if not self._process_name:
+            from ..utils import win32
+            self._process_name = win32.get_process_name_by_process_id(self.process_id)
+        return self._process_name
 
     @property
     def driver(self) -> UIADriver:
@@ -334,4 +400,5 @@ class UIAElement(Element):
 
     def __str__(self) -> str:
         return to_string(self, 'role', 'name', 'description', 'automation_id', 'class_name',
-                         'rectangle', 'text', 'visible', 'checked', 'enabled', 'selected', 'depth')
+                         'rectangle', 'text', 'visible', 'checked', 'enabled', 'selected', 'depth',
+                         'handle', 'process_id', 'process_name')

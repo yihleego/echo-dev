@@ -16,12 +16,96 @@
 
 from abc import ABC, abstractmethod
 from ctypes import create_string_buffer
+from enum import Enum
 from functools import cached_property
 
 from echo.driver import Driver, Element
 from echo.utils import to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
-from . import Role
 from .jab import *
+
+
+class Role(str, Enum):
+    ALERT = "alert"
+    CANVAS = "canvas"
+    CHECK_BOX = "check box"
+    COLOR_CHOOSER = "color chooser"
+    COLUMN_HEADER = "column header"
+    COMBO_BOX = "combo box"
+    DATE_EDITOR = "date editor"
+    DESKTOP_ICON = "desktop icon"
+    DESKTOP_PANE = "desktop pane"
+    DIALOG = "dialog"
+    DIRECTORY_PANE = "directory pane"
+    EDIT_BAR = "edit bar"
+    FILE_CHOOSER = "file chooser"
+    FILLER = "filler"
+    FONT_CHOOSER = "font chooser"
+    FOOTER = "footer"
+    FRAME = "frame"
+    GLASS_PANE = "glass pane"
+    GROUP_BOX = "group box"
+    HEADER = "header"
+    HYPERLINK = "hyperlink"
+    ICON = "icon"
+    INTERNAL_FRAME = "internal frame"
+    LABEL = "label"
+    LAYERED_PANE = "layered pane"
+    LIST = "list"
+    LIST_ITEM = "list item"
+    MENU = "menu"
+    MENU_BAR = "menu bar"
+    MENU_ITEM = "menu item"
+    OPTION_PANE = "option pane"
+    PAGE_TAB = "page tab"
+    PAGE_TAB_LIST = "page tab list"
+    PANEL = "panel"
+    PARAGRAPH = "paragraph"
+    PASSWORD_TEXT = "password text"
+    POPUP_MENU = "popup menu"
+    PROGRESS_BAR = "progress bar"
+    PUSH_BUTTON = "push button"
+    RADIO_BUTTON = "radio button"
+    ROOT_PANE = "root pane"
+    ROW_HEADER = "row header"
+    RULER = "ruler"
+    SCROLL_BAR = "scroll bar"
+    SCROLL_PANE = "scroll pane"
+    SEPARATOR = "separator"
+    SLIDER = "slider"
+    SPIN_BOX = "spinbox"
+    SPLIT_PANE = "split pane"
+    STATUS_BAR = "status bar"
+    TABLE = "table"
+    TEXT = "text"
+    TOGGLE_BUTTON = "toggle button"
+    TOOL_BAR = "tool bar"
+    TOOL_TIP = "tool tip"
+    TREE = "tree"
+    UNKNOWN = "unknown"
+    VIEW_PORT = "viewport"
+    WINDOW = "window"
+
+
+class State(str, Enum):
+    ACTIVE = "active"
+    CHECKED = "checked"
+    COLLAPSED = "collapsed"
+    EDITABLE = "editable"
+    ENABLED = "enabled"
+    FOCUSABLE = "focusable"
+    FOCUSED = "focused"
+    HORIZONTAL = "horizontal"
+    MODAL = "modal"
+    MULTIPLELINE = "multiple line"
+    MULTISELECTABLE = "multiselectable"
+    OPAQUE = "opaque"
+    RESIZABLE = "resizable"
+    SELECTABLE = "selectable"
+    SELECTED = "selected"
+    SHOWING = "showing"
+    SINGLELINE = "single line"
+    VERTICAL = "vertical"
+    VISIBLE = "visible"
 
 
 class JABDriver(Driver):
@@ -32,7 +116,7 @@ class JABDriver(Driver):
     def root(self) -> Optional['JABElement']:
         return JABElement.create_root(lib=self._lib, driver=self)
 
-    def find_window(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
+    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
         root = self.root()
         if root is None:
             return []

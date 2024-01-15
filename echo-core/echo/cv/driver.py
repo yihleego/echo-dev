@@ -22,9 +22,9 @@ from echo.utils import to_string
 
 class CVDriver(Driver):
     def root(self) -> Optional['CVElement']:
-        return CVElement.create_root(handle=self._handle, driver=self)
+        return CVElement.create_root(driver=self)
 
-    def find_window(self, filename: str) -> list['CVElement']:
+    def find_elements(self, filename: str) -> list['CVElement']:
         # TODO
         pass
 
