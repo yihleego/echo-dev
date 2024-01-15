@@ -129,7 +129,11 @@ class UIATestSuite(TestCase):
 
             time.sleep(1)
 
-            query_button_elem = root.find_element(role=Role.PUSH_BUTTON, name="查询")
+            clear_button_elem = root.find_element(role=Role.PUSH_BUTTON, name="清空值")
+            assert clear_button_elem is not None
+
+            query_button_elem = clear_button_elem.next()
+            assert query_button_elem is not None and query_button_elem.name == "查询"
             query_button_elem.click()
 
             label_elem = root.find_element(role=Role.LABEL, name_like="每页行数")
@@ -137,6 +141,9 @@ class UIATestSuite(TestCase):
 
             input_elem = label_elem.next()
             assert input_elem is not None
+
+            if input_elem.text == "500":
+                return
 
             input_elem.input("500")
             time.sleep(1)
@@ -171,6 +178,11 @@ class UIATestSuite(TestCase):
             dialog_window = self.uia_root.find_element(class_name="SunAwtDialog")
             dialog_driver = JABDriver(dialog_window.handle)
             dialog_root = dialog_driver.root()
+            if dialog_root is None:
+                time.sleep(1)
+                dialog_window = self.uia_root.find_element(class_name="SunAwtDialog")
+                dialog_driver = JABDriver(dialog_window.handle)
+                dialog_root = dialog_driver.root()
 
             save_input_elem = dialog_root.find_element(role=Role.TEXT)
             save_input_elem.input(save_path)
@@ -195,7 +207,7 @@ class UIATestSuite(TestCase):
         time.sleep(20)
 
         files = os.listdir(save_path)
-        print(files)
+        print(save_path, files)
         time.sleep(1)
 
     def test_event(self):
