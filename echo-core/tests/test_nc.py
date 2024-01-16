@@ -242,14 +242,15 @@ if __name__ == '__main__':
     from echo.utils.event import listener, Event, Key, main
     import asyncio
 
-    window_cache = {}
 
     @singleton
     class JABLib2(JABLib):
         pass
 
 
-    jab_lib = JABLib()
+    jab_lib = JABLib2()
+
+    window_cache = {}
 
 
     @listener(Event.KEYUP)
@@ -268,6 +269,7 @@ if __name__ == '__main__':
             elems = jab_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
             for elem in elems:
                 print(elem)
+                win32.draw_outline(elem.rectangle)
             print()
         elif window_cache[handle] == 'uia':
             print('handle', 'uia', handle)
@@ -275,6 +277,7 @@ if __name__ == '__main__':
             elems = uia_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
             for elem in elems:
                 print(elem)
+                win32.draw_outline(elem.rectangle)
             print()
 
 
