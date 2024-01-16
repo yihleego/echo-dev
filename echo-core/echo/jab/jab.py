@@ -666,7 +666,7 @@ class JABLib:
 
     def init(self):
         def _get_system_root_dir() -> Optional[str]:
-            return os.environ.get("SYSTEMROOT") or "C:\\Windows"
+            return os.environ.get("SYSTEMROOT") or "C:\\Windows\\System32"
 
         def _get_java_home_dir() -> Optional[str]:
             java_home_dir = os.environ.get("JAVA_HOME")

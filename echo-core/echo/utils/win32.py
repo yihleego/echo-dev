@@ -17,7 +17,7 @@
 import os
 import time
 from ctypes import Structure, windll, sizeof, byref
-from ctypes.wintypes import HWND, DWORD, UINT, POINT, RECT
+from ctypes.wintypes import HWND, DWORD, UINT, RECT, POINT
 
 from PIL import Image
 
@@ -160,6 +160,11 @@ def get_process_name_by_process_id(process_id):
         return f"Access denied to process with PID {process_id}"
 
 
+def window_from_point(point: tuple[int, int]) -> int:
+    # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-windowfrompoint
+    return windll.user32.WindowFromPoint(POINT(point[0], point[1]))
+
+
 def wait_thread_idle(process_id: int, handle: int):
     # https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocess
     process = windll.kernel32.OpenProcess(0x0400, 0, process_id)
@@ -168,6 +173,17 @@ def wait_thread_idle(process_id: int, handle: int):
         raise RuntimeError(f'Window (hwnd={handle}) is not responding!')
     # https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
     windll.kernel32.CloseHandle(process)
+
+
+def post_message(message, wparam=0, lparam=0):
+    # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-postmessagew
+    return windll.user32.PostMessageW(self, message, wparam, lparam)
+
+
+def close_handle(handle: int):
+    from pywinauto.controls.hwndwrapper import HwndWrapper
+    hwnd = HwndWrapper(handle)
+    hwnd.close()
 
 
 def screenshot(handle: int = None, filename: str = None) -> Image:

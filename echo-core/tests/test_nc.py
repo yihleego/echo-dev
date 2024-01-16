@@ -19,13 +19,16 @@ import time
 from unittest import TestCase
 
 from echo.jab import JABDriver, Role
+from echo.jab.jab import JABLib
 from echo.uia import UIADriver
-from echo.utils import win32
+from echo.utils import win32, singleton
 
 
 class UIATestSuite(TestCase):
 
     def setUp(self):
+        self.jab_lib = JABLib()
+
         self.uia_handle = win32.find_window(class_name="YonyouUWnd", window_name="Yonyou UClient")
         self.uia_driver = UIADriver(self.uia_handle)
         self.uia_root = self.uia_driver.root()
@@ -175,14 +178,10 @@ class UIATestSuite(TestCase):
             export_item_elem.click()
             time.sleep(1)
 
-            dialog_window = self.uia_root.find_element(class_name="SunAwtDialog")
+            dialog_window = self.uia_root.find_element(class_name="SunAwtDialog", name="保存")
             dialog_driver = JABDriver(dialog_window.handle)
             dialog_root = dialog_driver.root()
-            if dialog_root is None:
-                time.sleep(1)
-                dialog_window = self.uia_root.find_element(class_name="SunAwtDialog")
-                dialog_driver = JABDriver(dialog_window.handle)
-                dialog_root = dialog_driver.root()
+            time.sleep(1)
 
             save_input_elem = dialog_root.find_element(role=Role.TEXT)
             save_input_elem.input(save_path)
@@ -190,9 +189,6 @@ class UIATestSuite(TestCase):
 
             save_button_elem = dialog_root.find_element(role=Role.PUSH_BUTTON, name="保存")
             save_button_elem.click()
-
-            menu_driver.close()
-            dialog_driver.close()
 
         _step1_open_tab()
         time.sleep(1)
@@ -213,9 +209,73 @@ class UIATestSuite(TestCase):
     def test_event(self):
         from echo.utils.event import listener, Event, Key, main
         import asyncio
+        window_cache = {}
+        jab_lib = JABLib()
+
         @listener(Event.KEYUP)
         def on_click(x, y, key):
-            if key == Key.f5:
-                self.test_find_all_elements()
+            if key != Key.f5:
+                return
+            handle = win32.window_from_point((x, y))
+            if handle not in window_cache:
+                if jab_lib.isJavaWindow(handle):
+                    window_cache[handle] = 'jab'
+                else:
+                    window_cache[handle] = 'uia'
+            if window_cache[handle] == 'jab':
+                jab_driver = JABDriver(handle)
+                elems = jab_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
+                for elem in elems:
+                    print(elem)
+                print()
+            elif window_cache[handle] == 'uia':
+                uia_driver = UIADriver(handle)
+                elems = uia_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
+                for elem in elems:
+                    print(elem)
+                print()
 
         asyncio.run(main())
+
+
+if __name__ == '__main__':
+    from echo.utils.event import listener, Event, Key, main
+    import asyncio
+
+    window_cache = {}
+
+    @singleton
+    class JABLib2(JABLib):
+        pass
+
+
+    jab_lib = JABLib()
+
+
+    @listener(Event.KEYUP)
+    def on_click(x, y, key):
+        if key != Key.f5:
+            return
+        handle = win32.window_from_point((x, y))
+        if handle not in window_cache:
+            if jab_lib.isJavaWindow(handle):
+                window_cache[handle] = 'jab'
+            else:
+                window_cache[handle] = 'uia'
+        if window_cache[handle] == 'jab':
+            print('handle', 'jab', handle)
+            jab_driver = JABDriver(handle)
+            elems = jab_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
+            for elem in elems:
+                print(elem)
+            print()
+        elif window_cache[handle] == 'uia':
+            print('handle', 'uia', handle)
+            uia_driver = UIADriver(handle)
+            elems = uia_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
+            for elem in elems:
+                print(elem)
+            print()
+
+
+    asyncio.run(main())
