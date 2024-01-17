@@ -150,6 +150,16 @@ def get_process_id_from_handle(handle: int) -> int:
     return process_id.value
 
 
+def get_window_text(handle: int) -> str:
+    import win32gui
+    return win32gui.GetWindowText(handle)
+
+
+def get_class_name(handle: int) -> str:
+    import win32gui
+    return win32gui.GetClassName(handle)
+
+
 def get_process_name_by_process_id(process_id):
     import psutil
     try:

@@ -460,10 +460,10 @@ class AccessibleContextInfo(Structure):
     _fields_ = [
         ("name", c_wchar * MAX_STRING_SIZE),  # the AccessibleName of the object
         ("description", c_wchar * MAX_STRING_SIZE),  # the AccessibleDescription of the object
-        ("role", c_wchar * SHORT_STRING_SIZE),  # localized AccesibleRole string
-        ("role_en_US", c_wchar * SHORT_STRING_SIZE),  # AccesibleRole string in the en_US locale
-        ("states", c_wchar * SHORT_STRING_SIZE),  # localized AccesibleStateSet string (comma separated)
-        ("states_en_US", c_wchar * SHORT_STRING_SIZE),  # AccesibleStateSet string in the en_US locale (comma separated)
+        ("role", c_wchar * SHORT_STRING_SIZE),  # localized AccessibleRole string
+        ("role_en_US", c_wchar * SHORT_STRING_SIZE),  # AccessibleRole string in the en_US locale
+        ("states", c_wchar * SHORT_STRING_SIZE),  # localized AccessibleStateSet string (comma separated)
+        ("states_en_US", c_wchar * SHORT_STRING_SIZE),  # AccessibleStateSet string in the en_US locale (comma separated)
         ("indexInParent", c_int),  # index of object in parent
         ("childrenCount", c_int),  # # of children, if any
         ("x", c_int),  # screen coords in pixels
@@ -538,7 +538,7 @@ class AccessibleTextAttributesInfo(Structure):
 
 class AccessibleTableInfo(Structure):
     _fields_ = [
-        ("caption", JOBJECT64),  # AccesibleContext
+        ("caption", JOBJECT64),  # AccessibleContext
         ("summary", JOBJECT64),  # AccessibleContext
         ("rowCount", c_int),
         ("columnCount", c_int),
@@ -826,7 +826,7 @@ class JABLib:
         self._dll.isJavaWindow.restype = BOOL
         # BOOL isSameObject(long vmID, JOBJECT64 obj1, JOBJECT64 obj2)
         self._dll.isSameObject.argtypes = [c_long, JOBJECT64, JOBJECT64]
-        self._dll.isSameObject.restypes = BOOL
+        self._dll.isSameObject.restype = BOOL
         # BOOL GetAccessibleContextFromHWND(HWND window, long *vmID, AccessibleContext *ac)
         self._dll.getAccessibleContextFromHWND.argtypes = [HWND, POINTER(c_long), POINTER(AccessibleContext)]
         self._dll.getAccessibleContextFromHWND.restype = BOOL
@@ -924,16 +924,16 @@ class JABLib:
         # Accessible KeyBindings, Icons and Actions
         # BOOL getAccessibleKeyBindings(long vmID, AccessibleContext accessibleContext, AccessibleKeyBindings *keyBindings)
         self._dll.getAccessibleKeyBindings.argtypes = [c_long, AccessibleContext, POINTER(AccessibleKeyBindings)]
-        self._dll.getAccessibleKeyBindings.restypes = BOOL
+        self._dll.getAccessibleKeyBindings.restype = BOOL
         # BOOL getAccessibleIcons(long vmID, AccessibleContext accessibleContext, AccessibleIcons *icons)
         self._dll.getAccessibleIcons.argtypes = [c_long, AccessibleContext, POINTER(AccessibleIcons)]
         self._dll.getAccessibleIcons.restype = BOOL
         # BOOL getAccessibleActions(long vmID, AccessibleContext accessibleContext, AccessibleActions *actions)
         self._dll.getAccessibleActions.argtypes = [c_long, AccessibleContext, POINTER(AccessibleActions)]
-        self._dll.getAccessibleActions.restypes = BOOL
+        self._dll.getAccessibleActions.restype = BOOL
         # BOOL doAccessibleActions(long vmID, AccessibleContext accessibleContext, AccessibleActionsToDo *actionsToDo, int *failure_index)
         self._dll.doAccessibleActions.argtypes = [c_long, AccessibleContext, POINTER(AccessibleActionsToDo), POINTER(c_int)]
-        self._dll.doAccessibleActions.restypes = BOOL
+        self._dll.doAccessibleActions.restype = BOOL
 
         # AccessibleText
         # BOOL GetAccessibleTextInfo(long vmID, AccessibleContext at, AccessibleTextInfo *info, int x, int y)
@@ -995,35 +995,35 @@ class JABLib:
         # Utility
         # BOOL setTextContents(long vmID, AccessibleContext ac, c_wchar *text)
         self._dll.setTextContents.argtypes = [c_long, AccessibleContext, c_wchar_p]
-        self._dll.setTextContents.restypes = BOOL
+        self._dll.setTextContents.restype = BOOL
         # AccessibleContext getParentWithRole(long vmID, AccessibleContext ac, c_wchar *role)
         self._dll.getParentWithRole.argtypes = [c_long, AccessibleContext, c_wchar_p]
-        self._dll.getParentWithRole.restypes = AccessibleContext
+        self._dll.getParentWithRole.restype = AccessibleContext
         # AccessibleContext getParentWithRoleElseRoot(long vmID, AccessibleContext ac, c_wchar *role)
         self._dll.getParentWithRoleElseRoot.argtypes = [c_long, AccessibleContext, c_wchar_p]
-        self._dll.getParentWithRoleElseRoot.restypes = AccessibleContext
+        self._dll.getParentWithRoleElseRoot.restype = AccessibleContext
         # AccessibleContext getTopLevelObject(long vmID, AccessibleContext ac)
         self._dll.getTopLevelObject.argtypes = [c_long, AccessibleContext]
-        self._dll.getTopLevelObject.restypes = AccessibleContext
+        self._dll.getTopLevelObject.restype = AccessibleContext
         # int getObjectDepth(long vmID, AccessibleContext ac)
         self._dll.getObjectDepth.argtypes = [c_long, AccessibleContext]
-        self._dll.getObjectDepth.restypes = c_int
+        self._dll.getObjectDepth.restype = c_int
         # AccessibleContext getActiveDescendent(long vmID, AccessibleContext ac)
         self._dll.getActiveDescendent.argtypes = [c_long, AccessibleContext]
-        self._dll.getActiveDescendent.restypes = AccessibleContext
+        self._dll.getActiveDescendent.restype = AccessibleContext
 
         # BOOL getVirtualAccessibleNameFP(long vmID, AccessibleContext context, c_wchar *name, int len)
         self._dll.getVirtualAccessibleName.argtypes = [c_long, AccessibleContext, c_wchar_p, c_int]
         self._dll.getVirtualAccessibleName.restype = BOOL
         # BOOL requestFocus(long vmID, AccessibleContext context)
         self._dll.requestFocus.argtypes = [c_long, AccessibleContext]
-        self._dll.requestFocus.restypes = BOOL
+        self._dll.requestFocus.restype = BOOL
         # BOOL selectTextRange(long vmID, AccessibleContext context, int startIndex, int endIndex)
         self._dll.selectTextRange.argtypes = [c_long, AccessibleContext, c_int, c_int]
-        self._dll.selectTextRange.restypes = BOOL
+        self._dll.selectTextRange.restype = BOOL
         # BOOL getTextAttributesInRange(long vmID, AccessibleContext context, int startIndex, int endIndex, AccessibleTextAttributesInfo *attributes, short *len)
         self._dll.getTextAttributesInRange.argtypes = [c_long, AccessibleContext, c_int, c_int, POINTER(AccessibleTextAttributesInfo), POINTER(c_short)]
-        self._dll.getTextAttributesInRange.restypes = BOOL
+        self._dll.getTextAttributesInRange.restype = BOOL
         # int getVisibleChildrenCount(long vmID, AccessibleContext context)
         self._dll.getVisibleChildrenCount.argtypes = [c_long, AccessibleContext]
         self._dll.getVisibleChildrenCount.restype = c_int
@@ -1100,8 +1100,8 @@ class JABLib:
         self._dll.setPopupMenuWillBecomeVisibleFP.argtypes = [c_void_p]
         self._dll.setPopupMenuWillBecomeVisibleFP.restype = None
 
-    def releaseJavaObject(self, vmID: c_long, object: JOBJECT64):
-        self._dll.releaseJavaObject(vmID, object)
+    def releaseJavaObject(self, vmID: c_long, obj: JOBJECT64):
+        self._dll.releaseJavaObject(vmID, obj)
 
     def getVersionInfo(self, vmID: c_long, info: AccessBridgeVersionInfo) -> BOOL:
         return self._dll.getVersionInfo(vmID, byref(info))

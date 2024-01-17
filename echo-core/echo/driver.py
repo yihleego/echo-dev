@@ -27,14 +27,21 @@ if is_windows():
 
 
 class Driver(ABC):
-    def __init__(self, handle: int, process_id: int = None, process_name: str = None):
+    def __init__(self, handle: int, process_id: int = None, process_name: str = None,
+                 window_name: str = None, class_name: str = None):
         self._handle = handle
         if not process_id:
             process_id = win32.get_process_id_from_handle(handle)
         if not process_name:
             process_name = win32.get_process_name_by_process_id(process_id)
+        if not window_name:
+            window_name = win32.get_window_text(handle)
+        if not class_name:
+            class_name = win32.get_class_name(handle)
         self._process_id = process_id
         self._process_name = process_name
+        self._window_name = window_name
+        self._class_name = class_name
 
     @property
     def handle(self) -> int:
@@ -47,6 +54,14 @@ class Driver(ABC):
     @property
     def process_name(self) -> str:
         return self._process_name
+
+    @property
+    def window_name(self) -> str:
+        return self._window_name
+
+    @property
+    def class_name(self) -> str:
+        return self._class_name
 
     def screenshot(self, filename: str = None) -> Image:
         self.set_foreground()
@@ -85,7 +100,7 @@ class Driver(ABC):
         return win32.get_window_placement(self.handle).showCmd == win32.SW_SHOWNORMAL
 
     def __str__(self) -> str:
-        return to_string(self, 'handle', 'process_id', 'process_name')
+        return to_string(self, 'handle', 'process_id', 'process_name', 'window_name', 'class_name')
 
 
 class Element(ABC):
