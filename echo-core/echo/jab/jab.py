@@ -837,8 +837,8 @@ class JABLib:
         self._dll.getAccessibleContextAt.argtypes = [c_long, AccessibleContext, c_int, c_int, POINTER(AccessibleContext)]
         self._dll.getAccessibleContextAt.restype = BOOL
         # BOOL GetAccessibleContextWithFocus(HWND window, long *vmID, AccessibleContext *ac)
-        self._dll.GetAccessibleContextWithFocus.argtypes = [HWND, c_long, POINTER(AccessibleContext)]
-        self._dll.GetAccessibleContextWithFocus.restype = BOOL
+        self._dll.getAccessibleContextWithFocus.argtypes = [HWND, c_long, POINTER(AccessibleContext)]
+        self._dll.getAccessibleContextWithFocus.restype = BOOL
         # BOOL getAccessibleContextInfo(long vmID, AccessibleContext ac, AccessibleContextInfo *info)
         self._dll.getAccessibleContextInfo.argtypes = [c_long, AccessibleContext, POINTER(AccessibleContextInfo)]
         self._dll.getAccessibleContextInfo.restype = BOOL
@@ -1022,7 +1022,7 @@ class JABLib:
         self._dll.selectTextRange.argtypes = [c_long, AccessibleContext, c_int, c_int]
         self._dll.selectTextRange.restypes = BOOL
         # BOOL getTextAttributesInRange(long vmID, AccessibleContext context, int startIndex, int endIndex, AccessibleTextAttributesInfo *attributes, short *len)
-        self._dll.getTextAttributesInRange.argtypes = [c_long, AccessibleContext, c_int, c_int, POINTER(AccessibleTextAttributesInfo), AccessibleTextAttributesInfo(c_short)]
+        self._dll.getTextAttributesInRange.argtypes = [c_long, AccessibleContext, c_int, c_int, POINTER(AccessibleTextAttributesInfo), POINTER(c_short)]
         self._dll.getTextAttributesInRange.restypes = BOOL
         # int getVisibleChildrenCount(long vmID, AccessibleContext context)
         self._dll.getVisibleChildrenCount.argtypes = [c_long, AccessibleContext]
@@ -1036,9 +1036,9 @@ class JABLib:
         # BOOL getCaretLocation(long vmID, AccessibleContext context, AccessibleTextRectInfo *rectInfo, int index)
         self._dll.getCaretLocation.argtypes = [c_long, AccessibleContext, POINTER(AccessibleTextRectInfo), c_int]
         self._dll.getCaretLocation.restype = BOOL
-        # int getEventsWaitingFP()
-        self._dll.getEventsWaitingFP.argtypes = []
-        self._dll.getEventsWaitingFP.restype = c_int
+        # int getEventsWaiting()
+        self._dll.getEventsWaiting.argtypes = []
+        self._dll.getEventsWaiting.restype = c_int
 
     def _define_callbacks(self):
         # Property events
@@ -1229,8 +1229,8 @@ class JABLib:
     def getAccessibleTextLineBounds(self, vmID: c_long, at: AccessibleText, index: c_int, startIndex: c_int, endIndex: c_int) -> BOOL:
         return self._dll.getAccessibleTextLineBounds(vmID, at, index, byref(startIndex), byref(endIndex))
 
-    def getAccessibleTextRange(self, vmID: c_long, at: AccessibleText, start: c_int, end: c_int, text: c_wchar, len: c_short) -> BOOL:
-        return self._dll.getAccessibleTextRange(vmID, at, start, end, byref(text), len)
+    def getAccessibleTextRange(self, vmID: c_long, at: AccessibleText, start: c_int, end: c_int, text: c_wchar_p, len: c_short) -> BOOL:
+        return self._dll.getAccessibleTextRange(vmID, at, start, end, text, len)
 
     def getCurrentAccessibleValueFromContext(self, vmID: c_long, av: AccessibleValue, value: c_wchar, len: c_short) -> BOOL:
         return self._dll.getCurrentAccessibleValueFromContext(vmID, av, byref(value), len)

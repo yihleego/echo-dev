@@ -15,7 +15,7 @@
 
 
 from abc import ABC, abstractmethod
-from ctypes import create_string_buffer
+from ctypes import create_unicode_buffer
 from enum import Enum
 from functools import cached_property
 
@@ -344,14 +344,14 @@ class JABElement(JABElementProperties, Element):
             return None
         if ati.charCount <= 0:
             return ""
-        chars_start = c_int(0)
-        chars_end = ati.charCount - 1
         chars_len = ati.charCount
-        buffer = create_string_buffer((chars_len + 1) * 2)
+        chars_start = c_int(0)
+        chars_end = chars_len - 1
+        buffer = create_unicode_buffer(ati.charCount)
         res = self._lib.getAccessibleTextRange(self._vmid, self._ctx, chars_start, chars_end, buffer, chars_len)
         if not res:
             return None
-        return buffer[:chars_len * 2].decode("utf_16", errors="replace")
+        return buffer.value
 
     @property
     def depth(self) -> int:
@@ -387,6 +387,8 @@ class JABElement(JABElementProperties, Element):
         count = self.children_count
         for index in range(count):
             ctx = self._lib.getAccessibleChildFromContext(self._vmid, self._ctx, c_int(index))
+            if ctx == 0:
+                continue
             ctx = AccessibleContext(ctx)
             child = JABElement.create_element(ctx=ctx, root=self._root, parent=self)
             if filters or criteria:
