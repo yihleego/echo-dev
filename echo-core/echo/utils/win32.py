@@ -18,6 +18,7 @@ import os
 import time
 from ctypes import Structure, windll, sizeof, byref
 from ctypes.wintypes import HWND, DWORD, UINT, RECT, POINT
+from typing import Optional
 
 from PIL import Image
 
@@ -158,6 +159,16 @@ def get_process_name_by_process_id(process_id):
         return f"Process with PID {process_id} not found"
     except psutil.AccessDenied:
         return f"Access denied to process with PID {process_id}"
+
+
+def get_cursor_pos() -> Optional[tuple[int, int]]:
+    # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getcursorpos
+    point = POINT()
+    res = windll.user32.GetCursorPos(byref(point))
+    if res:
+        return point.x, point.y
+    else:
+        return None
 
 
 def window_from_point(point: tuple[int, int]) -> int:

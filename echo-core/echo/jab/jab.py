@@ -19,9 +19,11 @@ import os
 import platform
 import shutil
 import subprocess
-from ctypes import c_bool, c_char, c_wchar, c_wchar_p, c_int, c_int64, c_float, c_long, c_short, cdll, byref, CFUNCTYPE, Structure
-from ctypes.wintypes import HWND
+from ctypes import c_char, c_wchar, c_wchar_p, c_int, c_int64, c_float, c_long, c_short, c_void_p, cdll, byref, CFUNCTYPE, Structure, POINTER
+from ctypes.wintypes import BOOL, HWND
 from typing import Generator, Callable, Optional
+
+from echo.utils import singleton
 
 # AccessBridge versioning
 ACCESS_BRIDGE_VERSION = "AccessBridge 2.0.2"
@@ -51,14 +53,6 @@ ACCESSIBLE_BUTTON2_KEYSTROKE = 64
 ACCESSIBLE_BUTTON3_KEYSTROKE = 128
 
 # object types
-jboolean = c_bool
-jchar = c_char
-jint = c_int
-jlong = c_long
-jfloat = c_float
-jshort = c_short
-wchar_t = c_wchar
-BOOL = c_long
 JOBJECT64 = c_int64
 AccessibleContext = JOBJECT64
 AccessibleText = JOBJECT64
@@ -455,27 +449,27 @@ cMemoryMappedNameSize = 255
 # Accessibility information bundles
 class AccessBridgeVersionInfo(Structure):
     _fields_ = [
-        ("VMVersion", wchar_t * SHORT_STRING_SIZE),  # output of "java -version"
-        ("bridgeJavaClassVersion", wchar_t * SHORT_STRING_SIZE),  # version of the AccessBridge.class
-        ("bridgeJavaDLLVersion", wchar_t * SHORT_STRING_SIZE),  # version of JavaAccessBridge.dll
-        ("bridgeWinDLLVersion", wchar_t * SHORT_STRING_SIZE),  # version of WindowsAccessBridge.dll
+        ("VMVersion", c_wchar * SHORT_STRING_SIZE),  # output of "java -version"
+        ("bridgeJavaClassVersion", c_wchar * SHORT_STRING_SIZE),  # version of the AccessBridge.class
+        ("bridgeJavaDLLVersion", c_wchar * SHORT_STRING_SIZE),  # version of JavaAccessBridge.dll
+        ("bridgeWinDLLVersion", c_wchar * SHORT_STRING_SIZE),  # version of WindowsAccessBridge.dll
     ]
 
 
 class AccessibleContextInfo(Structure):
     _fields_ = [
-        ("name", wchar_t * MAX_STRING_SIZE),  # the AccessibleName of the object
-        ("description", wchar_t * MAX_STRING_SIZE),  # the AccessibleDescription of the object
-        ("role", wchar_t * SHORT_STRING_SIZE),  # localized AccesibleRole string
-        ("role_en_US", wchar_t * SHORT_STRING_SIZE),  # AccesibleRole string in the en_US locale
-        ("states", wchar_t * SHORT_STRING_SIZE),  # localized AccesibleStateSet string (comma separated)
-        ("states_en_US", wchar_t * SHORT_STRING_SIZE),  # AccesibleStateSet string in the en_US locale (comma separated)
-        ("indexInParent", jint),  # index of object in parent
-        ("childrenCount", jint),  # # of children, if any
-        ("x", jint),  # screen coords in pixels
-        ("y", jint),
-        ("width", jint),  # pixel width of object
-        ("height", jint),  # pixel height of object
+        ("name", c_wchar * MAX_STRING_SIZE),  # the AccessibleName of the object
+        ("description", c_wchar * MAX_STRING_SIZE),  # the AccessibleDescription of the object
+        ("role", c_wchar * SHORT_STRING_SIZE),  # localized AccesibleRole string
+        ("role_en_US", c_wchar * SHORT_STRING_SIZE),  # AccesibleRole string in the en_US locale
+        ("states", c_wchar * SHORT_STRING_SIZE),  # localized AccesibleStateSet string (comma separated)
+        ("states_en_US", c_wchar * SHORT_STRING_SIZE),  # AccesibleStateSet string in the en_US locale (comma separated)
+        ("indexInParent", c_int),  # index of object in parent
+        ("childrenCount", c_int),  # # of children, if any
+        ("x", c_int),  # screen coords in pixels
+        ("y", c_int),
+        ("width", c_int),  # pixel width of object
+        ("height", c_int),  # pixel height of object
         ("accessibleComponent", BOOL),  # flags for various additional
         ("accessibleAction", BOOL),  # Java Accessibility interfaces
         ("accessibleSelection", BOOL),  # FALSE if this object doesn't
@@ -487,34 +481,34 @@ class AccessibleContextInfo(Structure):
 
 class AccessibleTextInfo(Structure):
     _fields_ = [
-        ("charCount", jint),  # number of characters in the text
-        ("caretIndex", jint),  # index of caret
-        ("indexAtPoint", jint),  # index at the point
+        ("charCount", c_int),  # number of characters in the text
+        ("caretIndex", c_int),  # index of caret
+        ("indexAtPoint", c_int),  # index at the point
     ]
 
 
 class AccessibleTextItemsInfo(Structure):
     _fields_ = [
-        ("letter", wchar_t),  # letter at index
-        ("word", wchar_t * SHORT_STRING_SIZE),  # word at index
-        ("sentence", wchar_t * MAX_STRING_SIZE),  # sentence at index
+        ("letter", c_wchar),  # letter at index
+        ("word", c_wchar * SHORT_STRING_SIZE),  # word at index
+        ("sentence", c_wchar * MAX_STRING_SIZE),  # sentence at index
     ]
 
 
 class AccessibleTextSelectionInfo(Structure):
     _fields_ = [
-        ("selectionStartIndex", jint),  # start of selection
-        ("selectionEndIndex", jint),  # end of selection
-        ("selectedText", wchar_t * MAX_STRING_SIZE),  # text of the selection
+        ("selectionStartIndex", c_int),  # start of selection
+        ("selectionEndIndex", c_int),  # end of selection
+        ("selectedText", c_wchar * MAX_STRING_SIZE),  # text of the selection
     ]
 
 
 class AccessibleTextRectInfo(Structure):
     _fields_ = [
-        ("x", jint),  # x coord of bounding rect
-        ("y", jint),  # y coord of bounding rect
-        ("width", jint),  # width of bounding rect
-        ("height", jint),  # height of bounding rect
+        ("x", c_int),  # x coord of bounding rect
+        ("y", c_int),  # y coord of bounding rect
+        ("width", c_int),  # width of bounding rect
+        ("height", c_int),  # height of bounding rect
     ]
 
 
@@ -526,19 +520,19 @@ class AccessibleTextAttributesInfo(Structure):
         ("strikethrough", BOOL),  # is text strikethrough?
         ("superscript", BOOL),  # is text superscript?
         ("subscript", BOOL),  # is text subscript?
-        ("backgroundColor", wchar_t * SHORT_STRING_SIZE),  # background color
-        ("foregroundColor", wchar_t * SHORT_STRING_SIZE),  # foreground color
-        ("fontFamily", wchar_t * SHORT_STRING_SIZE),  # font family
-        ("fontSize", jint),  # font size
-        ("alignment", jint),  # alignment
-        ("bidiLevel", jint),  # bidi level
-        ("firstLineIndent", jfloat),  # first line indent
-        ("leftIndent", jfloat),  # left indent
-        ("rightIndent", jfloat),  # right indent
-        ("lineSpacing", jfloat),  # line spacing
-        ("spaceAbove", jfloat),  # space above
-        ("spaceBelow", jfloat),  # space below
-        ("fullAttributesString", wchar_t * MAX_STRING_SIZE),  # full attributes?
+        ("backgroundColor", c_wchar * SHORT_STRING_SIZE),  # background color
+        ("foregroundColor", c_wchar * SHORT_STRING_SIZE),  # foreground color
+        ("fontFamily", c_wchar * SHORT_STRING_SIZE),  # font family
+        ("fontSize", c_int),  # font size
+        ("alignment", c_int),  # alignment
+        ("bidiLevel", c_int),  # bidi level
+        ("firstLineIndent", c_float),  # first line indent
+        ("leftIndent", c_float),  # left indent
+        ("rightIndent", c_float),  # right indent
+        ("lineSpacing", c_float),  # line spacing
+        ("spaceAbove", c_float),  # space above
+        ("spaceBelow", c_float),  # space below
+        ("fullAttributesString", c_wchar * MAX_STRING_SIZE),  # full attributes?
     ]
 
 
@@ -546,8 +540,8 @@ class AccessibleTableInfo(Structure):
     _fields_ = [
         ("caption", JOBJECT64),  # AccesibleContext
         ("summary", JOBJECT64),  # AccessibleContext
-        ("rowCount", jint),
-        ("columnCount", jint),
+        ("rowCount", c_int),
+        ("columnCount", c_int),
         ("accessibleContext", JOBJECT64),
         ("accessibleTable", JOBJECT64),
     ]
@@ -556,42 +550,42 @@ class AccessibleTableInfo(Structure):
 class AccessibleTableCellInfo(Structure):
     _fields_ = [
         ("accessibleContext", JOBJECT64),
-        ("index", jint),
-        ("row", jint),
-        ("column", jint),
-        ("rowExtent", jint),
-        ("columnExtent", jint),
+        ("index", c_int),
+        ("row", c_int),
+        ("column", c_int),
+        ("rowExtent", c_int),
+        ("columnExtent", c_int),
         ("isSelected", BOOL),
     ]
 
 
 class AccessibleRelationInfo(Structure):
     _fields_ = [
-        ("key", wchar_t * SHORT_STRING_SIZE),
-        ("targetCount", jint),
+        ("key", c_wchar * SHORT_STRING_SIZE),
+        ("targetCount", c_int),
         ("targets", JOBJECT64 * MAX_RELATION_TARGETS),
     ]
 
 
 class AccessibleRelationSetInfo(Structure):
     _fields_ = [
-        ("relationCount", jint),
+        ("relationCount", c_int),
         ("relations", AccessibleRelationInfo * MAX_RELATIONS),
     ]
 
 
 class AccessibleHyperlinkInfo(Structure):
     _fields_ = [
-        ("text", wchar_t * MAX_STRING_SIZE),
-        ("startIndex", jint),
-        ("endIndex", jint),
+        ("text", c_wchar * MAX_STRING_SIZE),
+        ("startIndex", c_int),
+        ("endIndex", c_int),
         ("accessibleHyperlink", JOBJECT64),
     ]
 
 
 class AccessibleHypertextInfo(Structure):
     _fields_ = [
-        ("linkCount", jint),
+        ("linkCount", c_int),
         ("links", AccessibleHyperlinkInfo * MAX_HYPERLINKS),
         ("accessibleHypertext", JOBJECT64),
     ]
@@ -599,49 +593,49 @@ class AccessibleHypertextInfo(Structure):
 
 class AccessibleKeyBindingInfo(Structure):
     _fields_ = [
-        ("character", jchar),
-        ("modifiers", jint),
+        ("character", c_char),
+        ("modifiers", c_int),
     ]
 
 
 class AccessibleKeyBindings(Structure):
     _fields_ = [
-        ("keyBindingsCount", jint),
+        ("keyBindingsCount", c_int),
         ("keyBindingInfo", AccessibleKeyBindingInfo * MAX_KEY_BINDINGS),
     ]
 
 
 class AccessibleIconInfo(Structure):
     _fields_ = [
-        ("description", wchar_t * MAX_STRING_SIZE),
-        ("height", jint),
-        ("width", jint),
+        ("description", c_wchar * MAX_STRING_SIZE),
+        ("height", c_int),
+        ("width", c_int),
     ]
 
 
 class AccessibleIcons(Structure):
     _fields_ = [
-        ("iconsCount", jint),
+        ("iconsCount", c_int),
         ("accessibleIcons", AccessibleIconInfo * MAX_ICON_INFO),
     ]
 
 
 class AccessibleActionInfo(Structure):
     _fields_ = [
-        ("name", wchar_t * SHORT_STRING_SIZE),
+        ("name", c_wchar * SHORT_STRING_SIZE),
     ]
 
 
 class AccessibleActions(Structure):
     _fields_ = [
-        ("actionsCount", jint),
+        ("actionsCount", c_int),
         ("actionInfo", AccessibleActionInfo * MAX_ACTION_INFO),
     ]
 
 
 class AccessibleActionsToDo(Structure):
     _fields_ = [
-        ("actionsCount", jint),
+        ("actionsCount", c_int),
         ("actions", AccessibleActionInfo * MAX_ACTIONS_TO_DO),
     ]
 
@@ -653,12 +647,42 @@ class VisibleChildrenInfo(Structure):
     ]
 
 
+JavaShutdownFP = CFUNCTYPE(None, c_long)
+FocusGainedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+FocusLostFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+CaretUpdateFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MouseClickedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MouseEnteredFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MouseExitedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MousePressedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MouseReleasedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MenuCanceledFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MenuDeselectedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+MenuSelectedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+PopupMenuCanceledFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+PopupMenuWillBecomeInvisibleFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+PopupMenuWillBecomeVisibleFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+PropertyChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p, c_wchar_p)
+PropertyNameChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p)
+PropertyDescriptionChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p)
+PropertyStateChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p)
+PropertyValueChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p)
+PropertySelectionChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+PropertyTextChangedFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+PropertyCaretChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, c_int, c_int)
+PropertyVisibleDataChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
+PropertyChildChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64)
+PropertyActiveDescendentChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64)
+PropertyTableModelChangeFP = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p)
+
+
+@singleton
 class JABLib:
     def __init__(self, dll_path=None):
         self._loaded: bool = False
         self._started: bool = False
         self._paths: list[tuple[str, str]] = []
-        self._lib = None
+        self._dll = None
         self.init()
         self.install()
         self.load(dll_path)
@@ -666,7 +690,7 @@ class JABLib:
 
     def init(self):
         def _get_system_root_dir() -> Optional[str]:
-            return os.environ.get("SYSTEMROOT") or "C:\\Windows\\System32"
+            return os.environ.get("SYSTEMROOT") or "C:\\Windows"
 
         def _get_java_home_dir() -> Optional[str]:
             java_home_dir = os.environ.get("JAVA_HOME")
@@ -720,13 +744,16 @@ class JABLib:
                 "please set correct path for environment variable, "
                 "or check the passed customized WindowsAccessBridge dll."
             )
-        self._lib = cdll.LoadLibrary(dll_path)
-        self._lib.Windows_run()
+        self._dll = cdll.LoadLibrary(dll_path)
+        self._define_functions()
+        self._define_callbacks()
         self._loaded = True
 
     def start(self):
         if self._started:
             return
+
+        self._dll.Windows_run()
 
         import win32event
         import pythoncom
@@ -777,316 +804,586 @@ class JABLib:
         self._started = True
 
     def stop(self):
-        if self._lib:
-            _ctypes.FreeLibrary(self._lib._handle)
+        if self._dll:
+            _ctypes.FreeLibrary(self._dll._handle)
 
-    def releaseJavaObject(self, vmID: c_long, object: Java_Object):
-        self._lib.releaseJavaObject(vmID, object)
+    def _define_functions(self):
+        # void Windows_run()
+        self._dll.Windows_run.argtypes = []
+        self._dll.Windows_run.restype = None
+
+        # void ReleaseJavaObject(long vmID, JOBJECT64 object)
+        self._dll.releaseJavaObject.argtypes = [c_long, JOBJECT64]
+        self._dll.releaseJavaObject.restype = None
+
+        # BOOL GetVersionInfo(long vmID, AccessBridgeVersionInfo *info)
+        self._dll.getVersionInfo.argtypes = [c_long, POINTER(AccessBridgeVersionInfo)]
+        self._dll.getVersionInfo.restype = BOOL
+
+        # Accessible context
+        # BOOL isJavaWindow(HWND window)
+        self._dll.isJavaWindow.argtypes = [HWND]
+        self._dll.isJavaWindow.restype = BOOL
+        # BOOL isSameObject(long vmID, JOBJECT64 obj1, JOBJECT64 obj2)
+        self._dll.isSameObject.argtypes = [c_long, JOBJECT64, JOBJECT64]
+        self._dll.isSameObject.restypes = BOOL
+        # BOOL GetAccessibleContextFromHWND(HWND window, long *vmID, AccessibleContext *ac)
+        self._dll.getAccessibleContextFromHWND.argtypes = [HWND, POINTER(c_long), POINTER(AccessibleContext)]
+        self._dll.getAccessibleContextFromHWND.restype = BOOL
+        # HWND getHWNDFromAccessibleContext(long vmID, AccessibleContext ac)
+        self._dll.getHWNDFromAccessibleContext.argtypes = [c_long, AccessibleContext]
+        self._dll.getHWNDFromAccessibleContext.restype = HWND
+        # BOOL getAccessibleContextAt(long vmID, AccessibleContext acParent, int x, int y, AccessibleContext *ac)
+        self._dll.getAccessibleContextAt.argtypes = [c_long, AccessibleContext, c_int, c_int, POINTER(AccessibleContext)]
+        self._dll.getAccessibleContextAt.restype = BOOL
+        # BOOL GetAccessibleContextWithFocus(HWND window, long *vmID, AccessibleContext *ac)
+        self._dll.GetAccessibleContextWithFocus.argtypes = [HWND, c_long, POINTER(AccessibleContext)]
+        self._dll.GetAccessibleContextWithFocus.restype = BOOL
+        # BOOL getAccessibleContextInfo(long vmID, AccessibleContext ac, AccessibleContextInfo *info)
+        self._dll.getAccessibleContextInfo.argtypes = [c_long, AccessibleContext, POINTER(AccessibleContextInfo)]
+        self._dll.getAccessibleContextInfo.restype = BOOL
+        # AccessibleContext getAccessibleChildFromContext(long vmID, AccessibleContext ac, int i)
+        self._dll.getAccessibleChildFromContext.argtypes = [c_long, AccessibleContext, c_int]
+        self._dll.getAccessibleChildFromContext.restype = AccessibleContext
+        # AccessibleContext getAccessibleParentFromContext(long vmID, AccessibleContext ac)
+        self._dll.getAccessibleParentFromContext.argtypes = [c_long, AccessibleContext]
+        self._dll.getAccessibleParentFromContext.restype = AccessibleContext
+
+        # Accessible table
+        # BOOL getAccessibleTableInfo(long vmID, AccessibleContext ac, AccessibleTableInfo *tableInfo)
+        self._dll.getAccessibleTableInfo.argtypes = [c_long, AccessibleContext, POINTER(AccessibleTableInfo)]
+        self._dll.getAccessibleTableInfo.restype = BOOL
+        # BOOL getAccessibleTableCellInfo(long vmID, AccessibleTable accessibleTable, int row, int column, AccessibleTableCellInfo *tableCellInfo)
+        self._dll.getAccessibleTableCellInfo.argtypes = [c_long, AccessibleTable, c_int, c_int, POINTER(AccessibleTableCellInfo)]
+        self._dll.getAccessibleTableCellInfo.restype = BOOL
+        # BOOL getAccessibleTableRowHeader(long vmID, AccessibleContext acParent, AccessibleTableInfo *tableInfo)
+        self._dll.getAccessibleTableRowHeader.argtypes = [c_long, AccessibleContext, POINTER(AccessibleTableInfo)]
+        self._dll.getAccessibleTableRowHeader.restype = BOOL
+        # BOOL getAccessibleTableColumnHeader(long vmID, AccessibleContext acParent, AccessibleTableInfo *tableInfo)
+        self._dll.getAccessibleTableColumnHeader.argtypes = [c_long, AccessibleContext, POINTER(AccessibleTableInfo)]
+        self._dll.getAccessibleTableColumnHeader.restype = BOOL
+        # AccessibleContext getAccessibleTableRowDescription(long vmID, AccessibleContext acParent, int row)
+        self._dll.getAccessibleTableRowDescription.argtypes = [c_long, AccessibleContext, c_int]
+        self._dll.getAccessibleTableRowDescription.restype = AccessibleContext
+        # AccessibleContext getAccessibleTableColumnDescription(long vmID, AccessibleContext acParent, int row)
+        self._dll.getAccessibleTableColumnDescription.argtypes = [c_long, AccessibleContext, c_int]
+        self._dll.getAccessibleTableColumnDescription.restype = AccessibleContext
+        # int getAccessibleTableRowSelectionCount(long vmID, AccessibleTable table)
+        self._dll.getAccessibleTableRowSelectionCount.argtypes = [c_long, AccessibleTable]
+        self._dll.getAccessibleTableRowSelectionCount.restype = c_int
+        # BOOL isAccessibleTableRowSelected(long vmID, AccessibleTable table, int row)
+        self._dll.isAccessibleTableRowSelected.argtypes = [c_long, AccessibleTable, c_int]
+        self._dll.isAccessibleTableRowSelected.restype = BOOL
+        # BOOL getAccessibleTableRowSelections(long vmID, AccessibleTable table, int count, int *selections)
+        self._dll.getAccessibleTableRowSelections.argtypes = [c_long, AccessibleTable, c_int, POINTER(c_int)]
+        self._dll.getAccessibleTableRowSelections.restype = BOOL
+        # int getAccessibleTableColumnSelectionCount(long vmID, AccessibleTable table)
+        self._dll.getAccessibleTableColumnSelectionCount.argtypes = [c_long, AccessibleTable]
+        self._dll.getAccessibleTableColumnSelectionCount.restype = c_int
+        # BOOL isAccessibleTableColumnSelected(long vmID, AccessibleTable table, int column)
+        self._dll.isAccessibleTableColumnSelected.argtypes = [c_long, AccessibleTable, c_int]
+        self._dll.isAccessibleTableColumnSelected.restype = BOOL
+        # BOOL getAccessibleTableColumnSelections(long vmID, AccessibleTable table, int count, int *selections)
+        self._dll.getAccessibleTableColumnSelections.argtypes = [c_long, AccessibleTable, c_int, POINTER(c_int)]
+        self._dll.getAccessibleTableColumnSelections.restype = BOOL
+        # int getAccessibleTableRow(long vmID, AccessibleTable table, int index)
+        self._dll.getAccessibleTableRow.argtypes = [c_long, AccessibleTable, c_int]
+        self._dll.getAccessibleTableRow.restype = c_int
+        # int getAccessibleTableColumn(long vmID, AccessibleTable table, int index)
+        self._dll.getAccessibleTableColumn.argtypes = [c_long, AccessibleTable, c_int]
+        self._dll.getAccessibleTableColumn.restype = c_int
+        # int getAccessibleTableIndex(long vmID, AccessibleTable table, int row, int column)
+        self._dll.getAccessibleTableIndex.argtypes = [c_long, AccessibleTable, c_int, c_int]
+        self._dll.getAccessibleTableIndex.restype = c_int
+
+        # AccessibleRelationSet
+        # BOOL getAccessibleRelationSet(long vmID, AccessibleContext accessibleContext, AccessibleRelationSetInfo *relationSetInfo)
+        self._dll.getAccessibleRelationSet.argtypes = [c_long, AccessibleContext, POINTER(AccessibleRelationSetInfo)]
+        self._dll.getAccessibleRelationSet.restype = BOOL
+
+        # AccessibleHypertext
+        # BOOL getAccessibleHypertext(long vmID, AccessibleContext accessibleContext, AccessibleHypertextInfo *hypertextInfo)
+        self._dll.getAccessibleHypertext.argtypes = [c_long, AccessibleContext, POINTER(AccessibleHypertextInfo)]
+        self._dll.getAccessibleHypertext.restype = BOOL
+        # BOOL activateAccessibleHyperlink(long vmID, AccessibleContext accessibleContext, AccessibleHyperlink accessibleHyperlink)
+        self._dll.activateAccessibleHyperlink.argtypes = [c_long, AccessibleContext, AccessibleHyperlink]
+        self._dll.activateAccessibleHyperlink.restype = BOOL
+        # int getAccessibleHyperlinkCount(long vmID, AccessibleContext accessibleContext)
+        self._dll.getAccessibleHyperlinkCount.argtypes = [c_long, AccessibleContext]
+        self._dll.getAccessibleHyperlinkCount.restype = c_int
+        # BOOL getAccessibleHypertextExt(long vmID, AccessibleContext accessibleContext, int nStartIndex, AccessibleHypertextInfo *hypertextInfo)
+        self._dll.getAccessibleHypertextExt.argtypes = [c_long, AccessibleContext, c_int, POINTER(AccessibleHypertextInfo)]
+        self._dll.getAccessibleHypertextExt.restype = BOOL
+        # int getAccessibleHypertextLinkIndex(long vmID, AccessibleHypertext hypertext, int nIndex)
+        self._dll.getAccessibleHypertextLinkIndex.argtypes = [c_long, AccessibleHypertext, c_int]
+        self._dll.getAccessibleHypertextLinkIndex.restype = c_int
+        # BOOL getAccessibleHyperlink(long vmID, AccessibleHypertext hypertext, int nIndex, AccessibleHyperlinkInfo *hyperlinkInfo)
+        self._dll.getAccessibleHyperlink.argtypes = [c_long, AccessibleHypertext, c_int, POINTER(AccessibleHyperlinkInfo)]
+        self._dll.getAccessibleHyperlink.restype = BOOL
+
+        # Accessible KeyBindings, Icons and Actions
+        # BOOL getAccessibleKeyBindings(long vmID, AccessibleContext accessibleContext, AccessibleKeyBindings *keyBindings)
+        self._dll.getAccessibleKeyBindings.argtypes = [c_long, AccessibleContext, POINTER(AccessibleKeyBindings)]
+        self._dll.getAccessibleKeyBindings.restypes = BOOL
+        # BOOL getAccessibleIcons(long vmID, AccessibleContext accessibleContext, AccessibleIcons *icons)
+        self._dll.getAccessibleIcons.argtypes = [c_long, AccessibleContext, POINTER(AccessibleIcons)]
+        self._dll.getAccessibleIcons.restype = BOOL
+        # BOOL getAccessibleActions(long vmID, AccessibleContext accessibleContext, AccessibleActions *actions)
+        self._dll.getAccessibleActions.argtypes = [c_long, AccessibleContext, POINTER(AccessibleActions)]
+        self._dll.getAccessibleActions.restypes = BOOL
+        # BOOL doAccessibleActions(long vmID, AccessibleContext accessibleContext, AccessibleActionsToDo *actionsToDo, int *failure_index)
+        self._dll.doAccessibleActions.argtypes = [c_long, AccessibleContext, POINTER(AccessibleActionsToDo), POINTER(c_int)]
+        self._dll.doAccessibleActions.restypes = BOOL
+
+        # AccessibleText
+        # BOOL GetAccessibleTextInfo(long vmID, AccessibleContext at, AccessibleTextInfo *info, int x, int y)
+        self._dll.getAccessibleTextInfo.argtypes = [c_long, AccessibleText, POINTER(AccessibleTextInfo), c_int, c_int]
+        self._dll.getAccessibleTextInfo.restype = BOOL
+        # BOOL GetAccessibleTextItems(long vmID, AccessibleContext at, AccessibleTextItemsInfo *textItems, int index)
+        self._dll.getAccessibleTextItems.argtypes = [c_long, AccessibleText, POINTER(AccessibleTextItemsInfo), c_int]
+        self._dll.getAccessibleTextItems.restype = BOOL
+        # BOOL GetAccessibleTextSelectionInfo(long vmID, AccessibleContext at, AccessibleTextSelectionInfo *textSelection)
+        self._dll.getAccessibleTextSelectionInfo.argtypes = [c_long, AccessibleText, POINTER(AccessibleTextSelectionInfo)]
+        self._dll.getAccessibleTextSelectionInfo.restype = BOOL
+        # BOOL getAccessibleTextAttributes(long vmID, AccessibleContext at, int index, AccessibleTextAttributesInfo *attributesInfo)
+        self._dll.getAccessibleTextAttributes.argtypes = [c_long, AccessibleText, c_int, POINTER(AccessibleTextAttributesInfo)]
+        self._dll.getAccessibleTextAttributes.restype = BOOL
+        # BOOL getAccessibleTextRect(long vmID, AccessibleContext at, AccessibleTextRectInfo *rectInfo, int index)
+        self._dll.getAccessibleTextRect.argtypes = [c_long, AccessibleText, POINTER(AccessibleTextRectInfo), c_int]
+        self._dll.getAccessibleTextRect.restype = BOOL
+        # BOOL getAccessibleTextLineBounds(long vmID, AccessibleContext at, int index, int *startIndex, int *endIndex)
+        self._dll.getAccessibleTextLineBounds.argtypes = [c_long, AccessibleText, c_int, POINTER(c_int), POINTER(c_int)]
+        self._dll.getAccessibleTextLineBounds.restype = BOOL
+        # BOOL getAccessibleTextRange(long vmID, AccessibleContext at, int start, int end, c_wchar *text, short len)
+        self._dll.getAccessibleTextRange.argtypes = [c_long, AccessibleText, c_int, c_int, c_wchar_p, c_short]
+        self._dll.getAccessibleTextRange.restype = BOOL
+
+        # AccessibleValue
+        # BOOL getCurrentAccessibleValueFromContext(long vmID, AccessibleValue av, c_wchar *value, short len)
+        self._dll.getCurrentAccessibleValueFromContext.argtypes = [c_long, AccessibleValue, c_wchar_p, c_short]
+        self._dll.getCurrentAccessibleValueFromContext.restype = BOOL
+        # BOOL getMaximumAccessibleValueFromContext(long vmID, AccessibleValue av, c_wchar *value, short len)
+        self._dll.getMaximumAccessibleValueFromContext.argtypes = [c_long, AccessibleValue, c_wchar_p, c_short]
+        self._dll.getMaximumAccessibleValueFromContext.restype = BOOL
+        # BOOL getMinimumAccessibleValueFromContext(long vmID, aAccessibleValue av, c_wchar *value, short len)
+        self._dll.getMinimumAccessibleValueFromContext.argtypes = [c_long, AccessibleValue, c_wchar_p, c_short]
+        self._dll.getMinimumAccessibleValueFromContext.restype = BOOL
+
+        # AccessibleSelection
+        # void addAccessibleSelectionFromContext(long vmID, AccessibleSelection as, int i)
+        self._dll.addAccessibleSelectionFromContext.argtypes = [c_long, AccessibleSelection, c_int]
+        self._dll.addAccessibleSelectionFromContext.restype = None
+        # void clearAccessibleSelectionFromContext(long vmID, AccessibleSelection as)
+        self._dll.clearAccessibleSelectionFromContext.argtypes = [c_long, AccessibleSelection]
+        self._dll.clearAccessibleSelectionFromContext.restype = None
+        # JOBJECT64 getAccessibleSelectionFromContext(long vmID, AccessibleSelection as, int i)
+        self._dll.getAccessibleSelectionFromContext.argtypes = [c_long, AccessibleSelection, c_int]
+        self._dll.getAccessibleSelectionFromContext.restype = JOBJECT64
+        # int getAccessibleSelectionCountFromContext(long vmID, AccessibleContext as)
+        self._dll.getAccessibleSelectionCountFromContext.argtypes = [c_long, AccessibleSelection]
+        self._dll.getAccessibleSelectionCountFromContext.restype = c_int
+        # BOOL isAccessibleChildSelectedFromContext(long vmID, AccessibleSelection as, int i)
+        self._dll.isAccessibleChildSelectedFromContext.argtypes = [c_long, AccessibleSelection, c_int]
+        self._dll.isAccessibleChildSelectedFromContext.restype = BOOL
+        # void removeAccessibleSelectionFromContext(long vmID, AccessibleSelection as, int i)
+        self._dll.removeAccessibleSelectionFromContext.argtypes = [c_long, AccessibleSelection, c_int]
+        self._dll.removeAccessibleSelectionFromContext.restype = None
+        # void selectAllAccessibleSelectionFromContext(long vmID, AccessibleSelection as)
+        self._dll.selectAllAccessibleSelectionFromContext.argtypes = [c_long, AccessibleSelection]
+        self._dll.selectAllAccessibleSelectionFromContext.restype = None
+
+        # Utility
+        # BOOL setTextContents(long vmID, AccessibleContext ac, c_wchar *text)
+        self._dll.setTextContents.argtypes = [c_long, AccessibleContext, c_wchar_p]
+        self._dll.setTextContents.restypes = BOOL
+        # AccessibleContext getParentWithRole(long vmID, AccessibleContext ac, c_wchar *role)
+        self._dll.getParentWithRole.argtypes = [c_long, AccessibleContext, c_wchar_p]
+        self._dll.getParentWithRole.restypes = AccessibleContext
+        # AccessibleContext getParentWithRoleElseRoot(long vmID, AccessibleContext ac, c_wchar *role)
+        self._dll.getParentWithRoleElseRoot.argtypes = [c_long, AccessibleContext, c_wchar_p]
+        self._dll.getParentWithRoleElseRoot.restypes = AccessibleContext
+        # AccessibleContext getTopLevelObject(long vmID, AccessibleContext ac)
+        self._dll.getTopLevelObject.argtypes = [c_long, AccessibleContext]
+        self._dll.getTopLevelObject.restypes = AccessibleContext
+        # int getObjectDepth(long vmID, AccessibleContext ac)
+        self._dll.getObjectDepth.argtypes = [c_long, AccessibleContext]
+        self._dll.getObjectDepth.restypes = c_int
+        # AccessibleContext getActiveDescendent(long vmID, AccessibleContext ac)
+        self._dll.getActiveDescendent.argtypes = [c_long, AccessibleContext]
+        self._dll.getActiveDescendent.restypes = AccessibleContext
+
+        # BOOL getVirtualAccessibleNameFP(long vmID, AccessibleContext context, c_wchar *name, int len)
+        self._dll.getVirtualAccessibleName.argtypes = [c_long, AccessibleContext, c_wchar_p, c_int]
+        self._dll.getVirtualAccessibleName.restype = BOOL
+        # BOOL requestFocus(long vmID, AccessibleContext context)
+        self._dll.requestFocus.argtypes = [c_long, AccessibleContext]
+        self._dll.requestFocus.restypes = BOOL
+        # BOOL selectTextRange(long vmID, AccessibleContext context, int startIndex, int endIndex)
+        self._dll.selectTextRange.argtypes = [c_long, AccessibleContext, c_int, c_int]
+        self._dll.selectTextRange.restypes = BOOL
+        # BOOL getTextAttributesInRange(long vmID, AccessibleContext context, int startIndex, int endIndex, AccessibleTextAttributesInfo *attributes, short *len)
+        self._dll.getTextAttributesInRange.argtypes = [c_long, AccessibleContext, c_int, c_int, POINTER(AccessibleTextAttributesInfo), AccessibleTextAttributesInfo(c_short)]
+        self._dll.getTextAttributesInRange.restypes = BOOL
+        # int getVisibleChildrenCount(long vmID, AccessibleContext context)
+        self._dll.getVisibleChildrenCount.argtypes = [c_long, AccessibleContext]
+        self._dll.getVisibleChildrenCount.restype = c_int
+        # BOOL getVisibleChildren(long vmID, AccessibleContext context, int startIndex, VisibleChildrenInfo *children)
+        self._dll.getVisibleChildren.argtypes = [c_long, AccessibleContext, c_int, POINTER(VisibleChildrenInfo)]
+        self._dll.getVisibleChildren.restype = BOOL
+        # BOOL setCaretPosition(long vmID, AccessibleContext context, int position)
+        self._dll.setCaretPosition.argtypes = [c_long, AccessibleContext, c_int]
+        self._dll.setCaretPosition.restype = BOOL
+        # BOOL getCaretLocation(long vmID, AccessibleContext context, AccessibleTextRectInfo *rectInfo, int index)
+        self._dll.getCaretLocation.argtypes = [c_long, AccessibleContext, POINTER(AccessibleTextRectInfo), c_int]
+        self._dll.getCaretLocation.restype = BOOL
+        # int getEventsWaitingFP()
+        self._dll.getEventsWaitingFP.argtypes = []
+        self._dll.getEventsWaitingFP.restype = c_int
+
+    def _define_callbacks(self):
+        # Property events
+        self._dll.setPropertyChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyChangeFP.restype = None
+        self._dll.setPropertyNameChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyNameChangeFP.restype = None
+        self._dll.setPropertyDescriptionChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyDescriptionChangeFP.restype = None
+        self._dll.setPropertyStateChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyStateChangeFP.restype = None
+        self._dll.setPropertyValueChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyValueChangeFP.restype = None
+        self._dll.setPropertySelectionChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertySelectionChangeFP.restype = None
+        self._dll.setPropertyTextChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyTextChangeFP.restype = None
+        self._dll.setPropertyCaretChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyCaretChangeFP.restype = None
+        self._dll.setPropertyVisibleDataChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyVisibleDataChangeFP.restype = None
+        self._dll.setPropertyChildChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyChildChangeFP.restype = None
+        self._dll.setPropertyActiveDescendentChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyActiveDescendentChangeFP.restype = None
+        self._dll.setPropertyTableModelChangeFP.argtypes = [c_void_p]
+        self._dll.setPropertyTableModelChangeFP.restype = None
+        # Menu events
+        self._dll.setMenuSelectedFP.argtypes = [c_void_p]
+        self._dll.setMenuSelectedFP.restype = None
+        self._dll.setMenuDeselectedFP.argtypes = [c_void_p]
+        self._dll.setMenuDeselectedFP.restype = None
+        self._dll.setMenuCanceledFP.argtypes = [c_void_p]
+        self._dll.setMenuCanceledFP.restype = None
+        # Focus events
+        self._dll.setFocusGainedFP.argtypes = [c_void_p]
+        self._dll.setFocusGainedFP.restype = None
+        self._dll.setFocusLostFP.argtypes = [c_void_p]
+        self._dll.setFocusLostFP.restype = None
+        # Caret update events
+        self._dll.setCaretUpdateFP.argtypes = [c_void_p]
+        self._dll.setCaretUpdateFP.restype = None
+        # Mouse events
+        self._dll.setMouseClickedFP.argtypes = [c_void_p]
+        self._dll.setMouseClickedFP.restype = None
+        self._dll.setMouseEnteredFP.argtypes = [c_void_p]
+        self._dll.setMouseEnteredFP.restype = None
+        self._dll.setMouseExitedFP.argtypes = [c_void_p]
+        self._dll.setMouseExitedFP.restype = None
+        self._dll.setMousePressedFP.argtypes = [c_void_p]
+        self._dll.setMousePressedFP.restype = None
+        self._dll.setMouseReleasedFP.argtypes = [c_void_p]
+        self._dll.setMouseReleasedFP.restype = None
+        # Popup menu events
+        self._dll.setPopupMenuCanceledFP.argtypes = [c_void_p]
+        self._dll.setPopupMenuCanceledFP.restype = None
+        self._dll.setPopupMenuWillBecomeInvisibleFP.argtypes = [c_void_p]
+        self._dll.setPopupMenuWillBecomeInvisibleFP.restype = None
+        self._dll.setPopupMenuWillBecomeVisibleFP.argtypes = [c_void_p]
+        self._dll.setPopupMenuWillBecomeVisibleFP.restype = None
+
+    def releaseJavaObject(self, vmID: c_long, object: JOBJECT64):
+        self._dll.releaseJavaObject(vmID, object)
 
     def getVersionInfo(self, vmID: c_long, info: AccessBridgeVersionInfo) -> BOOL:
-        return self._lib.getVersionInfo(vmID, byref(info))
+        return self._dll.getVersionInfo(vmID, byref(info))
 
     def isJavaWindow(self, window: HWND) -> BOOL:
-        return self._lib.isJavaWindow(window)
+        return self._dll.isJavaWindow(window)
 
     def isSameObject(self, vmID: c_long, obj1: JOBJECT64, obj2: JOBJECT64) -> BOOL:
-        return self._lib.isSameObject(vmID, obj1, obj2)
+        return self._dll.isSameObject(vmID, obj1, obj2)
 
     def getAccessibleContextFromHWND(self, window: HWND, vmID: c_long, ac: AccessibleContext) -> BOOL:
-        return self._lib.getAccessibleContextFromHWND(window, byref(vmID), byref(ac))
+        return self._dll.getAccessibleContextFromHWND(window, byref(vmID), byref(ac))
 
     def getHWNDFromAccessibleContext(self, vmID: c_long, ac: AccessibleContext) -> HWND:
-        return self._lib.getHWNDFromAccessibleContext(vmID, byref(ac))
+        return self._dll.getHWNDFromAccessibleContext(vmID, byref(ac))
 
-    def getAccessibleContextAt(self, vmID: c_long, acParent: AccessibleContext, x: jint, y: jint, ac: AccessibleContext) -> BOOL:
-        return self._lib.getAccessibleContextAt(vmID, acParent, x, y, byref(ac))
+    def getAccessibleContextAt(self, vmID: c_long, acParent: AccessibleContext, x: c_int, y: c_int, ac: AccessibleContext) -> BOOL:
+        return self._dll.getAccessibleContextAt(vmID, acParent, x, y, byref(ac))
 
     def getAccessibleContextWithFocus(self, window: HWND, vmID: c_long, ac: AccessibleContext) -> BOOL:
-        return self._lib.getAccessibleContextWithFocus(window, byref(vmID), byref(ac))
+        return self._dll.getAccessibleContextWithFocus(window, byref(vmID), byref(ac))
 
     def getAccessibleContextInfo(self, vmID: c_long, ac: AccessibleContext, info: AccessibleContextInfo) -> BOOL:
-        return self._lib.getAccessibleContextInfo(vmID, ac, byref(info))
+        return self._dll.getAccessibleContextInfo(vmID, ac, byref(info))
 
-    def getAccessibleChildFromContext(self, vmID: c_long, ac: AccessibleContext, index: jint) -> AccessibleContext:
-        return self._lib.getAccessibleChildFromContext(vmID, ac, index)
+    def getAccessibleChildFromContext(self, vmID: c_long, ac: AccessibleContext, index: c_int) -> AccessibleContext:
+        return self._dll.getAccessibleChildFromContext(vmID, ac, index)
 
     def getAccessibleParentFromContext(self, vmID: c_long, ac: AccessibleContext) -> AccessibleContext:
-        return self._lib.getAccessibleParentFromContext(vmID, ac)
+        return self._dll.getAccessibleParentFromContext(vmID, ac)
 
     def getAccessibleTableInfo(self, vmID: c_long, ac: AccessibleContext, tableInfo: AccessibleTableInfo) -> BOOL:
-        return self._lib.getAccessibleTableInfo(vmID, ac, byref(tableInfo))
+        return self._dll.getAccessibleTableInfo(vmID, ac, byref(tableInfo))
 
-    def getAccessibleTableCellInfo(self, vmID: c_long, accessibleTable: AccessibleTable, row: jint, column: jint, tableCellInfo: AccessibleTableCellInfo) -> BOOL:
-        return self._lib.getAccessibleTableCellInfo(vmID, accessibleTable, row, column, byref(tableCellInfo))
+    def getAccessibleTableCellInfo(self, vmID: c_long, accessibleTable: AccessibleTable, row: c_int, column: c_int, tableCellInfo: AccessibleTableCellInfo) -> BOOL:
+        return self._dll.getAccessibleTableCellInfo(vmID, accessibleTable, row, column, byref(tableCellInfo))
 
     def getAccessibleTableRowHeader(self, vmID: c_long, acParent: AccessibleContext, tableInfo: AccessibleTableInfo) -> BOOL:
-        return self._lib.getAccessibleTableRowHeader(vmID, acParent, byref(tableInfo))
+        return self._dll.getAccessibleTableRowHeader(vmID, acParent, byref(tableInfo))
 
     def getAccessibleTableColumnHeader(self, vmID: c_long, acParent: AccessibleContext, tableInfo: AccessibleTableInfo) -> BOOL:
-        return self._lib.getAccessibleTableColumnHeader(vmID, acParent, byref(tableInfo))
+        return self._dll.getAccessibleTableColumnHeader(vmID, acParent, byref(tableInfo))
 
-    def getAccessibleTableRowDescription(self, vmID: c_long, acParent: AccessibleContext, row: jint) -> AccessibleContext:
-        return self._lib.getAccessibleTableRowDescription(vmID, acParent, row)
+    def getAccessibleTableRowDescription(self, vmID: c_long, acParent: AccessibleContext, row: c_int) -> AccessibleContext:
+        return self._dll.getAccessibleTableRowDescription(vmID, acParent, row)
 
-    def getAccessibleTableColumnDescription(self, vmID: c_long, acParent: AccessibleContext, column: jint) -> AccessibleContext:
-        return self._lib.getAccessibleTableColumnDescription(vmID, acParent, column)
+    def getAccessibleTableColumnDescription(self, vmID: c_long, acParent: AccessibleContext, column: c_int) -> AccessibleContext:
+        return self._dll.getAccessibleTableColumnDescription(vmID, acParent, column)
 
-    def getAccessibleTableRowSelectionCount(self, vmID: c_long, table: AccessibleTable) -> jint:
-        return self._lib.getAccessibleTableRowSelectionCount(vmID, table)
+    def getAccessibleTableRowSelectionCount(self, vmID: c_long, table: AccessibleTable) -> c_int:
+        return self._dll.getAccessibleTableRowSelectionCount(vmID, table)
 
-    def isAccessibleTableRowSelected(self, vmID: c_long, table: AccessibleTable, row: jint) -> BOOL:
-        return self._lib.isAccessibleTableRowSelected(vmID, table, row)
+    def isAccessibleTableRowSelected(self, vmID: c_long, table: AccessibleTable, row: c_int) -> BOOL:
+        return self._dll.isAccessibleTableRowSelected(vmID, table, row)
 
-    def getAccessibleTableRowSelections(self, vmID: c_long, table: AccessibleTable, count: jint, selections: jint) -> BOOL:
-        return self._lib.getAccessibleTableRowSelections(vmID, table, count, byref(selections))
+    def getAccessibleTableRowSelections(self, vmID: c_long, table: AccessibleTable, count: c_int, selections: c_int) -> BOOL:
+        return self._dll.getAccessibleTableRowSelections(vmID, table, count, byref(selections))
 
-    def getAccessibleTableColumnSelectionCount(self, vmID: c_long, table: AccessibleTable) -> jint:
-        return self._lib.getAccessibleTableColumnSelectionCount(vmID, table)
+    def getAccessibleTableColumnSelectionCount(self, vmID: c_long, table: AccessibleTable) -> c_int:
+        return self._dll.getAccessibleTableColumnSelectionCount(vmID, table)
 
-    def isAccessibleTableColumnSelected(self, vmID: c_long, table: AccessibleTable, column: jint) -> BOOL:
-        return self._lib.isAccessibleTableColumnSelected(vmID, table, column)
+    def isAccessibleTableColumnSelected(self, vmID: c_long, table: AccessibleTable, column: c_int) -> BOOL:
+        return self._dll.isAccessibleTableColumnSelected(vmID, table, column)
 
-    def getAccessibleTableColumnSelections(self, vmID: c_long, table: AccessibleTable, count: jint, selections: jint) -> BOOL:
-        return self._lib.getAccessibleTableColumnSelections(vmID, table, count, byref(selections))
+    def getAccessibleTableColumnSelections(self, vmID: c_long, table: AccessibleTable, count: c_int, selections: c_int) -> BOOL:
+        return self._dll.getAccessibleTableColumnSelections(vmID, table, count, byref(selections))
 
-    def getAccessibleTableRow(self, vmID: c_long, table: AccessibleTable, index: jint) -> jint:
-        return self._lib.getAccessibleTableRow(vmID, table, index)
+    def getAccessibleTableRow(self, vmID: c_long, table: AccessibleTable, index: c_int) -> c_int:
+        return self._dll.getAccessibleTableRow(vmID, table, index)
 
-    def getAccessibleTableColumn(self, vmID: c_long, table: AccessibleTable, index: jint) -> jint:
-        return self._lib.getAccessibleTableColumn(vmID, table, index)
+    def getAccessibleTableColumn(self, vmID: c_long, table: AccessibleTable, index: c_int) -> c_int:
+        return self._dll.getAccessibleTableColumn(vmID, table, index)
 
-    def getAccessibleTableIndex(self, vmID: c_long, table: AccessibleTable, row: jint, column: jint) -> jint:
-        return self._lib.getAccessibleTableIndex(vmID, table, row, column)
+    def getAccessibleTableIndex(self, vmID: c_long, table: AccessibleTable, row: c_int, column: c_int) -> c_int:
+        return self._dll.getAccessibleTableIndex(vmID, table, row, column)
 
     def getAccessibleRelationSet(self, vmID: c_long, accessibleContext: AccessibleContext, relationSetInfo: AccessibleRelationSetInfo):
-        return self._lib.getAccessibleRelationSet(vmID, accessibleContext, byref(relationSetInfo))
+        return self._dll.getAccessibleRelationSet(vmID, accessibleContext, byref(relationSetInfo))
 
     def getAccessibleHypertext(self, vmID: c_long, accessibleContext: AccessibleContext, hypertextInfo: AccessibleHypertextInfo) -> BOOL:
-        return self._lib.getAccessibleHypertext(vmID, accessibleContext, byref(hypertextInfo))
+        return self._dll.getAccessibleHypertext(vmID, accessibleContext, byref(hypertextInfo))
 
     def activateAccessibleHyperlink(self, vmID: c_long, accessibleContext: AccessibleContext, accessibleHyperlink: AccessibleHyperlink) -> BOOL:
-        return self._lib.activateAccessibleHyperlink(vmID, accessibleContext, accessibleHyperlink)
+        return self._dll.activateAccessibleHyperlink(vmID, accessibleContext, accessibleHyperlink)
 
-    def getAccessibleHyperlinkCount(self, vmID: c_long, accessibleContext: AccessibleContext) -> jint:
-        return self._lib.getAccessibleHyperlinkCount(vmID, accessibleContext)
+    def getAccessibleHyperlinkCount(self, vmID: c_long, accessibleContext: AccessibleContext) -> c_int:
+        return self._dll.getAccessibleHyperlinkCount(vmID, accessibleContext)
 
-    def getAccessibleHypertextExt(self, vmID: c_long, accessibleContext: AccessibleContext, nStartIndex: jint, hypertextInfo: AccessibleHypertextInfo) -> BOOL:
-        return self._lib.getAccessibleHypertextExt(vmID, accessibleContext, nStartIndex, byref(hypertextInfo))
+    def getAccessibleHypertextExt(self, vmID: c_long, accessibleContext: AccessibleContext, nStartIndex: c_int, hypertextInfo: AccessibleHypertextInfo) -> BOOL:
+        return self._dll.getAccessibleHypertextExt(vmID, accessibleContext, nStartIndex, byref(hypertextInfo))
 
-    def getAccessibleHypertextLinkIndex(self, vmID: c_long, hypertext: AccessibleHypertext, nIndex: jint) -> jint:
-        return self._lib.getAccessibleHypertextLinkIndex(vmID, hypertext, nIndex)
+    def getAccessibleHypertextLinkIndex(self, vmID: c_long, hypertext: AccessibleHypertext, nIndex: c_int) -> c_int:
+        return self._dll.getAccessibleHypertextLinkIndex(vmID, hypertext, nIndex)
 
-    def getAccessibleHyperlink(self, vmID: c_long, hypertext: AccessibleHypertext, nIndex: jint, hyperlinkInfo: AccessibleHyperlinkInfo) -> BOOL:
-        return self._lib.getAccessibleHyperlink(vmID, hypertext, nIndex, byref(hyperlinkInfo))
+    def getAccessibleHyperlink(self, vmID: c_long, hypertext: AccessibleHypertext, nIndex: c_int, hyperlinkInfo: AccessibleHyperlinkInfo) -> BOOL:
+        return self._dll.getAccessibleHyperlink(vmID, hypertext, nIndex, byref(hyperlinkInfo))
 
     def getAccessibleKeyBindings(self, vmID: c_long, accessibleContext: AccessibleContext, keyBindings: AccessibleKeyBindings) -> BOOL:
-        return self._lib.getAccessibleKeyBindings(vmID, accessibleContext, byref(keyBindings))
+        return self._dll.getAccessibleKeyBindings(vmID, accessibleContext, byref(keyBindings))
 
     def getAccessibleIcons(self, vmID: c_long, accessibleContext: AccessibleContext, icons: AccessibleIcons) -> BOOL:
-        return self._lib.getAccessibleIcons(vmID, accessibleContext, byref(icons))
+        return self._dll.getAccessibleIcons(vmID, accessibleContext, byref(icons))
 
     def getAccessibleActions(self, vmID: c_long, accessibleContext: AccessibleContext, actions: AccessibleActions) -> BOOL:
-        return self._lib.getAccessibleActions(vmID, accessibleContext, byref(actions))
+        return self._dll.getAccessibleActions(vmID, accessibleContext, byref(actions))
 
-    def doAccessibleActions(self, vmID: c_long, accessibleContext: AccessibleContext, actionsToDo: AccessibleActionsToDo, failure: jint) -> BOOL:
-        return self._lib.doAccessibleActions(vmID, accessibleContext, byref(actionsToDo), byref(failure))
+    def doAccessibleActions(self, vmID: c_long, accessibleContext: AccessibleContext, actionsToDo: AccessibleActionsToDo, failure: c_int) -> BOOL:
+        return self._dll.doAccessibleActions(vmID, accessibleContext, byref(actionsToDo), byref(failure))
 
-    def getAccessibleTextInfo(self, vmID: c_long, at: AccessibleText, textInfo: AccessibleTextInfo, x: jint = 0, y: jint = 0) -> BOOL:
-        return self._lib.getAccessibleTextInfo(vmID, at, byref(textInfo), x, y)
+    def getAccessibleTextInfo(self, vmID: c_long, at: AccessibleText, textInfo: AccessibleTextInfo, x: c_int, y: c_int) -> BOOL:
+        return self._dll.getAccessibleTextInfo(vmID, at, byref(textInfo), x, y)
 
-    def getAccessibleTextItems(self, vmID: c_long, at: AccessibleText, textItems: AccessibleTextItemsInfo, index: jint) -> BOOL:
-        return self._lib.getAccessibleTextItems(vmID, at, byref(textItems), index)
+    def getAccessibleTextItems(self, vmID: c_long, at: AccessibleText, textItems: AccessibleTextItemsInfo, index: c_int) -> BOOL:
+        return self._dll.getAccessibleTextItems(vmID, at, byref(textItems), index)
 
     def getAccessibleTextSelectionInfo(self, vmID: c_long, at: AccessibleText, textSelection: AccessibleTextSelectionInfo) -> BOOL:
-        return self._lib.getAccessibleTextSelectionInfo(vmID, at, byref(textSelection))
+        return self._dll.getAccessibleTextSelectionInfo(vmID, at, byref(textSelection))
 
-    def getAccessibleTextAttributes(self, vmID: c_long, at: AccessibleText, index: jint, attributes: AccessibleTextAttributesInfo) -> BOOL:
-        return self._lib.getAccessibleTextAttributes(vmID, at, index, byref(attributes))
+    def getAccessibleTextAttributes(self, vmID: c_long, at: AccessibleText, index: c_int, attributes: AccessibleTextAttributesInfo) -> BOOL:
+        return self._dll.getAccessibleTextAttributes(vmID, at, index, byref(attributes))
 
-    def getAccessibleTextRect(self, vmID: c_long, at: AccessibleText, rectInfo: AccessibleTextRectInfo, index: jint) -> BOOL:
-        return self._lib.getAccessibleTextRect(vmID, at, byref(rectInfo), index)
+    def getAccessibleTextRect(self, vmID: c_long, at: AccessibleText, rectInfo: AccessibleTextRectInfo, index: c_int) -> BOOL:
+        return self._dll.getAccessibleTextRect(vmID, at, byref(rectInfo), index)
 
-    def getAccessibleTextLineBounds(self, vmID: c_long, at: AccessibleText, index: jint, startIndex: jint, endIndex: jint) -> BOOL:
-        return self._lib.getAccessibleTextLineBounds(vmID, at, index, byref(startIndex), byref(endIndex))
+    def getAccessibleTextLineBounds(self, vmID: c_long, at: AccessibleText, index: c_int, startIndex: c_int, endIndex: c_int) -> BOOL:
+        return self._dll.getAccessibleTextLineBounds(vmID, at, index, byref(startIndex), byref(endIndex))
 
-    def getAccessibleTextRange(self, vmID: c_long, at: AccessibleText, start: jint, end: jint, text: wchar_t, len: c_short) -> BOOL:
-        return self._lib.getAccessibleTextRange(vmID, at, start, end, byref(text), len)
+    def getAccessibleTextRange(self, vmID: c_long, at: AccessibleText, start: c_int, end: c_int, text: c_wchar, len: c_short) -> BOOL:
+        return self._dll.getAccessibleTextRange(vmID, at, start, end, byref(text), len)
 
-    def getCurrentAccessibleValueFromContext(self, vmID: c_long, av: AccessibleValue, value: wchar_t, len: c_short) -> BOOL:
-        return self._lib.getCurrentAccessibleValueFromContext(vmID, av, byref(value), len)
+    def getCurrentAccessibleValueFromContext(self, vmID: c_long, av: AccessibleValue, value: c_wchar, len: c_short) -> BOOL:
+        return self._dll.getCurrentAccessibleValueFromContext(vmID, av, byref(value), len)
 
-    def getMaximumAccessibleValueFromContext(self, vmID: c_long, av: AccessibleValue, value: wchar_t, len: c_short) -> BOOL:
-        return self._lib.getMaximumAccessibleValueFromContext(vmID, av, byref(value), len)
+    def getMaximumAccessibleValueFromContext(self, vmID: c_long, av: AccessibleValue, value: c_wchar, len: c_short) -> BOOL:
+        return self._dll.getMaximumAccessibleValueFromContext(vmID, av, byref(value), len)
 
-    def getMinimumAccessibleValueFromContext(self, vmID: c_long, av: AccessibleValue, value: wchar_t, len: c_short) -> BOOL:
-        return self._lib.getMinimumAccessibleValueFromContext(vmID, av, byref(value), len)
+    def getMinimumAccessibleValueFromContext(self, vmID: c_long, av: AccessibleValue, value: c_wchar, len: c_short) -> BOOL:
+        return self._dll.getMinimumAccessibleValueFromContext(vmID, av, byref(value), len)
 
-    def addAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection, i: int):
-        self._lib.addAccessibleSelectionFromContext(vmID, as_, i)
+    def addAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection, i: c_int):
+        self._dll.addAccessibleSelectionFromContext(vmID, as_, i)
 
     def clearAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection):
-        self._lib.clearAccessibleSelectionFromContext(vmID, as_)
+        self._dll.clearAccessibleSelectionFromContext(vmID, as_)
 
-    def getAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection, i: int) -> JOBJECT64:
-        return self._lib.getAccessibleSelectionFromContext(vmID, as_, i)
+    def getAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection, i: c_int) -> JOBJECT64:
+        return self._dll.getAccessibleSelectionFromContext(vmID, as_, i)
 
     def getAccessibleSelectionCountFromContext(self, vmID: c_long, as_: AccessibleSelection) -> c_int:
-        return self._lib.getAccessibleSelectionCountFromContext(vmID, as_)
+        return self._dll.getAccessibleSelectionCountFromContext(vmID, as_)
 
-    def isAccessibleChildSelectedFromContext(self, vmID: c_long, as_: AccessibleSelection, i: int) -> BOOL:
-        return self._lib.isAccessibleChildSelectedFromContext(vmID, as_, i)
+    def isAccessibleChildSelectedFromContext(self, vmID: c_long, as_: AccessibleSelection, i: c_int) -> BOOL:
+        return self._dll.isAccessibleChildSelectedFromContext(vmID, as_, i)
 
-    def removeAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection, i: int):
-        self._lib.removeAccessibleSelectionFromContext(vmID, as_, i)
+    def removeAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection, i: c_int):
+        self._dll.removeAccessibleSelectionFromContext(vmID, as_, i)
 
     def selectAllAccessibleSelectionFromContext(self, vmID: c_long, as_: AccessibleSelection):
-        self._lib.selectAllAccessibleSelectionFromContext(vmID, as_)
+        self._dll.selectAllAccessibleSelectionFromContext(vmID, as_)
 
     def setTextContents(self, vmID: c_long, ac: AccessibleContext, text: c_wchar_p) -> BOOL:
-        return self._lib.setTextContents(vmID, ac, text)
+        return self._dll.setTextContents(vmID, ac, text)
 
     def getParentWithRole(self, vmID: c_long, ac: AccessibleContext, role: c_wchar_p) -> AccessibleContext:
-        return self._lib.getParentWithRole(vmID, ac, role)
+        return self._dll.getParentWithRole(vmID, ac, role)
 
     def getTopLevelObject(self, vmID: c_long, ac: AccessibleContext) -> AccessibleContext:
-        return self._lib.getTopLevelObject(vmID, ac)
+        return self._dll.getTopLevelObject(vmID, ac)
 
     def getParentWithRoleElseRoot(self, vmID: c_long, ac: AccessibleContext, role: c_wchar_p) -> AccessibleContext:
-        return self._lib.getParentWithRoleElseRoot(vmID, ac, role)
+        return self._dll.getParentWithRoleElseRoot(vmID, ac, role)
 
-    def getObjectDepth(self, vmID: c_long, ac: AccessibleContext) -> int:
-        return self._lib.getObjectDepth(vmID, ac)
+    def getObjectDepth(self, vmID: c_long, ac: AccessibleContext) -> c_int:
+        return self._dll.getObjectDepth(vmID, ac)
 
     def getActiveDescendent(self, vmID: c_long, ac: AccessibleContext) -> AccessibleContext:
-        return self._lib.getActiveDescendent(vmID, ac)
+        return self._dll.getActiveDescendent(vmID, ac)
 
-    def getVirtualAccessibleName(self, vmID: c_long, accessibleContext: AccessibleContext, name: wchar_t, len: int) -> BOOL:
-        return self._lib.getVirtualAccessibleName(vmID, accessibleContext, byref(name), len)
+    def getVirtualAccessibleName(self, vmID: c_long, accessibleContext: AccessibleContext, name: c_wchar, len: c_int) -> BOOL:
+        return self._dll.getVirtualAccessibleName(vmID, accessibleContext, byref(name), len)
 
     def requestFocus(self, vmID: c_long, accessibleContext: AccessibleContext) -> BOOL:
-        return self._lib.requestFocus(vmID, accessibleContext)
+        return self._dll.requestFocus(vmID, accessibleContext)
 
-    def selectTextRange(self, vmID: c_long, accessibleContext: AccessibleContext, startIndex: int, endIndex: int) -> BOOL:
-        return self._lib.selectTextRange(vmID, accessibleContext, startIndex, endIndex)
+    def selectTextRange(self, vmID: c_long, accessibleContext: AccessibleContext, startIndex: c_int, endIndex: c_int) -> BOOL:
+        return self._dll.selectTextRange(vmID, accessibleContext, startIndex, endIndex)
 
-    def getTextAttributesInRange(self, vmID: c_long, accessibleContext: AccessibleContext, startIndex: int, endIndex: int, attributes: AccessibleTextAttributesInfo, len: c_short) -> BOOL:
-        return self._lib.getTextAttributesInRange(vmID, accessibleContext, startIndex, endIndex, byref(attributes), byref(len))
+    def getTextAttributesInRange(self, vmID: c_long, accessibleContext: AccessibleContext, startIndex: c_int, endIndex: c_int, attributes: AccessibleTextAttributesInfo, len: c_short) -> BOOL:
+        return self._dll.getTextAttributesInRange(vmID, accessibleContext, startIndex, endIndex, byref(attributes), byref(len))
 
-    def getVisibleChildrenCount(self, vmID: c_long, accessibleContext: AccessibleContext) -> int:
-        return self._lib.getVisibleChildrenCount(vmID, accessibleContext)
+    def getVisibleChildrenCount(self, vmID: c_long, accessibleContext: AccessibleContext) -> c_int:
+        return self._dll.getVisibleChildrenCount(vmID, accessibleContext)
 
-    def getVisibleChildren(self, vmID: c_long, accessibleContext: AccessibleContext, startIndex: int, children: VisibleChildrenInfo) -> BOOL:
-        return self._lib.getVisibleChildren(vmID, accessibleContext, startIndex, byref(children))
+    def getVisibleChildren(self, vmID: c_long, accessibleContext: AccessibleContext, startIndex: c_int, children: VisibleChildrenInfo) -> BOOL:
+        return self._dll.getVisibleChildren(vmID, accessibleContext, startIndex, byref(children))
 
-    def setCaretPosition(self, vmID: c_long, accessibleContext: AccessibleContext, position: int) -> BOOL:
-        return self._lib.setCaretPosition(vmID, accessibleContext, position)
+    def setCaretPosition(self, vmID: c_long, accessibleContext: AccessibleContext, position: c_int) -> BOOL:
+        return self._dll.setCaretPosition(vmID, accessibleContext, position)
 
-    def getCaretLocation(self, vmID: c_long, ac: AccessibleContext, rectInfo: AccessibleTextRectInfo, index: jint) -> BOOL:
-        return self._lib.getCaretLocation(vmID, ac, byref(rectInfo), index)
+    def getCaretLocation(self, vmID: c_long, ac: AccessibleContext, rectInfo: AccessibleTextRectInfo, index: c_int) -> BOOL:
+        return self._dll.getCaretLocation(vmID, ac, byref(rectInfo), index)
 
     def getEventsWaiting(self) -> c_int:
-        return self._lib.getEventsWaiting()
+        return self._dll.getEventsWaiting()
 
     def setJavaShutdownFP(self, fp: Callable[[c_long], None]):
-        functype = CFUNCTYPE(None, c_long)
-        self._lib.setJavaShutdownFP(functype(fp))
+        self._dll.setJavaShutdownFP(JavaShutdownFP(fp))
 
     def setFocusGainedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setFocusGainedFP(functype(fp))
+        self._dll.setFocusGainedFP(FocusGainedFP(fp))
 
     def setFocusLostFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setFocusLostFP(functype(fp))
+        self._dll.setFocusLostFP(FocusLostFP(fp))
 
     def setCaretUpdateFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setCaretUpdateFP(functype(fp))
+        self._dll.setCaretUpdateFP(CaretUpdateFP(fp))
 
     def setMouseClickedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMouseClickedFP(functype(fp))
+        self._dll.setMouseClickedFP(MouseClickedFP(fp))
 
     def setMouseEnteredFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMouseEnteredFP(functype(fp))
+        self._dll.setMouseEnteredFP(MouseEnteredFP(fp))
 
     def setMouseExitedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMouseExitedFP(functype(fp))
+        self._dll.setMouseExitedFP(MouseExitedFP(fp))
 
     def setMousePressedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMousePressedFP(functype(fp))
+        self._dll.setMousePressedFP(MousePressedFP(fp))
 
     def setMouseReleasedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMouseReleasedFP(functype(fp))
+        self._dll.setMouseReleasedFP(MouseReleasedFP(fp))
 
     def setMenuCanceledFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMenuCanceledFP(functype(fp))
+        self._dll.setMenuCanceledFP(MenuCanceledFP(fp))
 
     def setMenuDeselectedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMenuDeselectedFP(functype(fp))
+        self._dll.setMenuDeselectedFP(MenuDeselectedFP(fp))
 
     def setMenuSelectedFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setMenuSelectedFP(functype(fp))
+        self._dll.setMenuSelectedFP(MenuSelectedFP(fp))
 
     def setPopupMenuCanceledFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setPopupMenuCanceledFP(functype(fp))
+        self._dll.setPopupMenuCanceledFP(PopupMenuCanceledFP(fp))
 
     def setPopupMenuWillBecomeInvisibleFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setPopupMenuWillBecomeInvisibleFP(functype(fp))
+        self._dll.setPopupMenuWillBecomeInvisibleFP(PopupMenuWillBecomeInvisibleFP(fp))
 
     def setPopupMenuWillBecomeVisibleFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setPopupMenuWillBecomeVisibleFP(functype(fp))
+        self._dll.setPopupMenuWillBecomeVisibleFP(PopupMenuWillBecomeVisibleFP(fp))
 
-    def setPropertyNameChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
-        self._lib.setPropertyNameChangeFP(functype(fp))
+    def setPropertyChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p, c_wchar_p], None]):
+        self._dll.setPropertyChangeFP(PropertyChangeFP(fp))
 
-    def setPropertyDescriptionChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
-        self._lib.setPropertyDescriptionChangeFP(functype(fp))
+    def setPropertyNameChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p], None]):
+        self._dll.setPropertyNameChangeFP(PropertyNameChangeFP(fp))
 
-    def setPropertyStateChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
-        self._lib.setPropertyStateChangeFP(functype(fp))
+    def setPropertyDescriptionChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p], None]):
+        self._dll.setPropertyDescriptionChangeFP(PropertyDescriptionChangeFP(fp))
 
-    def setPropertyValueChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
-        self._lib.setPropertyValueChangeFP(functype(fp))
+    def setPropertyStateChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p], None]):
+        self._dll.setPropertyStateChangeFP(PropertyStateChangeFP(fp))
+
+    def setPropertyValueChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p], None]):
+        self._dll.setPropertyValueChangeFP(PropertyValueChangeFP(fp))
 
     def setPropertySelectionChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setPropertySelectionChangeFP(functype(fp))
+        self._dll.setPropertySelectionChangeFP(PropertySelectionChangeFP(fp))
 
     def setPropertyTextChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setPropertyTextChangeFP(functype(fp))
+        self._dll.setPropertyTextChangeFP(PropertyTextChangedFP(fp))
 
-    def setPropertyCaretChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, int, int], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, int, int)
-        self._lib.setPropertyCaretChangeFP(functype(fp))
+    def setPropertyCaretChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, c_int, c_int], None]):
+        self._dll.setPropertyCaretChangeFP(PropertyCaretChangeFP(fp))
 
     def setPropertyVisibleDataChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64)
-        self._lib.setPropertyVisibleDataChangeFP(functype(fp))
+        self._dll.setPropertyVisibleDataChangeFP(PropertyVisibleDataChangeFP(fp))
 
     def setPropertyChildChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64)
-        self._lib.setPropertyChildChangeFP(functype(fp))
+        self._dll.setPropertyChildChangeFP(PropertyChildChangeFP(fp))
 
     def setPropertyActiveDescendentChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, JOBJECT64, JOBJECT64)
-        self._lib.setPropertyActiveDescendentChangeFP(functype(fp))
+        self._dll.setPropertyActiveDescendentChangeFP(PropertyActiveDescendentChangeFP(fp))
 
-    def setPropertyTableModelChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t], None]):
-        functype = CFUNCTYPE(None, c_long, JOBJECT64, JOBJECT64, wchar_t, wchar_t)
-        self._lib.setPropertyTableModelChangeFP(functype(fp))
+    def setPropertyTableModelChangeFP(self, fp: Callable[[c_long, JOBJECT64, JOBJECT64, c_wchar_p, c_wchar_p], None]):
+        self._dll.setPropertyTableModelChangeFP(PropertyTableModelChangeFP(fp))

@@ -15,6 +15,7 @@
 
 
 import asyncio
+import threading
 from enum import Enum
 from functools import wraps
 
@@ -114,9 +115,12 @@ def listen(event, keys, func):
     _registrations[event].append((keys, func))
 
 
-async def main():
+def run_thread():
+    threading.Thread(target=_run, daemon=True).start()
+
+
+async def run_async():
     _run()
-    # threading.Thread(target=_run, daemon=True).start()
 
 
 def listener(event, *keys):

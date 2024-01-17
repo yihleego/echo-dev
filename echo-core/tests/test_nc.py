@@ -21,7 +21,7 @@ from unittest import TestCase
 from echo.jab import JABDriver, Role
 from echo.jab.jab import JABLib
 from echo.uia import UIADriver
-from echo.utils import win32, singleton
+from echo.utils import win32
 
 
 class UIATestSuite(TestCase):
@@ -205,80 +205,3 @@ class UIATestSuite(TestCase):
         files = os.listdir(save_path)
         print(save_path, files)
         time.sleep(1)
-
-    def test_event(self):
-        from echo.utils.event import listener, Event, Key, main
-        import asyncio
-        window_cache = {}
-        jab_lib = JABLib()
-
-        @listener(Event.KEYUP)
-        def on_click(x, y, key):
-            if key != Key.f5:
-                return
-            handle = win32.window_from_point((x, y))
-            if handle not in window_cache:
-                if jab_lib.isJavaWindow(handle):
-                    window_cache[handle] = 'jab'
-                else:
-                    window_cache[handle] = 'uia'
-            if window_cache[handle] == 'jab':
-                jab_driver = JABDriver(handle)
-                elems = jab_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
-                for elem in elems:
-                    print(elem)
-                print()
-            elif window_cache[handle] == 'uia':
-                uia_driver = UIADriver(handle)
-                elems = uia_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
-                for elem in elems:
-                    print(elem)
-                print()
-
-        asyncio.run(main())
-
-
-if __name__ == '__main__':
-    from echo.utils.event import listener, Event, Key, main
-    import asyncio
-
-
-    @singleton
-    class JABLib2(JABLib):
-        pass
-
-
-    jab_lib = JABLib2()
-
-    window_cache = {}
-
-
-    @listener(Event.KEYUP)
-    def on_click(x, y, key):
-        if key != Key.f5:
-            return
-        handle = win32.window_from_point((x, y))
-        if handle not in window_cache:
-            if jab_lib.isJavaWindow(handle):
-                window_cache[handle] = 'jab'
-            else:
-                window_cache[handle] = 'uia'
-        if window_cache[handle] == 'jab':
-            print('handle', 'jab', handle)
-            jab_driver = JABDriver(handle)
-            elems = jab_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
-            for elem in elems:
-                print(elem)
-                win32.draw_outline(elem.rectangle)
-            print()
-        elif window_cache[handle] == 'uia':
-            print('handle', 'uia', handle)
-            uia_driver = UIADriver(handle)
-            elems = uia_driver.find_elements(lambda e: e.rectangle[0] <= x <= e.rectangle[2] and e.rectangle[1] <= y <= e.rectangle[3])
-            for elem in elems:
-                print(elem)
-                win32.draw_outline(elem.rectangle)
-            print()
-
-
-    asyncio.run(main())

@@ -123,8 +123,9 @@ class JABDriver(Driver):
         return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
 
     def close(self):
-        if self._lib:
-            self._lib.stop()
+        # if self._lib:
+        #     self._lib.stop()
+        pass
 
 
 class JABElementProperties(ABC):
@@ -338,7 +339,7 @@ class JABElement(JABElementProperties, Element):
         if not self.info.accessibleText:
             return None
         ati = AccessibleTextInfo()
-        res = self._lib.getAccessibleTextInfo(self._vmid, self._ctx, ati)
+        res = self._lib.getAccessibleTextInfo(self._vmid, self._ctx, ati, c_int(0), c_int(0))
         if not res:
             return None
         if ati.charCount <= 0:
@@ -378,6 +379,7 @@ class JABElement(JABElementProperties, Element):
         ctx = self._lib.getAccessibleChildFromContext(self._vmid, self._ctx, c_int(index))
         if ctx == 0:
             return None
+        ctx = AccessibleContext(ctx)
         return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
 
     def children(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
@@ -385,6 +387,7 @@ class JABElement(JABElementProperties, Element):
         count = self.children_count
         for index in range(count):
             ctx = self._lib.getAccessibleChildFromContext(self._vmid, self._ctx, c_int(index))
+            ctx = AccessibleContext(ctx)
             child = JABElement.create_element(ctx=ctx, root=self._root, parent=self)
             if filters or criteria:
                 matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
