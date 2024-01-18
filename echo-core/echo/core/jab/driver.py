@@ -437,45 +437,142 @@ class JABElement(JABElementProperties, Element):
         Match element by criteria.
         :param filters: filters
         :param ignore_case: two strings are considered equal ignoring case
-        :key role: role equals
-        :key role_like: role name contains
-        :key role_in: role name in list
-        :key role_in_like: role name contains in list
-        :key role_regex: role name regex
-        :key name: name equals
-        :key name_like: name contains
-        :key name_in: name in list
-        :key name_in_like: name contains in list
-        :key name_regex: name regex
-        :key description: description equals
-        :key description_like: description contains
-        :key description_in: description in list
-        :key description_in_like: description contains in list
-        :key description_regex: description regex
-        :key x: x equals
-        :key y: y equals
-        :key width: width equals
-        :key height: height equals
-        :key index_in_parent: index in parent equals
-        :key text: text equals
-        :key text_like: text contains
-        :key text_in: text in list
-        :key text_in_like: text contains in list
-        :key text_regex: text regex
-        :key editable: state editable
-        :key focusable: state focusable
-        :key resizable: state resizable
-        :key visible: state visible
-        :key selectable: state selectable
-        :key multiselectable: state multiselectable
-        :key collapsed: state collapsed
-        :key checked: state checked
-        :key enabled: state enabled
-        :key focused: state focused
-        :key selected: state selected
-        :key showing: state showing
-        :key children_count: children count equals
-        :key depth: depth equals
+        :key role: role == value
+        :key role_not: role != value
+        :key role_null: role is None
+        :key role_not_null: role is not None
+        :key role_like: role like *value*
+        :key role_in: role in [value1, value2]
+        :key role_in_like: role in [*value1*, *value2*]
+        :key role_regex: role regex pattern
+        :key name: name == value
+        :key name_not: name != value
+        :key name_null: name is None
+        :key name_not_null: name is not None
+        :key name_like: name like *value*
+        :key name_in: name in [value1, value2]
+        :key name_in_like: name in [*value1*, *value2*]
+        :key name_regex: name regex pattern
+        :key description: description == value
+        :key description_not: description != value
+        :key description_null: description is None
+        :key description_not_null: description is not None
+        :key description_like: description like *value*
+        :key description_in: description in [value1, value2]
+        :key description_in_like: description in [*value1*, *value2*]
+        :key description_regex: description regex pattern
+        :key text: text == value
+        :key text_not: text != value
+        :key text_null: text is None
+        :key text_not_null: text is not None
+        :key text_like: text like *value*
+        :key text_in: text in [value1, value2]
+        :key text_in_like: text in [*value1*, *value2*]
+        :key text_regex: text regex pattern
+        :key x: x == value
+        :key x_not: x != value
+        :key x_null: x is None
+        :key x_not_null: x is not None
+        :key x_gt: x > value
+        :key x_gte: x >= value
+        :key x_lt: x < value
+        :key x_lte: x <= value
+        :key y: y == value
+        :key y_not: y != value
+        :key y_null: y is None
+        :key y_not_null: y is not None
+        :key y_gt: y > value
+        :key y_gte: y >= value
+        :key y_lt: y < value
+        :key y_lte: y <= value
+        :key width: width == value
+        :key width_not: width != value
+        :key width_null: width is None
+        :key width_not_null: width is not None
+        :key width_gt: width > value
+        :key width_gte: width >= value
+        :key width_lt: width < value
+        :key width_lte: width <= value
+        :key height: height == value
+        :key height_not: height != value
+        :key height_null: height is None
+        :key height_not_null: height is not None
+        :key height_gt: height > value
+        :key height_gte: height >= value
+        :key height_lt: height < value
+        :key height_lte: height <= value
+        :key editable: editable == value
+        :key editable_not: editable != value
+        :key editable_null: editable is None
+        :key editable_not_null: editable is not None
+        :key focusable: focusable == value
+        :key focusable_not: focusable != value
+        :key focusable_null: focusable is None
+        :key focusable_not_null: focusable is not None
+        :key resizable: resizable == value
+        :key resizable_not: resizable != value
+        :key resizable_null: resizable is None
+        :key resizable_not_null: resizable is not None
+        :key visible: visible == value
+        :key visible_not: visible != value
+        :key visible_null: visible is None
+        :key visible_not_null: visible is not None
+        :key selectable: selectable == value
+        :key selectable_not: selectable != value
+        :key selectable_null: selectable is None
+        :key selectable_not_null: selectable is not None
+        :key multiselectable: multiselectable == value
+        :key multiselectable_not: multiselectable != value
+        :key multiselectable_null: multiselectable is None
+        :key multiselectable_not_null: multiselectable is not None
+        :key collapsed: collapsed == value
+        :key collapsed_not: collapsed != value
+        :key collapsed_null: collapsed is None
+        :key collapsed_not_null: collapsed is not None
+        :key checked: checked == value
+        :key checked_not: checked != value
+        :key checked_null: checked is None
+        :key checked_not_null: checked is not None
+        :key enabled: enabled == value
+        :key enabled_not: enabled != value
+        :key enabled_null: enabled is None
+        :key enabled_not_null: enabled is not None
+        :key focused: focused == value
+        :key focused_not: focused != value
+        :key focused_null: focused is None
+        :key focused_not_null: focused is not None
+        :key selected: selected == value
+        :key selected_not: selected != value
+        :key selected_null: selected is None
+        :key selected_not_null: selected is not None
+        :key showing: showing == value
+        :key showing_not: showing != value
+        :key showing_null: showing is None
+        :key showing_not_null: showing is not None
+        :key index_in_parent: index_in_parent == value
+        :key index_in_parent_not: index_in_parent != value
+        :key index_in_parent_null: index_in_parent is None
+        :key index_in_parent_not_null: index_in_parent is not None
+        :key index_in_parent_gt: index_in_parent > value
+        :key index_in_parent_gte: index_in_parent >= value
+        :key index_in_parent_lt: index_in_parent < value
+        :key index_in_parent_lte: index_in_parent <= value
+        :key children_count: children_count == value
+        :key children_count_not: children_count != value
+        :key children_count_null: children_count is None
+        :key children_count_not_null: children_count is not None
+        :key children_count_gt: children_count > value
+        :key children_count_gte: children_count >= value
+        :key children_count_lt: children_count < value
+        :key children_count_lte: children_count <= value
+        :key depth: depth == value
+        :key depth_not: depth != value
+        :key depth_null: depth is None
+        :key depth_not_null: depth is not None
+        :key depth_gt: depth > value
+        :key depth_gte: depth >= value
+        :key depth_lt: depth < value
+        :key depth_lte: depth <= value
         :return: True if matched
         """
         snapshot = self.snapshot()

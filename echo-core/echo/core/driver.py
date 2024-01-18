@@ -28,6 +28,8 @@ from echo.utils import win32, screenshot, strings
 class Expr(str, Enum):
     EQ = "eq"
     NOT = "not"
+    NULL = "null"
+    NOT_NULL = "not_null"
     LIKE = "like"
     IN = "in"
     IN_LIKE = "in_like"
@@ -36,12 +38,11 @@ class Expr(str, Enum):
     GTE = "gte"
     LT = "lt"
     LTE = "lte"
-    NULL = "null"
 
 
-STR_EXPRS = [Expr.EQ, Expr.NOT, Expr.LIKE, Expr.IN, Expr.IN_LIKE, Expr.REGEX, Expr.NULL]
-INT_EXPRS = [Expr.EQ, Expr.NOT, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
-BOOL_EXPRS = [Expr.EQ, Expr.NOT]
+STR_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL, Expr.NOT_NULL, Expr.LIKE, Expr.IN, Expr.IN_LIKE, Expr.REGEX]
+INT_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL, Expr.NOT_NULL, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE]
+BOOL_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL, Expr.NOT_NULL]
 
 
 def matches(
