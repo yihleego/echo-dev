@@ -76,8 +76,8 @@ class UIADriver(Driver):
     def root(self) -> Optional['UIAElement']:
         app = Application(backend='uia')
         app.connect(handle=self.handle)
-        window = app.top_window()
-        return UIAElement.create_root(app=app, window=window.wrapper_object(), driver=self)
+        window = app.top_window().wrapper_object()
+        return UIAElement(app=app, window=window, driver=self)
 
     def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
         root = self.root()
@@ -100,14 +100,6 @@ class UIAElement(Element):
         self._handle: Optional[int] = None
         self._process_id: Optional[int] = None
         self._process_name: Optional[str] = None
-
-    @staticmethod
-    def create_root(app: Application, window: UIAWrapper, driver: UIADriver) -> Optional['UIAElement']:
-        return UIAElement(app=app, window=window, driver=driver)
-
-    @staticmethod
-    def create_element(window: UIAWrapper, root: 'UIAElement', parent: 'UIAElement' = None) -> 'UIAElement':
-        return UIAElement(app=root._app, window=window, driver=root._driver, root=root, parent=parent)
 
     @property
     def handle(self) -> int:
@@ -238,7 +230,7 @@ class UIAElement(Element):
         parent_window = self._window.parent()
         if parent_window is None:
             return None
-        self._parent = UIAElement.create_element(window=parent_window, root=self._root)
+        self._parent = UIAElement(app=self._app, window=parent_window, driver=self._driver, root=self._root, parent=None)
         return self._parent
 
     def child(self, index: int) -> Optional['UIAElement']:
@@ -246,12 +238,12 @@ class UIAElement(Element):
         count = len(children)
         if count <= 0 or count <= index:
             return None
-        return UIAElement.create_element(window=children[index], root=self._root, parent=self)
+        return UIAElement(app=self._app, window=children[index], driver=self._driver, root=self._root, parent=self)
 
     def children(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
         res = []
         for child_window in self._window.children():
-            child = UIAElement.create_element(window=child_window, root=self._root, parent=self)
+            child = UIAElement(app=self._app, window=child_window, driver=self._driver, root=self._root, parent=self)
             if filters or criteria:
                 matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
                 if matched:

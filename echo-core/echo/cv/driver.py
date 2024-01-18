@@ -21,7 +21,7 @@ from echo.driver import Driver, Element
 
 class CVDriver(Driver):
     def root(self) -> Optional['CVElement']:
-        return CVElement.create_root(driver=self)
+        return CVElement(driver=self)
 
     def find_elements(self, filename: str) -> list['CVElement']:
         # TODO
@@ -36,14 +36,6 @@ class CVElement(Element):
         self._driver: CVDriver = driver
         self._root: CVElement = root or self  # TODO root
         self._parent: Optional[CVElement] = parent
-
-    @staticmethod
-    def create_root(driver: CVDriver) -> Optional['CVElement']:
-        return CVElement(driver=driver)
-
-    @staticmethod
-    def create_element(root: 'CVElement', parent: 'CVElement' = None) -> 'CVElement':
-        return CVElement(driver=root._driver, root=root, parent=parent)
 
     @property
     def driver(self) -> CVDriver:

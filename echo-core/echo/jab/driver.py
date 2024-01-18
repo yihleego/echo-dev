@@ -114,7 +114,12 @@ class JABDriver(Driver):
         self._lib = JABLib()
 
     def root(self) -> Optional['JABElement']:
-        return JABElement.create_root(lib=self._lib, driver=self)
+        if self._lib.isJavaWindow(HWND(self.handle)):
+            vmid = c_long()
+            ctx = AccessibleContext()
+            if self._lib.getAccessibleContextFromHWND(HWND(self.handle), vmid, ctx) != 0:
+                return JABElement(lib=self._lib, vmid=vmid, ctx=ctx, driver=self)
+        return None
 
     def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
         root = self.root()
@@ -306,20 +311,6 @@ class JABElement(JABElementProperties, Element):
         self._parent: Optional[JABElement] = parent
         self._released: bool = False
 
-    @staticmethod
-    def create_root(lib: JABLib, driver: JABDriver) -> Optional['JABElement']:
-        handle = driver.handle
-        if lib.isJavaWindow(HWND(handle)):
-            vmid = c_long()
-            ctx = AccessibleContext()
-            if lib.getAccessibleContextFromHWND(HWND(handle), vmid, ctx):
-                return JABElement(lib=lib, vmid=vmid, ctx=ctx, driver=driver)
-        return None
-
-    @staticmethod
-    def create_element(ctx: AccessibleContext, root: 'JABElement', parent: 'JABElement' = None) -> 'JABElement':
-        return JABElement(lib=root._lib, vmid=root._vmid, ctx=ctx, driver=root._driver, root=root, parent=parent)
-
     @property
     def driver(self) -> JABDriver:
         return self._driver
@@ -378,7 +369,7 @@ class JABElement(JABElementProperties, Element):
         if parent_ctx == 0:
             return None
         parent_ctx = AccessibleContext(parent_ctx)
-        self._parent = JABElement.create_element(ctx=parent_ctx, root=self._root)
+        self._parent = JABElement(lib=self._lib, vmid=self._vmid, ctx=parent_ctx, driver=self._driver, root=self._root, parent=None)
         return self._parent
 
     def child(self, index: int) -> Optional['JABElement']:
@@ -386,7 +377,7 @@ class JABElement(JABElementProperties, Element):
         if ctx == 0:
             return None
         ctx = AccessibleContext(ctx)
-        return JABElement.create_element(ctx=ctx, root=self._root, parent=self)
+        return JABElement(lib=self._lib, vmid=self._vmid, ctx=ctx, driver=self._driver, root=self._root, parent=self)
 
     def children(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
         res = []
@@ -396,7 +387,7 @@ class JABElement(JABElementProperties, Element):
             if ctx == 0:
                 continue
             ctx = AccessibleContext(ctx)
-            child = JABElement.create_element(ctx=ctx, root=self._root, parent=self)
+            child = JABElement(lib=self._lib, vmid=self._vmid, ctx=ctx, driver=self._driver, root=self._root, parent=self)
             if filters or criteria:
                 matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
                 if matched:
