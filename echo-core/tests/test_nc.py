@@ -21,6 +21,7 @@ from unittest import TestCase
 from echo.core.jab import JABDriver, Role, JABLib
 from echo.core.uia import UIADriver
 from echo.utils import win32
+from echo.utils.retrying import retryable
 
 
 class UIATestSuite(TestCase):
@@ -55,7 +56,6 @@ class UIATestSuite(TestCase):
         assert len(elems) > 0
 
     def test_export_merge(self):
-        import pyautogui
         import uuid
 
         root = self.jab_root
@@ -63,26 +63,26 @@ class UIATestSuite(TestCase):
         save_path = "C:\\Users\\leego\\Documents\\nc\\" + str(uuid.uuid4())
         os.makedirs(save_path, exist_ok=True)
 
+        self.jab_driver.set_foreground()
+
+        @retryable
         def _step1_open_tab():
             search_input_elem = root.find_element(role=Role.TEXT, depth=10)
             print('search input', search_input_elem)
             assert search_input_elem is not None
-
-            search_button_elem = root.find_element(role=Role.PUSH_BUTTON, depth=10)
-            print('search input', search_button_elem)
-            assert search_button_elem is not None
-
             search_input_elem.input("合并执行")
             time.sleep(1)
 
             search_item_elem = root.find_element(role=Role.LABEL, name="合并执行")
             assert search_item_elem is not None
 
+            search_button_elem = root.find_element(role=Role.PUSH_BUTTON, depth=10)
+            print('search input', search_button_elem)
+            assert search_button_elem is not None
             search_button_elem.click()
 
+        @retryable
         def _step2_enter_scheme():
-            self.jab_driver.set_foreground()
-
             label_elem = root.find_element(name="合并方案")
             assert label_elem is not None
 
@@ -94,18 +94,15 @@ class UIATestSuite(TestCase):
             assert input_elem is not None
             assert button_elem is not None
 
-            input_elem.input("5")
-            time.sleep(1)
-            input_elem.set_focus()
-
-            pyautogui.press("enter")
+            input_elem.simulate_click()
+            input_elem.simulate_input("^a5")
+            input_elem.simulate_input("{ENTER}", pause=1)
 
             time.sleep(1)
             assert input_elem.text == "财务合并报表-2023"
 
+        @retryable
         def _step3_enter_date_and_query():
-            self.jab_driver.set_foreground()
-
             label_elem = root.find_element(name="月")
             assert label_elem is not None
 
@@ -117,19 +114,15 @@ class UIATestSuite(TestCase):
             assert input_elem is not None
             assert button_elem is not None
 
-            input_elem.input("2023-12-31")
-            time.sleep(1)
-            input_elem.set_focus()
-
-            pyautogui.press("enter")
+            input_elem.simulate_click()
+            input_elem.simulate_input("^a2023-12-31{ENTER}")
 
             time.sleep(1)
             assert input_elem.text == "2023-12-31"
 
             all_sub_radio_elem = root.find_element(role=Role.RADIO_BUTTON, name="所有下级")
+            assert all_sub_radio_elem is not None
             all_sub_radio_elem.click()
-
-            time.sleep(1)
 
             clear_button_elem = root.find_element(role=Role.PUSH_BUTTON, name="清空值")
             assert clear_button_elem is not None
@@ -138,7 +131,7 @@ class UIATestSuite(TestCase):
             assert query_button_elem is not None and query_button_elem.name == "查询"
             query_button_elem.click()
 
-            label_elem = root.find_element(role=Role.LABEL, name_like="每页行数")
+            label_elem = root.find_element(role=Role.LABEL, name_like="每页行数", width_gte=1)
             assert label_elem is not None
 
             input_elem = label_elem.next()
@@ -147,26 +140,17 @@ class UIATestSuite(TestCase):
             if input_elem.text == "500":
                 return
 
-            input_elem.input("500")
-            time.sleep(1)
-            input_elem.set_focus()
+            input_elem.simulate_click()
+            input_elem.simulate_input("^a500{ENTER}")
 
-            pyautogui.press("enter")
-
-            time.sleep(1)
-            query_button_elem.click()
-
-        def _step4_export_data():
-            self.jab_driver.set_foreground()
-
+        @retryable
+        def _step4_click_export_button():
             table_elem = root.find_element(role=Role.TABLE, depth=26)
-            table_elem.click()
-            table_elem.set_focus()
-            with pyautogui.hold("ctrl"):
-                pyautogui.press("a")
+            table_elem.simulate_click(coords=table_elem.position)
+            table_elem.simulate_input('^a')
 
             export_button_elem = root.find_element(role=Role.PUSH_BUTTON, name="导出")
-            export_button_elem.click()
+            export_button_elem.simulate_click()
             time.sleep(1)
 
             menu_window = self.uia_root.find_element(class_name="SunAwtWindow")
@@ -174,9 +158,11 @@ class UIATestSuite(TestCase):
             menu_root = menu_driver.root()
 
             export_item_elem = menu_root.find_element(role=Role.MENU_ITEM, name="合并报表")
-            export_item_elem.click()
+            export_item_elem.simulate_click()
             time.sleep(1)
 
+        @retryable
+        def _step5_export_data():
             dialog_window = self.uia_root.find_element(class_name="SunAwtDialog", name="保存")
             dialog_driver = JABDriver(dialog_window.handle)
             dialog_root = dialog_driver.root()
@@ -187,20 +173,23 @@ class UIATestSuite(TestCase):
             time.sleep(1)
 
             save_button_elem = dialog_root.find_element(role=Role.PUSH_BUTTON, name="保存")
-            save_button_elem.click()
+
+            @retryable(max_retries=5)
+            def _click():
+                clicked = save_button_elem.click()
+                if not clicked:
+                    raise Exception("click failed")
+
+            _click()
 
         _step1_open_tab()
-        time.sleep(1)
-
         _step2_enter_scheme()
-        time.sleep(1)
-
         _step3_enter_date_and_query()
-        time.sleep(1)
+        _step4_click_export_button()
+        _step5_export_data()
 
-        _step4_export_data()
-        time.sleep(20)
+        time.sleep(10)
 
         files = os.listdir(save_path)
-        print(save_path, files)
-        time.sleep(1)
+        print(save_path, len(files), files)
+        assert len(files) > 0

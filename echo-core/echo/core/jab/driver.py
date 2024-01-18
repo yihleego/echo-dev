@@ -409,7 +409,7 @@ class JABElement(JABElementProperties, Element):
     def children_count(self) -> int:
         return self.info.childrenCount
 
-    def click(self, button="left", simulate=False) -> bool:
+    def click(self, button="left") -> bool:
         # TODO I don't know why 'click' does not work
         return self._do_action(action_names=['单击', 'click'])
 

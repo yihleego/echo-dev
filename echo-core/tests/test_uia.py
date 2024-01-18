@@ -194,6 +194,10 @@ class UIATestSuite(TestCase):
 
     def test_screenshot(self):
         root = self.root
+        driver = self.driver
+
+        driver.screenshot("./screenshots/uia/window.png")
+
         root.screenshot("./screenshots/uia/root.png")
 
         edit_elem = root.find_element(role=Role.EDIT)
@@ -202,6 +206,7 @@ class UIATestSuite(TestCase):
         button_elem = root.find_element(role=Role.BUTTON)
         button_elem.screenshot("./screenshots/uia/button.png")
 
+        assert os.path.exists("./screenshots/uia/window.png")
         assert os.path.exists("./screenshots/uia/root.png")
         assert os.path.exists("./screenshots/uia/edit.png")
         assert os.path.exists("./screenshots/uia/button.png")

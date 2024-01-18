@@ -23,7 +23,7 @@ from ctypes import c_char, c_wchar, c_wchar_p, c_int, c_int64, c_float, c_long, 
 from ctypes.wintypes import BOOL, HWND
 from typing import Generator, Callable, Optional
 
-from echo.utils import singleton
+from echo.utils.singleton import singleton
 
 # AccessBridge versioning
 ACCESS_BRIDGE_VERSION = "AccessBridge 2.0.2"

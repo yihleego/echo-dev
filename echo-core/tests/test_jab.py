@@ -200,6 +200,10 @@ class JABTestSuite(TestCase):
 
     def test_screenshot(self):
         root = self.root
+        driver = self.driver
+
+        driver.screenshot("./screenshots/jab/window.png")
+
         root.screenshot("./screenshots/jab/root.png")
 
         text_elem = root.find_element(role=Role.TEXT)
@@ -211,6 +215,7 @@ class JABTestSuite(TestCase):
         button_elem.release()
         text_elem.release()
 
+        assert os.path.exists("./screenshots/jab/window.png")
         assert os.path.exists("./screenshots/jab/root.png")
         assert os.path.exists("./screenshots/jab/text.png")
         assert os.path.exists("./screenshots/jab/button.png")

@@ -27,6 +27,7 @@ from echo.utils import win32, screenshot, strings
 
 class Expr(str, Enum):
     EQ = "eq"
+    NOT = "not"
     LIKE = "like"
     IN = "in"
     IN_LIKE = "in_like"
@@ -38,9 +39,9 @@ class Expr(str, Enum):
     NULL = "null"
 
 
-STR_EXPRS = [Expr.EQ, Expr.LIKE, Expr.IN, Expr.IN_LIKE, Expr.REGEX, Expr.NULL]
-INT_EXPRS = [Expr.EQ, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
-BOOL_EXPRS = [Expr.EQ]
+STR_EXPRS = [Expr.EQ, Expr.NOT, Expr.LIKE, Expr.IN, Expr.IN_LIKE, Expr.REGEX, Expr.NULL]
+INT_EXPRS = [Expr.EQ, Expr.NOT, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
+BOOL_EXPRS = [Expr.EQ, Expr.NOT]
 
 
 def matches(
@@ -61,6 +62,8 @@ def matches(
             value = strings.deep_to_lower(value)
         if expr == Expr.EQ:
             return fixed == value
+        if expr == Expr.NOT:
+            return fixed != value
         elif expr == Expr.LIKE:
             return fixed.find(value) >= 0
         elif expr == Expr.IN:
@@ -128,7 +131,6 @@ def matches(
 class Driver(ABC):
     def __init__(self, handle: int, process_id: int = None, process_name: str = None,
                  window_name: str = None, class_name: str = None):
-        self._handle = handle
         if not process_id:
             process_id = win32.get_process_id_from_handle(handle)
         if not process_name:
@@ -137,6 +139,7 @@ class Driver(ABC):
             window_name = win32.get_window_text(handle)
         if not class_name:
             class_name = win32.get_class_name(handle)
+        self._handle = handle
         self._process_id = process_id
         self._process_name = process_name
         self._window_name = window_name
@@ -164,7 +167,7 @@ class Driver(ABC):
 
     @property
     def rectangle(self) -> tuple[int, int, int, int]:
-        raise win32.get_window_rect(self.handle)
+        return win32.get_window_rect(self.handle)
 
     def screenshot(self, filename: str = None) -> Image:
         self.set_foreground()
@@ -221,6 +224,9 @@ class Element(ABC):
     def rectangle(self) -> tuple[int, int, int, int]:
         raise NotImplementedError
 
+    def set_foreground(self) -> bool:
+        return self.driver.set_foreground()
+
     def screenshot(self, filename: str = None) -> Image:
         self.driver.set_foreground()
         time.sleep(0.06)
@@ -235,3 +241,42 @@ class Element(ABC):
             else:
                 err = TimeoutError("timed out")
                 raise err
+
+    def simulate_click(self, button="left", coords: tuple[int, int] = None, button_down=True, button_up=True, double=False,
+                       wheel_dist=0, pressed="", key_down=True, key_up=True):
+        from pywinauto import mouse
+
+        if not coords:
+            rect = self.rectangle
+            coords = (int((rect[2] + rect[0]) / 2), int((rect[3] + rect[1]) / 2))
+
+        mouse._perform_click_input(
+            button, coords, double, button_down, button_up,
+            wheel_dist=wheel_dist, pressed=pressed,
+            key_down=key_down, key_up=key_up)
+
+    def simulate_input(self, keys, pause=0.05, with_spaces=False, with_tabs=False, with_newlines=False,
+                       turn_off_numlock=False, set_foreground=False, vk_packet=True):
+        from pywinauto import keyboard
+        import six
+        import locale
+
+        if set_foreground:
+            self.driver.set_foreground()
+
+        if isinstance(keys, six.text_type):
+            aligned_keys = keys
+        elif isinstance(keys, six.binary_type):
+            aligned_keys = keys.decode(locale.getpreferredencoding())
+        else:
+            # convert a non-string input
+            aligned_keys = six.text_type(keys)
+
+        keyboard.send_keys(
+            aligned_keys,
+            pause,
+            with_spaces,
+            with_tabs,
+            with_newlines,
+            turn_off_numlock,
+            vk_packet)
