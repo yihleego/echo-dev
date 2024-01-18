@@ -126,6 +126,12 @@ class JABDriver(Driver):
             return []
         return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
 
+    def find_element(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> Optional['JABElement']:
+        root = self.root()
+        if root is None:
+            return None
+        return root.find_element(*filters, ignore_case=ignore_case, include_self=True, **criteria)
+
     def close(self):
         # if self._lib:
         #     self._lib.stop()
@@ -411,7 +417,12 @@ class JABElement(JABElementProperties, Element):
 
     def click(self, button="left") -> bool:
         # TODO I don't know why 'click' does not work
-        return self._do_action(action_names=['单击', 'click'])
+        res = self._do_action(action_names=['单击', 'click'])
+        if res:
+            return res
+        # fallback
+        self.simulate_click(button)
+        return True
 
     def input(self, text: str) -> bool:
         res = self._lib.setTextContents(self._vmid, self._ctx, c_wchar_p(text))
@@ -574,6 +585,6 @@ class JABElement(JABElementProperties, Element):
             aatd.actionsCount = 1
             failure = c_int(0)
             res = self._lib.doAccessibleActions(self._vmid, self._ctx, aatd, failure)
-            if res and failure:
+            if res and failure.value == -1:
                 return True
         return False

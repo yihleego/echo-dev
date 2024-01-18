@@ -84,6 +84,12 @@ class UIADriver(Driver):
             return []
         return root.find_elements(*filters, ignore_case=ignore_case, include_self=True, **criteria)
 
+    def find_element(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> Optional['UIAElement']:
+        root = self.root()
+        if root is None:
+            return None
+        return root.find_element(*filters, ignore_case=ignore_case, include_self=False, **criteria)
+
     def close(self):
         pass
 

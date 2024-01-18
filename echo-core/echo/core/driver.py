@@ -242,7 +242,8 @@ class Element(ABC):
                 err = TimeoutError("timed out")
                 raise err
 
-    def simulate_click(self, button="left", coords: tuple[int, int] = None, button_down=True, button_up=True, double=False,
+    def simulate_click(self, button="left", coords: tuple[int, int] = None,
+                       button_down=True, button_up=True, double=False,
                        wheel_dist=0, pressed="", key_down=True, key_up=True):
         from pywinauto import mouse
 
