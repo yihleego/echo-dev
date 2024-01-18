@@ -176,10 +176,14 @@ class Driver(ABC):
 
     def set_foreground(self) -> bool:
         self.show()
+        self.normal()
         return win32.set_foreground(self.handle, self.process_id)
 
     def move(self, x: int = None, y: int = None, width: int = None, height: int = None, repaint=True) -> bool:
         return win32.move_window(self.handle, self.process_id, x, y, width, height, repaint)
+
+    def normal(self) -> bool:
+        return win32.show_window(self.handle, win32.SW_NORMAL)
 
     def hide(self) -> bool:
         return win32.show_window(self.handle, win32.SW_HIDE)

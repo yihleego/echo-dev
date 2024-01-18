@@ -123,6 +123,7 @@ class UIATestSuite(TestCase):
             all_sub_radio_elem = root.find_element(role=Role.RADIO_BUTTON, name="所有下级")
             assert all_sub_radio_elem is not None
             all_sub_radio_elem.click()
+            assert all_sub_radio_elem.checked
 
             clear_button_elem = root.find_element(role=Role.PUSH_BUTTON, name="清空值")
             assert clear_button_elem is not None
@@ -183,11 +184,14 @@ class UIATestSuite(TestCase):
             _click()
 
         _step1_open_tab()
+        time.sleep(1)
         _step2_enter_scheme()
+        time.sleep(1)
         _step3_enter_date_and_query()
+        time.sleep(1)
         _step4_click_export_button()
+        time.sleep(1)
         _step5_export_data()
-
         time.sleep(10)
 
         files = os.listdir(save_path)
@@ -316,6 +320,7 @@ class UIATestSuite(TestCase):
             all_sub_radio_elem = root.find_element(role=Role.RADIO_BUTTON, name="所有下级")
             assert all_sub_radio_elem is not None
             all_sub_radio_elem.click()
+            assert all_sub_radio_elem.checked
 
             query_button_elem = root.find_element(role=Role.PUSH_BUTTON, name="查询", description="查询(Ctrl+Enter)")
             assert query_button_elem is not None
@@ -392,12 +397,16 @@ class UIATestSuite(TestCase):
             _click()
 
         _step1_open_tab()
+        time.sleep(1)
         _step2_enter_scheme()
+        time.sleep(1)
         _step3_select_report_tree()
+        time.sleep(1)
         _step4_enter_date_and_query()
+        time.sleep(1)
         _step5_click_export_button()
+        time.sleep(1)
         _step6_export_data()
-
         time.sleep(10)
 
         files = os.listdir(save_path)
