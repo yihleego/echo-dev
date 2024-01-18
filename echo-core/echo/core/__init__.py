@@ -14,10 +14,10 @@
 # limitations under the License.
 
 
-__version__ = "2.0.2"
+__version__ = "0.0.1"
 
-from .driver import JABDriver, JABElement, Role, State
+from .driver import Driver, Element
 
 __all__ = [
-    'JABDriver', 'JABElement', 'Role', 'State',
+    'Driver', 'Element',
 ]

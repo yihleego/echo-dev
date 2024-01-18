@@ -16,8 +16,8 @@
 
 from unittest import TestCase, skip
 
-from echo.cv.cv import imread
-from echo.cv.matching import *
+from echo.core.cv.cv import imread
+from echo.core.cv.matching import *
 
 
 class CVTestSuite(TestCase):

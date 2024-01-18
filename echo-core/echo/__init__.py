@@ -15,9 +15,3 @@
 
 
 __version__ = "0.0.1"
-
-from .driver import Driver, Element
-
-__all__ = [
-    'Driver', 'Element',
-]

@@ -20,7 +20,7 @@ import time
 import uuid
 from unittest import TestCase
 
-from echo.jab import JABDriver, Role
+from echo.core.jab import JABDriver, Role
 from echo.utils import win32
 
 

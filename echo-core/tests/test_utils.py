@@ -17,8 +17,9 @@
 import os
 from unittest import TestCase
 
-from echo.utils import deep_to_lower, deep_to_upper, deep_strip, matches, STR_EXPRS, INT_EXPRS
+from echo.core.driver import matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 from echo.utils.screenshot import screenshot
+from echo.utils.strings import deep_to_lower, deep_to_upper, deep_strip
 
 
 class CommonTestSuite(TestCase):
@@ -87,12 +88,14 @@ class CommonTestSuite(TestCase):
                 self.name = name
                 self.age = age
                 self.job = None
+                self.enabled = True
 
         user = User('Echo', 18)
         rules = {
             "name": STR_EXPRS,
             "age": INT_EXPRS,
-            "job": STR_EXPRS
+            "job": STR_EXPRS,
+            "enabled": BOOL_EXPRS
         }
         assert matches(user, filters=[lambda x: x.name == "Echo"])
         assert matches(user, filters=(lambda x: x.name == "Echo",))

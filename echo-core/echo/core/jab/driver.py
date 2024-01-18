@@ -19,9 +19,8 @@ from ctypes import create_unicode_buffer
 from enum import Enum
 from functools import cached_property
 
-from echo.driver import Driver, Element
-from echo.utils import matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
-from .jab import *
+from echo.core.driver import Driver, Element, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from .jablib import *
 
 
 class Role(str, Enum):

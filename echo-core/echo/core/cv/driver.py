@@ -16,7 +16,7 @@
 
 from typing import Optional
 
-from echo.driver import Driver, Element
+from echo.core.driver import Driver, Element
 
 
 class CVDriver(Driver):

@@ -18,9 +18,8 @@ import os
 import time
 from unittest import TestCase
 
-from echo.jab import JABDriver, Role
-from echo.jab.jab import JABLib
-from echo.uia import UIADriver
+from echo.core.jab import JABDriver, Role, JABLib
+from echo.core.uia import UIADriver
 from echo.utils import win32
 
 

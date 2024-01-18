@@ -14,13 +14,12 @@
 # limitations under the License.
 
 
-import platform
+__version__ = "2.0.2"
 
-_system = platform.system().lower()
-is_linux = _system.find("linux") >= 0
-is_mac = _system.find("darwin") >= 0 or _system.find("mac") >= 0
-is_windows = _system.find("windows") >= 0
+from .driver import JABDriver, JABElement, Role, State
+from .jablib import JABLib
 
 __all__ = [
-    'is_linux', 'is_mac', 'is_windows',
+    'JABDriver', 'JABElement', 'Role', 'State',
+    'JABLib',
 ]
