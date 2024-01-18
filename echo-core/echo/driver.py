@@ -20,10 +20,7 @@ from typing import Callable
 
 from PIL import Image
 
-from .utils import is_windows, screenshot, to_string
-
-if is_windows():
-    from .utils import win32
+from .utils import win32, screenshot
 
 
 class Driver(ABC):
@@ -63,10 +60,14 @@ class Driver(ABC):
     def class_name(self) -> str:
         return self._class_name
 
+    @property
+    def rectangle(self) -> tuple[int, int, int, int]:
+        raise win32.get_window_rect(self.handle)
+
     def screenshot(self, filename: str = None) -> Image:
         self.set_foreground()
         time.sleep(0.06)
-        return win32.screenshot(self.handle, filename)
+        return screenshot(self.rectangle, filename)
 
     def set_foreground(self) -> bool:
         self.show()
@@ -100,7 +101,11 @@ class Driver(ABC):
         return win32.get_window_placement(self.handle).showCmd == win32.SW_SHOWNORMAL
 
     def __str__(self) -> str:
-        return to_string(self, 'handle', 'process_id', 'process_name', 'window_name', 'class_name')
+        return f"handle: {self.handle}, " \
+               f"process_id: {self.process_id}, " \
+               f"process_name: {self.process_name}, " \
+               f"window_name: {self.window_name}, " \
+               f"class_name: {self.class_name}"
 
 
 class Element(ABC):
@@ -113,18 +118,6 @@ class Element(ABC):
     @abstractmethod
     def rectangle(self) -> tuple[int, int, int, int]:
         raise NotImplementedError
-
-    @property
-    def handle(self) -> int:
-        return self.driver.handle
-
-    @property
-    def process_id(self) -> int:
-        return self.driver.process_id
-
-    @property
-    def process_name(self) -> str:
-        return self.driver.process_name
 
     def screenshot(self, filename: str = None) -> Image:
         self.driver.set_foreground()
@@ -140,6 +133,3 @@ class Element(ABC):
             else:
                 err = TimeoutError("timed out")
                 raise err
-
-    def __str__(self) -> str:
-        return to_string(self, 'rectangle')

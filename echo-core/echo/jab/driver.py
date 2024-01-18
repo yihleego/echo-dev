@@ -20,7 +20,7 @@ from enum import Enum
 from functools import cached_property
 
 from echo.driver import Driver, Element
-from echo.utils import to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.utils import matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 from .jab import *
 
 
@@ -254,8 +254,14 @@ class JABElementProperties(ABC):
         return State.SHOWING in self.info.states_en_US
 
     def __str__(self) -> str:
-        return to_string(self, 'role', 'name', 'description', 'index_in_parent',
-                         'rectangle', 'states', 'text', 'children_count', 'depth')
+        return f"role: {self.role}, " \
+               f"name: {self.name}, " \
+               f"description: {self.description}, " \
+               f"rectangle: {self.rectangle}, " \
+               f"states: {self.states}, " \
+               f"index_in_parent: {self.index_in_parent}, " \
+               f"children_count: {self.children_count}, " \
+               f"depth: {self.depth}"
 
 
 class JABElementSnapshot(JABElementProperties):
@@ -481,7 +487,6 @@ class JABElement(JABElementProperties, Element):
             "y": INT_EXPRS,
             "width": INT_EXPRS,
             "height": INT_EXPRS,
-            "index_in_parent": INT_EXPRS,
             "editable": BOOL_EXPRS,
             "focusable": BOOL_EXPRS,
             "resizable": BOOL_EXPRS,
@@ -494,6 +499,7 @@ class JABElement(JABElementProperties, Element):
             "focused": BOOL_EXPRS,
             "selected": BOOL_EXPRS,
             "showing": BOOL_EXPRS,
+            "index_in_parent": INT_EXPRS,
             "children_count": INT_EXPRS,
             "depth": INT_EXPRS,
         }

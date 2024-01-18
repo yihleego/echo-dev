@@ -17,7 +17,6 @@
 from typing import Optional
 
 from echo.driver import Driver, Element
-from echo.utils import to_string
 
 
 class CVDriver(Driver):
@@ -51,9 +50,15 @@ class CVElement(Element):
         return self._driver
 
     @property
+    def role(self) -> str:
+        # TODO
+        return ""
+
+    @property
     def rectangle(self) -> tuple[int, int, int, int]:
         # TODO
-        pass
+        return 0, 0, 0, 0
 
     def __str__(self) -> str:
-        return to_string(self, 'rectangle')
+        return f"role: {self.role}, " \
+               f"rectangle: {self.rectangle}"

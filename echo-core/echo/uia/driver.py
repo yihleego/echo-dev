@@ -25,7 +25,7 @@ from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
 from echo.driver import Driver, Element
-from echo.utils import to_string, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.utils import matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 
 
 class Role(str, Enum):
@@ -424,6 +424,15 @@ class UIAElement(Element):
         return None
 
     def __str__(self) -> str:
-        return to_string(self, 'role', 'name', 'description', 'automation_id', 'class_name',
-                         'rectangle', 'text', 'visible', 'checked', 'enabled', 'selected', 'depth',
-                         'handle', 'process_id', 'process_name')
+        return f"role: {self.role}, " \
+               f"name: {self.name}, " \
+               f"description: {self.description}, " \
+               f"automation_id: {self.automation_id}, " \
+               f"class_name: {self.class_name}, " \
+               f"rectangle: {self.rectangle}, " \
+               f"text: {self.text}, " \
+               f"visible: {self.visible}, " \
+               f"checked: {self.checked}, " \
+               f"enabled: {self.enabled}, " \
+               f"selected: {self.selected}, " \
+               f"depth: {self.depth}"
