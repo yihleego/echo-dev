@@ -19,26 +19,38 @@ import time
 from functools import wraps, partial
 
 
-def retryable(func=None, max_retries: int = 2, delay: float = 1, use_logging: bool = True):
+def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: bool = False, exception_type=Exception):
+    """
+    Retry if the function raises an exception.
+    Default to retry once without delay.
+    :param func: the function to be wrapped
+    :param max_retries: the maximum number of retries, i.e. 1 means running at most 2 times
+    :param delay: the delay between retries
+    :param use_logging: whether to log the error
+    :param exception_type: the exception type to be caught
+    :return: the wrapped function
+    """
     if func is None:
-        return partial(retryable, max_retries=max_retries, delay=delay, use_logging=use_logging)
+        return partial(retryable, max_retries=max_retries, delay=delay, use_logging=use_logging, exception_type=exception_type)
     elif not callable(func) and isinstance(func, int):
-        return partial(retryable, max_retries=func, delay=delay, use_logging=use_logging)
+        return partial(retryable, max_retries=func, delay=delay, use_logging=use_logging, exception_type=exception_type)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
         count = 0
         err = None
-        while count < max_retries:
+        while count <= max_retries:
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
+            except exception_type as e:
                 err = e
-                count += 1
+                # skip if it's the last time
                 if count < max_retries:
                     if use_logging:
                         logging.error(f"Attempt to execute {func.__name__} {count + 1} failed, retry in {delay} seconds", e)
-                    time.sleep(delay)
+                    if delay > 0:
+                        time.sleep(delay)
+            count += 1
         if err is not None:
             if use_logging:
                 logging.error(f"Max retries({max_retries}) reached, failed to execute {func.__name__}", err)

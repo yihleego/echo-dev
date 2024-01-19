@@ -15,6 +15,7 @@
 
 
 import os
+import time
 from unittest import TestCase
 
 from echo.core.driver import matches, gen_matches_kwargs, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
@@ -128,6 +129,123 @@ class CommonTestSuite(TestCase):
             "enabled": BOOL_EXPRS,
         }
         print(gen_matches_kwargs(rules))
+
+    def test_retrying(self):
+        from echo.utils.retrying import retryable
+
+        counter = [0]
+
+        def run(func, err, count=None):
+            start = time.perf_counter()
+            counter[0] = 0
+            if err:
+                try:
+                    func()
+                    assert False
+                except:
+                    pass
+            else:
+                func()
+            if count is not None:
+                assert count == counter[0]
+            end = time.perf_counter()
+            print(f"run {func.__name__} in {format(end - start, '.6f')} ms")
+
+        @retryable
+        def retry1():
+            print('run retry1', counter[0])
+            if counter[0] < 1:
+                counter[0] += 1
+                raise Exception()
+
+        @retryable(1)
+        def retry2():
+            print('run retry2', counter[0])
+            if counter[0] < 1:
+                counter[0] += 1
+                raise Exception()
+
+        @retryable(2)
+        def retry3():
+            print('run retry3', counter[0])
+            if counter[0] < 2:
+                counter[0] += 1
+                raise Exception()
+
+        @retryable(max_retries=1)
+        def retry4():
+            print('run retry4', counter[0])
+            if counter[0] < 1:
+                counter[0] += 1
+                raise Exception()
+
+        @retryable(max_retries=1, delay=1)
+        def retry5():
+            print('run retry5', counter[0])
+            if counter[0] < 1:
+                counter[0] += 1
+                raise Exception()
+
+        @retryable
+        def retry6():
+            print('run retry6', counter[0])
+            counter[0] += 1
+            raise Exception()
+
+        @retryable(1)
+        def retry7():
+            print('run retry7', counter[0])
+            counter[0] += 1
+            raise Exception()
+
+        @retryable(2)
+        def retry8():
+            print('run retry8', counter[0])
+            counter[0] += 1
+            raise Exception()
+
+        @retryable(max_retries=1)
+        def retry9():
+            print('run retry9', counter[0])
+            counter[0] += 1
+            raise Exception()
+
+        @retryable(max_retries=1, delay=1)
+        def retry10():
+            print('run retry10', counter[0])
+            counter[0] += 1
+            raise Exception()
+
+        class FooException(Exception):
+            pass
+
+        class BarException(Exception):
+            pass
+
+        @retryable(exception_type=BarException)
+        def retry11():
+            print('run retry11', counter[0])
+            counter[0] += 1
+            raise FooException()
+
+        @retryable(exception_type=BarException)
+        def retry12():
+            print('run retry12', counter[0])
+            counter[0] += 1
+            raise BarException()
+
+        run(retry1, err=False, count=1)
+        run(retry2, err=False, count=1)
+        run(retry3, err=False, count=2)
+        run(retry4, err=False, count=1)
+        run(retry5, err=False, count=1)
+        run(retry6, err=True, count=2)
+        run(retry7, err=True, count=2)
+        run(retry8, err=True, count=3)
+        run(retry9, err=True, count=2)
+        run(retry10, err=True, count=2)
+        run(retry11, err=True, count=1)
+        run(retry12, err=True, count=2)
 
     def test_kwargs(self):
         def _inner(*arg, val=None, **kwargs):
