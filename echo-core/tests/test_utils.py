@@ -17,7 +17,7 @@
 import os
 from unittest import TestCase
 
-from echo.core.driver import matches, Expr, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.core.driver import matches, gen_matches_kwargs, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 from echo.utils.screenshot import screenshot
 from echo.utils.strings import deep_to_lower, deep_to_upper, deep_strip
 
@@ -121,36 +121,13 @@ class CommonTestSuite(TestCase):
         assert matches(user, rules=rules, job_null=1)
         assert ~matches(user, rules=rules, job_null=0)
 
-    def test_gen_matches_kwargs(self):
-        docs = []
-        rules = {}
-        for name, exprs in rules.items():
-            for expr in exprs:
-                if expr == Expr.EQ:
-                    docs.append(f":key {name}: {name} == value")
-                if expr == Expr.NOT:
-                    docs.append(f":key {name}_{expr}: {name} != value")
-                elif expr == Expr.LIKE:
-                    docs.append(f":key {name}_{expr}: {name} like *value*")
-                elif expr == Expr.IN:
-                    docs.append(f":key {name}_{expr}: {name} in [value1, value2]")
-                elif expr == Expr.IN_LIKE:
-                    docs.append(f":key {name}_{expr}: {name} in [*value1*, *value2*]")
-                elif expr == Expr.REGEX:
-                    docs.append(f":key {name}_{expr}: {name} regex pattern")
-                elif expr == Expr.GT:
-                    docs.append(f":key {name}_{expr}: {name} > value")
-                elif expr == Expr.GTE:
-                    docs.append(f":key {name}_{expr}: {name} >= value")
-                elif expr == Expr.LT:
-                    docs.append(f":key {name}_{expr}: {name} < value")
-                elif expr == Expr.LTE:
-                    docs.append(f":key {name}_{expr}: {name} <= value")
-                elif expr == Expr.NULL:
-                    docs.append(f":key {name}_{expr}: {name} is None")
-                elif expr == Expr.NOT_NULL:
-                    docs.append(f":key {name}_{expr}: {name} is not None")
-        print("\n".join(docs))
+    def test_matches_docs(self):
+        rules = {
+            "name": STR_EXPRS,
+            "size": INT_EXPRS,
+            "enabled": BOOL_EXPRS,
+        }
+        print(gen_matches_kwargs(rules))
 
     def test_kwargs(self):
         def _inner(*arg, val=None, **kwargs):

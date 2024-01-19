@@ -439,141 +439,117 @@ class JABElement(JABElementProperties, Element):
         :param ignore_case: two strings are considered equal ignoring case
         :key role: role == value
         :key role_not: role != value
-        :key role_null: role is None
-        :key role_not_null: role is not None
         :key role_like: role like *value*
         :key role_in: role in [value1, value2]
-        :key role_in_like: role in [*value1*, *value2*]
-        :key role_regex: role regex pattern
+        :key role_in_like: role in like [*value1*, *value2*]
+        :key role_regex: role regex pattern (str)
+        :key role_null: role is None (bool)
         :key name: name == value
         :key name_not: name != value
-        :key name_null: name is None
-        :key name_not_null: name is not None
         :key name_like: name like *value*
         :key name_in: name in [value1, value2]
-        :key name_in_like: name in [*value1*, *value2*]
-        :key name_regex: name regex pattern
+        :key name_in_like: name in like [*value1*, *value2*]
+        :key name_regex: name regex pattern (str)
+        :key name_null: name is None (bool)
         :key description: description == value
         :key description_not: description != value
-        :key description_null: description is None
-        :key description_not_null: description is not None
         :key description_like: description like *value*
         :key description_in: description in [value1, value2]
-        :key description_in_like: description in [*value1*, *value2*]
-        :key description_regex: description regex pattern
+        :key description_in_like: description in like [*value1*, *value2*]
+        :key description_regex: description regex pattern (str)
+        :key description_null: description is None (bool)
         :key text: text == value
         :key text_not: text != value
-        :key text_null: text is None
-        :key text_not_null: text is not None
         :key text_like: text like *value*
         :key text_in: text in [value1, value2]
-        :key text_in_like: text in [*value1*, *value2*]
-        :key text_regex: text regex pattern
+        :key text_in_like: text in like [*value1*, *value2*]
+        :key text_regex: text regex pattern (str)
+        :key text_null: text is None (bool)
         :key x: x == value
         :key x_not: x != value
-        :key x_null: x is None
-        :key x_not_null: x is not None
         :key x_gt: x > value
         :key x_gte: x >= value
         :key x_lt: x < value
         :key x_lte: x <= value
+        :key x_null: x is None (bool)
         :key y: y == value
         :key y_not: y != value
-        :key y_null: y is None
-        :key y_not_null: y is not None
         :key y_gt: y > value
         :key y_gte: y >= value
         :key y_lt: y < value
         :key y_lte: y <= value
+        :key y_null: y is None (bool)
         :key width: width == value
         :key width_not: width != value
-        :key width_null: width is None
-        :key width_not_null: width is not None
         :key width_gt: width > value
         :key width_gte: width >= value
         :key width_lt: width < value
         :key width_lte: width <= value
+        :key width_null: width is None (bool)
         :key height: height == value
         :key height_not: height != value
-        :key height_null: height is None
-        :key height_not_null: height is not None
         :key height_gt: height > value
         :key height_gte: height >= value
         :key height_lt: height < value
         :key height_lte: height <= value
+        :key height_null: height is None (bool)
         :key editable: editable == value
         :key editable_not: editable != value
-        :key editable_null: editable is None
-        :key editable_not_null: editable is not None
+        :key editable_null: editable is None (bool)
         :key focusable: focusable == value
         :key focusable_not: focusable != value
-        :key focusable_null: focusable is None
-        :key focusable_not_null: focusable is not None
+        :key focusable_null: focusable is None (bool)
         :key resizable: resizable == value
         :key resizable_not: resizable != value
-        :key resizable_null: resizable is None
-        :key resizable_not_null: resizable is not None
+        :key resizable_null: resizable is None (bool)
         :key visible: visible == value
         :key visible_not: visible != value
-        :key visible_null: visible is None
-        :key visible_not_null: visible is not None
+        :key visible_null: visible is None (bool)
         :key selectable: selectable == value
         :key selectable_not: selectable != value
-        :key selectable_null: selectable is None
-        :key selectable_not_null: selectable is not None
+        :key selectable_null: selectable is None (bool)
         :key multiselectable: multiselectable == value
         :key multiselectable_not: multiselectable != value
-        :key multiselectable_null: multiselectable is None
-        :key multiselectable_not_null: multiselectable is not None
+        :key multiselectable_null: multiselectable is None (bool)
         :key collapsed: collapsed == value
         :key collapsed_not: collapsed != value
-        :key collapsed_null: collapsed is None
-        :key collapsed_not_null: collapsed is not None
+        :key collapsed_null: collapsed is None (bool)
         :key checked: checked == value
         :key checked_not: checked != value
-        :key checked_null: checked is None
-        :key checked_not_null: checked is not None
+        :key checked_null: checked is None (bool)
         :key enabled: enabled == value
         :key enabled_not: enabled != value
-        :key enabled_null: enabled is None
-        :key enabled_not_null: enabled is not None
+        :key enabled_null: enabled is None (bool)
         :key focused: focused == value
         :key focused_not: focused != value
-        :key focused_null: focused is None
-        :key focused_not_null: focused is not None
+        :key focused_null: focused is None (bool)
         :key selected: selected == value
         :key selected_not: selected != value
-        :key selected_null: selected is None
-        :key selected_not_null: selected is not None
+        :key selected_null: selected is None (bool)
         :key showing: showing == value
         :key showing_not: showing != value
-        :key showing_null: showing is None
-        :key showing_not_null: showing is not None
+        :key showing_null: showing is None (bool)
         :key index_in_parent: index_in_parent == value
         :key index_in_parent_not: index_in_parent != value
-        :key index_in_parent_null: index_in_parent is None
-        :key index_in_parent_not_null: index_in_parent is not None
         :key index_in_parent_gt: index_in_parent > value
         :key index_in_parent_gte: index_in_parent >= value
         :key index_in_parent_lt: index_in_parent < value
         :key index_in_parent_lte: index_in_parent <= value
+        :key index_in_parent_null: index_in_parent is None (bool)
         :key children_count: children_count == value
         :key children_count_not: children_count != value
-        :key children_count_null: children_count is None
-        :key children_count_not_null: children_count is not None
         :key children_count_gt: children_count > value
         :key children_count_gte: children_count >= value
         :key children_count_lt: children_count < value
         :key children_count_lte: children_count <= value
+        :key children_count_null: children_count is None (bool)
         :key depth: depth == value
         :key depth_not: depth != value
-        :key depth_null: depth is None
-        :key depth_not_null: depth is not None
         :key depth_gt: depth > value
         :key depth_gte: depth >= value
         :key depth_lt: depth < value
         :key depth_lte: depth <= value
-        :return: True if matched
+        :key depth_null: depth is None (bool)
         """
         snapshot = self.snapshot()
         rules = {

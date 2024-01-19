@@ -330,101 +330,86 @@ class UIAElement(Element):
         :param ignore_case: two strings are considered equal ignoring case
         :key role: role == value
         :key role_not: role != value
-        :key role_null: role is None
-        :key role_not_null: role is not None
         :key role_like: role like *value*
         :key role_in: role in [value1, value2]
-        :key role_in_like: role in [*value1*, *value2*]
-        :key role_regex: role regex pattern
+        :key role_in_like: role in like [*value1*, *value2*]
+        :key role_regex: role regex pattern (str)
+        :key role_null: role is None (bool)
         :key name: name == value
         :key name_not: name != value
-        :key name_null: name is None
-        :key name_not_null: name is not None
         :key name_like: name like *value*
         :key name_in: name in [value1, value2]
-        :key name_in_like: name in [*value1*, *value2*]
-        :key name_regex: name regex pattern
+        :key name_in_like: name in like [*value1*, *value2*]
+        :key name_regex: name regex pattern (str)
+        :key name_null: name is None (bool)
         :key description: description == value
         :key description_not: description != value
-        :key description_null: description is None
-        :key description_not_null: description is not None
         :key description_like: description like *value*
         :key description_in: description in [value1, value2]
-        :key description_in_like: description in [*value1*, *value2*]
-        :key description_regex: description regex pattern
+        :key description_in_like: description in like [*value1*, *value2*]
+        :key description_regex: description regex pattern (str)
+        :key description_null: description is None (bool)
         :key text: text == value
         :key text_not: text != value
-        :key text_null: text is None
-        :key text_not_null: text is not None
         :key text_like: text like *value*
         :key text_in: text in [value1, value2]
-        :key text_in_like: text in [*value1*, *value2*]
-        :key text_regex: text regex pattern
+        :key text_in_like: text in like [*value1*, *value2*]
+        :key text_regex: text regex pattern (str)
+        :key text_null: text is None (bool)
         :key automation_id: automation_id == value
         :key automation_id_not: automation_id != value
-        :key automation_id_null: automation_id is None
-        :key automation_id_not_null: automation_id is not None
         :key automation_id_like: automation_id like *value*
         :key automation_id_in: automation_id in [value1, value2]
-        :key automation_id_in_like: automation_id in [*value1*, *value2*]
-        :key automation_id_regex: automation_id regex pattern
+        :key automation_id_in_like: automation_id in like [*value1*, *value2*]
+        :key automation_id_regex: automation_id regex pattern (str)
+        :key automation_id_null: automation_id is None (bool)
         :key class_name: class_name == value
         :key class_name_not: class_name != value
-        :key class_name_null: class_name is None
-        :key class_name_not_null: class_name is not None
         :key class_name_like: class_name like *value*
         :key class_name_in: class_name in [value1, value2]
-        :key class_name_in_like: class_name in [*value1*, *value2*]
-        :key class_name_regex: class_name regex pattern
+        :key class_name_in_like: class_name in like [*value1*, *value2*]
+        :key class_name_regex: class_name regex pattern (str)
+        :key class_name_null: class_name is None (bool)
         :key x: x == value
         :key x_not: x != value
-        :key x_null: x is None
-        :key x_not_null: x is not None
         :key x_gt: x > value
         :key x_gte: x >= value
         :key x_lt: x < value
         :key x_lte: x <= value
+        :key x_null: x is None (bool)
         :key y: y == value
         :key y_not: y != value
-        :key y_null: y is None
-        :key y_not_null: y is not None
         :key y_gt: y > value
         :key y_gte: y >= value
         :key y_lt: y < value
         :key y_lte: y <= value
+        :key y_null: y is None (bool)
         :key width: width == value
         :key width_not: width != value
-        :key width_null: width is None
-        :key width_not_null: width is not None
         :key width_gt: width > value
         :key width_gte: width >= value
         :key width_lt: width < value
         :key width_lte: width <= value
+        :key width_null: width is None (bool)
         :key height: height == value
         :key height_not: height != value
-        :key height_null: height is None
-        :key height_not_null: height is not None
         :key height_gt: height > value
         :key height_gte: height >= value
         :key height_lt: height < value
         :key height_lte: height <= value
+        :key height_null: height is None (bool)
         :key visible: visible == value
         :key visible_not: visible != value
-        :key visible_null: visible is None
-        :key visible_not_null: visible is not None
+        :key visible_null: visible is None (bool)
         :key checked: checked == value
         :key checked_not: checked != value
-        :key checked_null: checked is None
-        :key checked_not_null: checked is not None
+        :key checked_null: checked is None (bool)
         :key selected: selected == value
         :key selected_not: selected != value
-        :key selected_null: selected is None
-        :key selected_not_null: selected is not None
+        :key selected_null: selected is None (bool)
         :key enabled: enabled == value
         :key enabled_not: enabled != value
-        :key enabled_null: enabled is None
-        :key enabled_not_null: enabled is not None
-        :return: True if matched
+        :key enabled_null: enabled is None (bool)
         """
         snapshot = self
         rules = {

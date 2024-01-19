@@ -28,8 +28,6 @@ from echo.utils import win32, screenshot, strings
 class Expr(str, Enum):
     EQ = "eq"
     NOT = "not"
-    NULL = "null"
-    NOT_NULL = "not_null"
     LIKE = "like"
     IN = "in"
     IN_LIKE = "in_like"
@@ -38,17 +36,20 @@ class Expr(str, Enum):
     GTE = "gte"
     LT = "lt"
     LTE = "lte"
+    NULL = "null"
 
 
-STR_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL, Expr.NOT_NULL, Expr.LIKE, Expr.IN, Expr.IN_LIKE, Expr.REGEX]
-INT_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL, Expr.NOT_NULL, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE]
-BOOL_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL, Expr.NOT_NULL]
+STR_EXPRS = [Expr.EQ, Expr.NOT, Expr.LIKE, Expr.IN, Expr.IN_LIKE, Expr.REGEX, Expr.NULL]
+INT_EXPRS = [Expr.EQ, Expr.NOT, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
+BOOL_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL]
 
 
 def matches(
         obj: any,
         filters: Union[list[Callable[[any], bool]], tuple[Callable[[any], bool], ...]] = None,
-        rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None, ignore_case: bool = False, **criteria) -> bool:
+        rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None,
+        ignore_case: bool = False,
+        **criteria) -> bool:
     if not filters and not criteria:
         return False
 
@@ -127,6 +128,35 @@ def matches(
             if not _do_expr(expr, prop_val, cri_val):
                 return False
     return True
+
+
+def gen_matches_kwargs(rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None) -> str:
+    docs = []
+    for name, exprs in rules.items():
+        for expr in exprs:
+            if expr == Expr.EQ:
+                docs.append(f":key {name}: {name} == value")
+            elif expr == Expr.NOT:
+                docs.append(f":key {name}_{expr}: {name} != value")
+            elif expr == Expr.LIKE:
+                docs.append(f":key {name}_{expr}: {name} like *value*")
+            elif expr == Expr.IN:
+                docs.append(f":key {name}_{expr}: {name} in [value1, value2]")
+            elif expr == Expr.IN_LIKE:
+                docs.append(f":key {name}_{expr}: {name} in like [*value1*, *value2*]")
+            elif expr == Expr.REGEX:
+                docs.append(f":key {name}_{expr}: {name} regex pattern (str)")
+            elif expr == Expr.GT:
+                docs.append(f":key {name}_{expr}: {name} > value")
+            elif expr == Expr.GTE:
+                docs.append(f":key {name}_{expr}: {name} >= value")
+            elif expr == Expr.LT:
+                docs.append(f":key {name}_{expr}: {name} < value")
+            elif expr == Expr.LTE:
+                docs.append(f":key {name}_{expr}: {name} <= value")
+            elif expr == Expr.NULL:
+                docs.append(f":key {name}_{expr}: {name} is None (bool)")
+    return "\n".join(docs)
 
 
 class Driver(ABC):
