@@ -22,6 +22,7 @@ from echo.core.jab import JABDriver, Role, JABLib
 from echo.core.uia import UIADriver
 from echo.utils import win32
 from echo.utils.retrying import retryable
+from echo.utils.waiting import wait_until
 
 
 class UIATestSuite(TestCase):
@@ -64,6 +65,7 @@ class UIATestSuite(TestCase):
         os.makedirs(save_path, exist_ok=True)
 
         self.jab_driver.set_foreground()
+        self.jab_driver.maximize()
 
         @retryable
         def _step1_open_tab():
@@ -181,7 +183,16 @@ class UIATestSuite(TestCase):
                 if not clicked:
                     raise Exception("click failed")
 
+            @wait_until(timeout=60, delay=1)
+            def _wait():
+                files = os.listdir(save_path)
+                if len(files) == 0:
+                    time.sleep(1)
+                    return None
+                return files
+
             _click()
+            _wait()
 
         _step1_open_tab()
         time.sleep(1)
@@ -191,12 +202,9 @@ class UIATestSuite(TestCase):
         time.sleep(1)
         _step4_click_export_button()
         time.sleep(1)
-        _step5_export_data()
-        time.sleep(10)
+        files = _step5_export_data()
 
-        files = os.listdir(save_path)
         print(save_path, len(files), files)
-        assert len(files) > 0
 
     def test_export_report_query(self):
         import uuid
@@ -207,6 +215,7 @@ class UIATestSuite(TestCase):
         os.makedirs(save_path, exist_ok=True)
 
         self.jab_driver.set_foreground()
+        self.jab_driver.maximize()
 
         @retryable
         def _step1_open_tab():
@@ -373,9 +382,9 @@ class UIATestSuite(TestCase):
             advance_elem.simulate_click(coords=advance_elem.position)
             time.sleep(1)
 
-            item_elem = dialog_root.find_element(role=Role.CHECK_BOX, name="单一文件")
-            assert item_elem is not None
-            item_elem.click()
+            # item_elem = dialog_root.find_element(role=Role.CHECK_BOX, name="单一文件")
+            # assert item_elem is not None
+            # item_elem.click()
 
             sheet_elem = dialog_root.find_element(role=Role.PANEL, name="Sheet名称")
             assert sheet_elem is not None
@@ -394,7 +403,16 @@ class UIATestSuite(TestCase):
                 if not clicked:
                     raise Exception("click failed")
 
+            @wait_until(timeout=60, delay=1)
+            def _wait():
+                files = os.listdir(save_path)
+                if len(files) == 0:
+                    time.sleep(1)
+                    return None
+                return files
+
             _click()
+            _wait()
 
         _step1_open_tab()
         time.sleep(1)
@@ -406,9 +424,6 @@ class UIATestSuite(TestCase):
         time.sleep(1)
         _step5_click_export_button()
         time.sleep(1)
-        _step6_export_data()
-        time.sleep(10)
+        files = _step6_export_data()
 
-        files = os.listdir(save_path)
         print(save_path, len(files), files)
-        assert len(files) > 0

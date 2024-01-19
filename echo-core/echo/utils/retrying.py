@@ -25,7 +25,7 @@ def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: 
     Default to retry once without delay.
     :param func: the function to be wrapped
     :param max_retries: the maximum number of retries, i.e. 1 means running at most 2 times
-    :param delay: the delay between retries
+    :param delay: the delay between retries (seconds)
     :param use_logging: whether to log the error
     :param exception_type: the exception type to be caught
     :return: the wrapped function
@@ -37,6 +37,9 @@ def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: 
 
     @wraps(func)
     def wrapper(*args, **kwargs):
+        if max_retries <= 0:
+            raise ValueError("max_retries must be greater than zero")
+
         count = 0
         err = None
         while count <= max_retries:
