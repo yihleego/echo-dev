@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-from _ctypes import COMError
 from enum import Enum
 from typing import Optional, Callable
 
@@ -307,6 +306,7 @@ class UIAElement(Element):
 
     def input(self, text: str) -> bool:
         if isinstance(self._window, EditWrapper):
+            from _ctypes import COMError
             try:
                 self._window.set_edit_text(text)
                 return True
