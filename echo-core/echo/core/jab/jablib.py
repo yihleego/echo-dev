@@ -19,6 +19,7 @@ import os
 import platform
 import shutil
 import subprocess
+import zipfile
 from ctypes import c_char, c_wchar, c_wchar_p, c_int, c_int64, c_float, c_long, c_short, c_void_p, cdll, byref, CFUNCTYPE, Structure, POINTER
 from ctypes.wintypes import BOOL, HWND
 from typing import Generator, Callable, Optional
@@ -721,11 +722,20 @@ class JABLib:
         self._paths = paths
 
     def install(self):
+        cur_dir = os.path.dirname(__file__)
+        lib_dir = os.path.join(cur_dir, "lib")
+        lib_zip = os.path.join(cur_dir, "lib.zip")
         for fn, dst in self._paths:
             dst_path = os.path.join(dst, fn)
-            if not os.path.exists(dst_path):
-                src_path = os.path.join('lib', fn)
-                shutil.copy(src_path, dst_path)
+            if os.path.exists(dst_path):
+                continue
+            # copy if target files do not exist
+            src_path = os.path.join(lib_dir, fn)
+            # unzip if source files do not exist
+            if not os.path.exists(src_path):
+                with zipfile.ZipFile(lib_zip, 'r') as f:
+                    f.extractall(cur_dir)
+            shutil.copy(src_path, dst_path)
 
     def uninstall(self):
         for fn, dst in self._paths:

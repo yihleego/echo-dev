@@ -19,7 +19,14 @@ import time
 from functools import wraps, partial
 
 
-def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: bool = False, exception_type=Exception):
+class InterruptException(Exception):
+    """
+    Interrupt retry
+    """
+    pass
+
+
+def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: bool = False, exception_type=Exception, error_message=None):
     """
     Retry if the function raises an exception.
     Default to retry once without delay.
@@ -28,6 +35,7 @@ def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: 
     :param delay: the delay between retries (seconds)
     :param use_logging: whether to log the error
     :param exception_type: the exception type to be caught
+    :param error_message: the custom error message will replace the caught error message if it is present
     :return: the wrapped function
     """
     if func is None:
@@ -45,6 +53,9 @@ def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: 
         while count <= max_retries:
             try:
                 return func(*args, **kwargs)
+            except InterruptException as ie:
+                # interrupt
+                raise ie
             except exception_type as e:
                 err = e
                 # skip if it's the last time
@@ -54,9 +65,13 @@ def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: 
                     if delay > 0:
                         time.sleep(delay)
             count += 1
-        if err is not None:
-            if use_logging:
-                logging.error(f"Max retries({max_retries}) reached, failed to execute {func.__name__}", err)
+
+        if err is not None and use_logging:
+            logging.error(f"Max retries({max_retries}) reached, failed to execute {func.__name__}", err)
+
+        if error_message is not None:
+            raise Exception(error_message)
+        elif err is not None:
             raise err
         else:
             raise Exception(f"Max retries reached. Failed to execute {func.__name__}")
