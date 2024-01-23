@@ -23,7 +23,7 @@ from pywinauto.controls.uiawrapper import UIAWrapper
 from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
-from echo.core.driver import Driver, Element, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from ..driver import Driver, Element, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 
 
 class Role(str, Enum):
@@ -120,7 +120,7 @@ class UIAElement(Element):
     @property
     def process_name(self) -> str:
         if not self._process_name:
-            from echo import win32
+            from echo.utils import win32
             self._process_name = win32.get_process_name_by_process_id(self.process_id)
         return self._process_name
 
