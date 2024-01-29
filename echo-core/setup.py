@@ -18,7 +18,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='echo',
-    description="",
+    description='',
     author='Leego',
     author_email='leegodev@hotmail.com',
     python_requires='>=3.8.13',
