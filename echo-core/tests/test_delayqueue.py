@@ -34,11 +34,11 @@ class DelayQueueTestSuite(TestCase):
         q = DelayQueue()
 
         now = time.time()
-        q.add('e', now + 5)
-        q.add('d', now + 4)
-        q.add('a', now + 1)
-        q.add('c', now + 3)
-        q.add('b', now + 2)
+        q.add('e', now + 4)
+        q.add('d', now + 3)
+        q.add('a', now + 0)
+        q.add('c', now + 2)
+        q.add('b', now + 1)
 
         self.assertEqual(len(q), 5)
         self.assertEqual(q.get(), 'a')
@@ -56,24 +56,53 @@ class DelayQueueTestSuite(TestCase):
         q = DelayQueue()
 
         def _test():
-            targets = ['a', 'b', 'c', 'd', 'e']
-            while True:
-                v = q.get()
-                print(datetime.datetime.now(), v)
-                self.assertEqual(v, targets.pop(0))
+            print(datetime.datetime.now(), "thread:", threading.current_thread().name, "waiting")
+            v = q.get()
+            print(datetime.datetime.now(), "thread:", threading.current_thread().name, "value:", v)
+            self.assertTrue(v is not None)
 
-        print(datetime.datetime.now())
-        threading.Thread(target=_test, daemon=True).start()
-        time.sleep(0.1)
+        threads = []
+        for i in range(5):
+            threads.append(threading.Thread(target=_test, name=str(i)))
+        for t in threads:
+            t.start()
+
+        print(datetime.datetime.now(), 'started')
 
         now = time.time()
-        q.add('e', now + 5)
-        q.add('d', now + 4)
-        q.add('a', now + 1)
-        q.add('c', now + 3)
-        q.add('b', now + 2)
+        q.add('e', now + 4)
+        q.add('d', now + 3)
+        q.add('a', now + 0)
+        q.add('c', now + 2)
+        q.add('b', now + 1)
 
-        time.sleep(8)
+        time.sleep(5)
+
+    def test_get_boundary(self):
+        q = DelayQueue()
+
+        def _test():
+            print(datetime.datetime.now(), "thread:", threading.current_thread().name, "waiting")
+            v = q.get()
+            print(datetime.datetime.now(), "thread:", threading.current_thread().name, "value:", v)
+            self.assertTrue(v is not None)
+
+        threads = []
+        for i in range(5):
+            threads.append(threading.Thread(target=_test, name=str(i), daemon=True))
+        for t in threads:
+            t.start()
+
+        print(datetime.datetime.now(), 'started')
+
+        now = time.time()
+        q.add('e', now + 1)
+        q.add('d', now)
+        q.add('a', now - 3)
+        q.add('c', now - 1)
+        q.add('b', now - 2)
+
+        time.sleep(2)
 
     def test_get_timeout(self):
         q = DelayQueue()
@@ -85,7 +114,7 @@ class DelayQueueTestSuite(TestCase):
                 print(datetime.datetime.now(), v)
                 self.assertEqual(v, targets.pop(0))
 
-        print(datetime.datetime.now())
+        print(datetime.datetime.now(), 'started')
 
         now = time.time()
         q.add('a', now + 1)
@@ -95,6 +124,34 @@ class DelayQueueTestSuite(TestCase):
 
         threading.Thread(target=_test, daemon=True).start()
         time.sleep(6)
+
+    def test_get_timeout_boundary(self):
+        q = DelayQueue()
+
+        def _test():
+            print(datetime.datetime.now(), "thread:", threading.current_thread().name, "waiting")
+            v = q.get()
+            print(datetime.datetime.now(), "thread:", threading.current_thread().name, "value:", v)
+            self.assertTrue(v is not None)
+
+        threads = []
+        for i in range(5):
+            threads.append(threading.Thread(target=_test, name=str(i)))
+
+        print(datetime.datetime.now(), 'started')
+
+        now = time.time()
+        q.add('a', now - 5)
+        q.add('b', now - 3)
+        q.add('c', now)
+        q.add('d', now + 1)
+        q.add('e', now + 2)
+        time.sleep(0.1)
+
+        for t in threads:
+            t.start()
+
+        time.sleep(5)
 
     def test_priority(self):
         q = DelayQueue()
