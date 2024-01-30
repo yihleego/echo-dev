@@ -109,7 +109,7 @@ class DelayQueueTestSuite(TestCase):
 
         def _test():
             targets = ['a', None, 'b', None, 'c', None]
-            while True:
+            while len(targets) > 0:
                 v = q.get(timeout=1)
                 print(datetime.datetime.now(), v)
                 self.assertEqual(v, targets.pop(0))
