@@ -89,34 +89,43 @@ class DelayQueue:
                         heapq.heappop(queue)
                         return _value
 
-    def add(self, value: any, time: Union[int, float], priority: int = 0) -> Delayed:
+    def add(self, item: any, time: Union[int, float], priority: int = 0) -> Delayed:
         """
         Inserts the specified element into this delay queue.
-        :param value: the value to add
-        :param time: the time associated with the value
+        :param item: the item to add
+        :param time: the time associated with the item
         :param priority: the priority of the element
         :return: the Delayed instance
         """
-        if isinstance(value, Delayed):
-            e = value
+        if isinstance(item, Delayed):
+            e = item
         else:
-            e = Delayed(value, time, priority)
+            e = Delayed(item, time, priority)
         with self._lock:
             heapq.heappush(self._queue, e)
             self._cond.notify()
         return e
 
-    def remove(self, e: Delayed) -> bool:
+    def remove(self, item) -> bool:
         """
         Remove the specified element from this delay queue.
         """
         with self._lock:
-            try:
-                self._queue.remove(e)
-                heapq.heapify(self._queue)
-                self._cond.notify()
-                return True
-            except ValueError:
+            if isinstance(item, Delayed):
+                try:
+                    self._queue.remove(item)
+                    heapq.heapify(self._queue)
+                    self._cond.notify()
+                    return True
+                except ValueError:
+                    return False
+            else:
+                for e in self._queue:
+                    if e.value == item:
+                        self._queue.remove(e)
+                        heapq.heapify(self._queue)
+                        self._cond.notify()
+                        return True
                 return False
 
     def clear(self):
@@ -125,6 +134,7 @@ class DelayQueue:
         """
         with self._lock:
             self._queue.clear()
+            self._cond.notify()
 
     def qsize(self):
         """
@@ -132,6 +142,16 @@ class DelayQueue:
         """
         with self._lock:
             return len(self._queue)
+
+    def __contains__(self, item):
+        """
+        Return True if item is in the queue.
+        """
+        with self._lock:
+            for e in self._queue:
+                if e.value == item:
+                    return True
+            return False
 
     def __len__(self):
         """
