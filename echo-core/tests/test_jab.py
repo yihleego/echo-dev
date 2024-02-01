@@ -30,7 +30,7 @@ class JABTestSuite(TestCase):
         self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Swing Example")
         self.driver = JABDriver(self.handle)
         self.root = self.driver.root()
-        assert self.root is not None
+        self.assertIsNotNone(self.root)
 
     def tearDown(self):
         self.root.release()
@@ -44,7 +44,7 @@ class JABTestSuite(TestCase):
             print(f"{'--' * e.depth}{str(e)}")
             e.release()
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_find_elements_by_criteria(self):
         root = self.root
@@ -55,7 +55,7 @@ class JABTestSuite(TestCase):
             print("old text", e)
             e.input(s)
             print('new text', e.text)
-            assert e.text == s
+            self.assertEqual(e.text, s)
             e.release()
 
         button_elems = root.find_elements(role=Role.PUSH_BUTTON, name="Click")
@@ -95,7 +95,7 @@ class JABTestSuite(TestCase):
             print("found", e)
             e.release()
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_find_elements_by_filters_and_criteria(self):
         root = self.root
@@ -107,7 +107,7 @@ class JABTestSuite(TestCase):
         for e in elems:
             print("found", e)
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_text(self):
         root = self.root
@@ -130,7 +130,7 @@ class JABTestSuite(TestCase):
             e.click()
             print('clicked', e)
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_checkbox(self):
         root = self.root
@@ -141,9 +141,9 @@ class JABTestSuite(TestCase):
             print('checked', e.checked, e)
             e.click()
             print('checked', e.checked, e)
-            assert e.checked != checked
+            self.assertNotEqual(e.checked, checked)
 
-        assert len(root.find_elements(checked=True)) > 0
+        self.assertTrue(len(root.find_elements(checked=True)) > 0)
 
     def test_radiobutton(self):
         root = self.root
@@ -155,18 +155,18 @@ class JABTestSuite(TestCase):
             e.click()
             print('checked', e.checked, e)
             if not checked:
-                assert e.checked != checked
+                self.assertNotEqual(e.checked, checked)
 
-        assert len(root.find_elements(checked=True)) > 0
+        self.assertTrue(len(root.find_elements(checked=True)) > 0)
 
     def test_parent_is_root(self):
         root = self.root
 
         child = root.child(0)
-        assert child is not None
+        self.assertIsNotNone(child)
 
         parent = child.parent()
-        assert parent == root
+        self.assertEqual(parent, root)
 
         print('root', root)
         print('child', child)
@@ -176,10 +176,10 @@ class JABTestSuite(TestCase):
         root = self.root
 
         elem = root.find_element(role=Role.PUSH_BUTTON, name="Click")
-        assert elem is not None
+        self.assertIsNotNone(elem)
 
         parent = elem.parent()
-        assert parent is not None
+        self.assertIsNotNone(parent)
 
         print('child', elem)
         print('parent', parent)
@@ -188,12 +188,12 @@ class JABTestSuite(TestCase):
         root = self.root
 
         elem = root.find_element(role=Role.PUSH_BUTTON, name="Click")
-        assert elem is not None
+        self.assertIsNotNone(elem)
 
         previous = elem.previous()
         next = elem.next()
-        assert previous is not None
-        assert next is not None
+        self.assertIsNotNone(previous)
+        self.assertIsNotNone(next)
 
         print('previous', previous)
         print('next', next)
@@ -215,10 +215,10 @@ class JABTestSuite(TestCase):
         button_elem.release()
         text_elem.release()
 
-        assert os.path.exists("./screenshots/jab/window.png")
-        assert os.path.exists("./screenshots/jab/root.png")
-        assert os.path.exists("./screenshots/jab/text.png")
-        assert os.path.exists("./screenshots/jab/button.png")
+        self.assertTrue(os.path.exists("./screenshots/jab/window.png"))
+        self.assertTrue(os.path.exists("./screenshots/jab/root.png"))
+        self.assertTrue(os.path.exists("./screenshots/jab/text.png"))
+        self.assertTrue(os.path.exists("./screenshots/jab/button.png"))
 
     def test_wait(self):
         root = self.root

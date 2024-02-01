@@ -38,11 +38,11 @@ class CommonTestSuite(TestCase):
         t4 = deep_to_lower({"VALUE1", "VALUE2"})
         t5 = deep_to_lower({"KEY": "VALUE"})
         print(f"{t1}\n{t2}\n{t3}\n{t4}\n{t5}")
-        assert t1 == "value"
-        assert t2 == ["value1", "value2"]
-        assert t3 == ("value1", "value2")
-        assert t4 == {"value1", "value2"}
-        assert t5 == {"key": "value"}
+        self.assertEqual(t1, "value")
+        self.assertEqual(t2, ["value1", "value2"])
+        self.assertEqual(t3, ("value1", "value2"))
+        self.assertEqual(t4, {"value1", "value2"})
+        self.assertEqual(t5, {"key": "value"})
 
     def test_deep_to_lower_non_str(self):
         t1 = deep_to_lower(1)
@@ -51,11 +51,11 @@ class CommonTestSuite(TestCase):
         t4 = deep_to_lower({1, 2})
         t5 = deep_to_lower({"Age": 18})
         print(f"{t1}\n{t2}\n{t3}\n{t4}\n{t5}")
-        assert t1 == 1
-        assert t2 == [1, 2]
-        assert t3 == (1, 2)
-        assert t4 == {1, 2}
-        assert t5 == {"age": 18}
+        self.assertEqual(t1, 1)
+        self.assertEqual(t2, [1, 2])
+        self.assertEqual(t3, (1, 2))
+        self.assertEqual(t4, {1, 2})
+        self.assertEqual(t5, {"age": 18})
 
     def test_deep_to_upper(self):
         t1 = deep_to_upper("value")
@@ -64,11 +64,11 @@ class CommonTestSuite(TestCase):
         t4 = deep_to_upper({"value1", "value2"})
         t5 = deep_to_upper({"key": "value"})
         print(f"{t1}\n{t2}\n{t3}\n{t4}\n{t5}")
-        assert t1 == "VALUE"
-        assert t2 == ["VALUE1", "VALUE2"]
-        assert t3 == ("VALUE1", "VALUE2")
-        assert t4 == {"VALUE1", "VALUE2"}
-        assert t5 == {"KEY": "VALUE"}
+        self.assertEqual(t1, "VALUE")
+        self.assertEqual(t2, ["VALUE1", "VALUE2"])
+        self.assertEqual(t3, ("VALUE1", "VALUE2"))
+        self.assertEqual(t4, {"VALUE1", "VALUE2"})
+        self.assertEqual(t5, {"KEY": "VALUE"})
 
     def test_deep_strip(self):
         t1 = deep_strip(" Value ")
@@ -77,11 +77,11 @@ class CommonTestSuite(TestCase):
         t4 = deep_strip({" Value1 ", " Value2 "})
         t5 = deep_strip({" Key ": " Value "})
         print(f"{t1}\n{t2}\n{t3}\n{t4}\n{t5}")
-        assert t1 == "Value"
-        assert t2 == ["Value1", "Value2"]
-        assert t3 == ("Value1", "Value2")
-        assert t4 == {"Value1", "Value2"}
-        assert t5 == {"Key": "Value"}
+        self.assertEqual(t1, "Value")
+        self.assertEqual(t2, ["Value1", "Value2"])
+        self.assertEqual(t3, ("Value1", "Value2"))
+        self.assertEqual(t4, {"Value1", "Value2"})
+        self.assertEqual(t5, {"Key": "Value"})
 
     def test_matches(self):
         class User:
@@ -98,29 +98,29 @@ class CommonTestSuite(TestCase):
             "job": STR_EXPRS,
             "enabled": BOOL_EXPRS
         }
-        assert matches(user, filters=[lambda x: x.name == "Echo"])
-        assert matches(user, filters=(lambda x: x.name == "Echo",))
-        assert matches(user, rules=rules, name="Echo")
-        assert matches(user, rules=rules, name="echo", ignore_case=True)
-        assert matches(user, rules=rules, name_like="ch")
-        assert matches(user, rules=rules, name_in=["Echo", "RPA"])
-        assert matches(user, rules=rules, name_in=["echo", "rpa"], ignore_case=True)
-        assert matches(user, rules=rules, name_in_like=["ch", "RPA"])
-        assert matches(user, rules=rules, name_in_like=["echo", "rpa"], ignore_case=True)
-        assert matches(user, rules=rules, name_regex="^E.*o$")
-        assert matches(user, rules=rules, age=18)
-        assert matches(user, rules=rules, age_gt=17)
-        assert matches(user, rules=rules, age_gte=17)
-        assert matches(user, rules=rules, age_gte=18)
-        assert ~matches(user, rules=rules, age_gte=19)
-        assert matches(user, rules=rules, age_lt=19)
-        assert matches(user, rules=rules, age_lte=19)
-        assert matches(user, rules=rules, age_lte=18)
-        assert ~matches(user, rules=rules, age_lte=17)
-        assert matches(user, rules=rules, job_null=True)
-        assert ~matches(user, rules=rules, job_null=False)
-        assert matches(user, rules=rules, job_null=1)
-        assert ~matches(user, rules=rules, job_null=0)
+        self.assertTrue(matches(user, filters=[lambda x: x.name == "Echo"]))
+        self.assertTrue(matches(user, filters=(lambda x: x.name == "Echo",)))
+        self.assertTrue(matches(user, rules=rules, name="Echo"))
+        self.assertTrue(matches(user, rules=rules, name="echo", ignore_case=True))
+        self.assertTrue(matches(user, rules=rules, name_like="ch"))
+        self.assertTrue(matches(user, rules=rules, name_in=["Echo", "RPA"]))
+        self.assertTrue(matches(user, rules=rules, name_in=["echo", "rpa"], ignore_case=True))
+        self.assertTrue(matches(user, rules=rules, name_in_like=["ch", "RPA"]))
+        self.assertTrue(matches(user, rules=rules, name_in_like=["echo", "rpa"], ignore_case=True))
+        self.assertTrue(matches(user, rules=rules, name_regex="^E.*o$"))
+        self.assertTrue(matches(user, rules=rules, age=18))
+        self.assertTrue(matches(user, rules=rules, age_gt=17))
+        self.assertTrue(matches(user, rules=rules, age_gte=17))
+        self.assertTrue(matches(user, rules=rules, age_gte=18))
+        self.assertFalse(matches(user, rules=rules, age_gte=19))
+        self.assertTrue(matches(user, rules=rules, age_lt=19))
+        self.assertTrue(matches(user, rules=rules, age_lte=19))
+        self.assertTrue(matches(user, rules=rules, age_lte=18))
+        self.assertFalse(matches(user, rules=rules, age_lte=17))
+        self.assertTrue(matches(user, rules=rules, job_null=True))
+        self.assertFalse(matches(user, rules=rules, job_null=False))
+        self.assertTrue(matches(user, rules=rules, job_null=1))
+        self.assertFalse(matches(user, rules=rules, job_null=0))
 
     def test_matches_docs(self):
         rules = {
@@ -141,13 +141,13 @@ class CommonTestSuite(TestCase):
             if err:
                 try:
                     func()
-                    assert False
+                    raise
                 except:
                     pass
             else:
                 func()
             if count is not None:
-                assert count == counter[0]
+                self.assertEqual(count, counter[0])
             end = time.perf_counter()
             print(f"run {func.__name__} in {format(end - start, '.6f')} ms")
 
@@ -252,10 +252,10 @@ class CommonTestSuite(TestCase):
             print('arg', arg)
             print('kwargs', kwargs)
             print('val', val)
-            assert arg == (1, 2)
-            assert kwargs == {'a': None, 'b': 'b'}
-            assert "a" in kwargs
-            assert val is not None
+            self.assertEqual(arg, (1, 2))
+            self.assertEqual(kwargs, {'a': None, 'b': 'b'})
+            self.assertTrue("a" in kwargs)
+            self.assertIsNotNone(val)
 
         _inner(1, 2, a=None, b='b', val=1)
 
@@ -263,5 +263,5 @@ class CommonTestSuite(TestCase):
         rect = (10, 10, 100, 100)
         filename = "./screenshots/utils/img.png"
         image = screenshot(rect, filename)
-        assert image is not None
-        assert os.path.exists(filename)
+        self.assertIsNotNone(image)
+        self.assertTrue(os.path.exists(filename))

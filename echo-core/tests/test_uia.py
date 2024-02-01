@@ -30,7 +30,7 @@ class UIATestSuite(TestCase):
         self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="Simple FX")
         self.driver = UIADriver(self.handle)
         self.root = self.driver.root()
-        assert self.root is not None
+        self.assertIsNotNone(self.root)
 
     def tearDown(self):
         self.driver.close()
@@ -42,7 +42,7 @@ class UIATestSuite(TestCase):
         for e in elems:
             print(f"{'--' * e.depth}{str(e)}")
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_find_elements_by_criteria(self):
         root = self.root
@@ -53,7 +53,7 @@ class UIATestSuite(TestCase):
             print("old text", e.text)
             e.input(s)
             print('new text', e.text)
-            assert e.text == s
+            self.assertEqual(e.text, s)
 
         button_elems = root.find_elements(role=Role.BUTTON, name="Click")
         for e in button_elems:
@@ -86,7 +86,7 @@ class UIATestSuite(TestCase):
         for e in elems:
             print("found", e)
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_find_elements_by_filters_and_criteria(self):
         root = self.root
@@ -98,7 +98,7 @@ class UIATestSuite(TestCase):
         for e in elems:
             print("found", e)
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_text(self):
         root = self.root
@@ -109,11 +109,11 @@ class UIATestSuite(TestCase):
             print('old text', e.text)
             e.input(s)
             print('new text', e.text)
-            assert e.text == s
+            self.assertEqual(e.text, s)
 
             e.input("😎-> 😭🕶👌")
             print('emoji', e.text)
-            assert e.text == "😎-> 😭🕶👌"
+            self.assertEqual(e.text, "😎-> 😭🕶👌")
 
     def test_button(self):
         root = self.root
@@ -124,7 +124,7 @@ class UIATestSuite(TestCase):
             res = e.click()
             print('clicked', res, e)
 
-        assert len(elems) > 0
+        self.assertTrue(len(elems) > 0)
 
     def test_checkbox(self):
         root = self.root
@@ -135,9 +135,9 @@ class UIATestSuite(TestCase):
             print('checked', e.checked, e)
             e.click()
             print('checked', e.checked, e)
-            assert e.checked != checked
+            self.assertNotEqual(e.checked, checked)
 
-        assert len(root.find_elements(checked=True)) > 0
+        self.assertTrue(len(root.find_elements(checked=True)) > 0)
 
     def test_radiobutton(self):
         root = self.root
@@ -149,18 +149,18 @@ class UIATestSuite(TestCase):
             e.click()
             print('selected', e.selected, e)
             if not selected:
-                assert e.selected != selected
+                self.assertNotEqual(e.selected, selected)
 
-        assert len(root.find_elements(selected=True)) > 0
+        self.assertTrue(len(root.find_elements(selected=True)) > 0)
 
     def test_parent_is_root(self):
         root = self.root
 
         child = root.child(0)
-        assert child is not None
+        self.assertIsNotNone(child)
 
         parent = child.parent()
-        assert parent == root
+        self.assertEqual(parent, root)
 
         print('root', root)
         print('child', child)
@@ -170,10 +170,10 @@ class UIATestSuite(TestCase):
         root = self.root
 
         elem = root.find_element(role=Role.BUTTON, name="Click")
-        assert elem is not None
+        self.assertIsNotNone(elem)
 
         parent = elem.parent()
-        assert parent is not None
+        self.assertIsNotNone(parent)
 
         print('child', elem)
         print('parent', parent)
@@ -182,12 +182,12 @@ class UIATestSuite(TestCase):
         root = self.root
 
         elem = root.find_element(role=Role.BUTTON, name="Click")
-        assert elem is not None
+        self.assertIsNotNone(elem)
 
         previous = elem.previous()
         next = elem.next()
-        assert previous is not None
-        assert next is not None
+        self.assertIsNotNone(previous)
+        self.assertIsNotNone(next)
 
         print('previous', previous)
         print('next', next)
@@ -206,10 +206,10 @@ class UIATestSuite(TestCase):
         button_elem = root.find_element(role=Role.BUTTON)
         button_elem.screenshot("./screenshots/uia/button.png")
 
-        assert os.path.exists("./screenshots/uia/window.png")
-        assert os.path.exists("./screenshots/uia/root.png")
-        assert os.path.exists("./screenshots/uia/edit.png")
-        assert os.path.exists("./screenshots/uia/button.png")
+        self.assertTrue(os.path.exists("./screenshots/uia/window.png"))
+        self.assertTrue(os.path.exists("./screenshots/uia/root.png"))
+        self.assertTrue(os.path.exists("./screenshots/uia/edit.png"))
+        self.assertTrue(os.path.exists("./screenshots/uia/button.png"))
 
     def test_wait(self):
         root = self.root

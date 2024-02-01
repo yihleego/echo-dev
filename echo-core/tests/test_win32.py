@@ -32,8 +32,7 @@ class CommonTestSuite(TestCase):
     def test_get_window_rect(self):
         rect = win32.get_window_rect(self.handle)
         print(rect)
-
-        assert rect is not None
+        self.assertIsNotNone(rect)
 
     def test_move_window(self):
         win32.set_foreground(self.handle)
@@ -51,7 +50,7 @@ class CommonTestSuite(TestCase):
         window_filename = "./screenshots/win32/window.png"
         window_image = win32.screenshot(handle=self.handle, filename=window_filename)
 
-        assert fullscreen_image is not None
-        assert window_image is not None
-        assert os.path.exists(fullscreen_filename)
-        assert os.path.exists(window_filename)
+        self.assertIsNotNone(fullscreen_image)
+        self.assertIsNotNone(window_image)
+        self.assertTrue(os.path.exists(fullscreen_filename))
+        self.assertTrue(os.path.exists(window_filename))
