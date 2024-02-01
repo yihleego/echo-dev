@@ -14,13 +14,9 @@
 # limitations under the License.
 
 
-import platform
+import sys
 
-_system = platform.system().lower()
-is_linux = _system.find("linux") >= 0
-is_mac = _system.find("darwin") >= 0 or _system.find("mac") >= 0
-is_windows = _system.find("windows") >= 0
-
-__all__ = [
-    'is_linux', 'is_mac', 'is_windows',
-]
+is_linux = sys.platform == 'linux'
+is_mac = sys.platform == 'darwin'
+is_darwin = sys.platform == 'darwin'
+is_windows = sys.platform == 'win32'
