@@ -89,7 +89,7 @@ class DelayQueue:
                         heapq.heappop(queue)
                         return _value
 
-    def add(self, item: any, time: Union[int, float], priority: int = 0) -> Delayed:
+    def add(self, item: Union[Delayed, any], time: Union[int, float], priority: int = 0) -> Delayed:
         """
         Inserts the specified element into this delay queue.
         :param item: the item to add
@@ -106,7 +106,7 @@ class DelayQueue:
             self._cond.notify()
         return e
 
-    def remove(self, item) -> bool:
+    def remove(self, item: Union[Delayed, any]) -> bool:
         """
         Remove the specified element from this delay queue.
         """
@@ -128,6 +128,19 @@ class DelayQueue:
                         return True
                 return False
 
+    def contains(self, item: Union[Delayed, any]) -> bool:
+        """
+        Return True if item is in the queue.
+        """
+        with self._lock:
+            if isinstance(item, Delayed):
+                return item in self._queue
+            else:
+                for e in self._queue:
+                    if e.value == item:
+                        return True
+            return False
+
     def clear(self):
         """
         Clear the queue.
@@ -144,18 +157,7 @@ class DelayQueue:
             return len(self._queue)
 
     def __contains__(self, item):
-        """
-        Return True if item is in the queue.
-        """
-        with self._lock:
-            for e in self._queue:
-                if e.value == item:
-                    return True
-            return False
+        return self.contains(item)
 
     def __len__(self):
-        """
-        Return the size of the queue.
-        """
-        with self._lock:
-            return len(self._queue)
+        return self.qsize()
