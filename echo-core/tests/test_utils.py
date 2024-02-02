@@ -14,6 +14,7 @@
 # limitations under the License.
 
 
+import datetime
 import os
 import time
 from unittest import TestCase
@@ -246,6 +247,114 @@ class CommonTestSuite(TestCase):
         run(retry10, err=True, count=2)
         run(retry11, err=True, count=1)
         run(retry12, err=True, count=2)
+
+    def test_retrying_args(self):
+        from echo.utils.retrying import retryable, retry
+
+        def retry_args1(*args, **kwargs):
+            print('retry_args1', args, kwargs)
+            self.assertEqual(args, (1, 2, 3))
+            self.assertEqual(kwargs, {"a": "a", "b": "b"})
+
+        def retry_args2(one=None, two=None, three=None, a=None, b=None, none=None):
+            print('retry_args2', (one, two, three), {"a": a, "b": b}, none)
+            self.assertEqual((one, two, three), (1, 2, 3))
+            self.assertEqual({"a": a, "b": b}, {"a": "a", "b": "b"})
+            self.assertIsNone(none)
+
+        @retryable
+        def retry_args1_wrapper(*args, **kwargs):
+            retry_args1(*args, **kwargs)
+
+        @retryable
+        def retry_args2_wrapper(one=None, two=None, three=None, a=None, b=None):
+            retry_args2(one, two, three, a=a, b=b)
+
+        retry(retry_args1, args=(1, 2, 3), kwargs={"a": "a", "b": "b"})
+        retry_args1_wrapper(1, 2, 3, a="a", b="b")
+
+        retry(retry_args2, args=(1, 2, 3), kwargs={"a": "a", "b": "b"})
+        retry_args2_wrapper(1, 2, 3, a="a", b="b")
+
+    def test_waiting(self):
+        from echo.utils.waiting import wait_until
+
+        counter = [0]
+
+        def run(func, err, count=None):
+            start = time.perf_counter()
+            counter[0] = 0
+            if err:
+                try:
+                    func()
+                    raise
+                except:
+                    pass
+            else:
+                func()
+            if count is not None:
+                self.assertEqual(count, counter[0])
+            end = time.perf_counter()
+            print(f"run {func.__name__} in {format(end - start, '.6f')} ms")
+
+        @wait_until
+        def wait1():
+            print('run wait1', datetime.datetime.now())
+            counter[0] += 1
+            return counter[0] > 1
+
+        @wait_until(5)
+        def wait2():
+            print('run wait2', datetime.datetime.now())
+            counter[0] += 1
+            return counter[0] > 1
+
+        @wait_until(timeout=5, use_logging=True)
+        def wait3():
+            print('run wait3', datetime.datetime.now())
+            counter[0] += 1
+            return counter[0] > 1
+
+        @wait_until(validator=lambda x: x is False)
+        def wait4():
+            print('run wait4', datetime.datetime.now())
+            counter[0] += 1
+            return False
+
+        run(wait1, err=False, count=2)
+        run(wait2, err=False, count=2)
+        run(wait3, err=False, count=2)
+        run(wait4, err=False, count=1)
+
+    def test_waiting_args(self):
+        from echo.utils.waiting import wait_until, wait
+
+        def wait_args1(*args, **kwargs):
+            print('wait_args1', args, kwargs)
+            self.assertEqual(args, (1, 2, 3))
+            self.assertEqual(kwargs, {"a": "a", "b": "b"})
+            return True
+
+        def wait_args2(one=None, two=None, three=None, a=None, b=None, none=None):
+            print('wait_args2', (one, two, three), {"a": a, "b": b}, none)
+            self.assertEqual((one, two, three), (1, 2, 3))
+            self.assertEqual({"a": a, "b": b}, {"a": "a", "b": "b"})
+            self.assertIsNone(none)
+            return True
+
+        @wait_until
+        def wait_args1_wrapper(*args, **kwargs):
+            return wait_args1(*args, **kwargs)
+
+        @wait_until
+        def wait_args2_wrapper(one=None, two=None, three=None, a=None, b=None):
+            return wait_args2(one, two, three, a=a, b=b)
+
+        wait(wait_args1, args=(1, 2, 3), kwargs={"a": "a", "b": "b"})
+        wait_args1_wrapper(1, 2, 3, a="a", b="b")
+
+        wait(wait_args2, args=(1, 2, 3), kwargs={"a": "a", "b": "b"})
+        wait_args2_wrapper(1, 2, 3, a="a", b="b")
 
     def test_kwargs(self):
         def _inner(*arg, val=None, **kwargs):

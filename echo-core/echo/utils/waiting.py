@@ -14,37 +14,68 @@
 # limitations under the License.
 
 
+import logging
 import time
 from functools import wraps, partial
+from typing import Callable
 
 
-def wait_until(func=None, timeout: float = 5.0, delay: float = 1.0):
+def wait_until(func=None, timeout: float = 5.0, delay: float = 1.0, use_logging: bool = False, validator: Callable = None):
     """
     Wait until the function returns a truthy value, i.e. True, non-empty string, non-zero number, non-null object etc.
-    Default to wait 5 seconds with 1 second delay.
+    Default to wait 5 seconds and delay 1 second.
     :param func: the function to be wrapped
     :param timeout: the maximum waiting time (seconds)
     :param delay: the delay between retries (seconds)
+    :param use_logging: whether to log the error
+    :param validator: the function to validate the result
     :return: the wrapped function
     """
     if func is None:
-        return partial(wait_until, timeout=timeout, delay=delay)
-    elif not callable(func) and isinstance(func, float):
-        return partial(wait_until, timeout=timeout, delay=delay)
+        return partial(wait_until, timeout=timeout, delay=delay, use_logging=use_logging, validator=validator)
+    elif not callable(func) and isinstance(func, (int, float)):
+        return partial(wait_until, timeout=func, delay=delay, use_logging=use_logging, validator=validator)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if timeout <= 0:
-            raise ValueError("timeout must be greater than zero")
-
-        st = time.perf_counter()
-        ct = st
-        while ct - st < timeout:
-            res = func(*args, **kwargs)
-            if res:
-                return res
-            if delay > 0:
-                time.sleep(delay)
-            ct = time.perf_counter()
+        return wait(func=func, timeout=timeout, delay=delay, use_logging=use_logging, validator=validator, args=args, kwargs=kwargs)
 
     return wrapper
+
+
+def wait(func: Callable, timeout: float = 5.0, delay: float = 1.0, use_logging: bool = False, validator: Callable = None, args=(), kwargs=None) -> any:
+    """
+    Wait until the function returns a truthy value, i.e. True, non-empty string, non-zero number, non-null object etc.
+    Default to wait 5 seconds and delay 1 second.
+    :param func: the function to be wrapped
+    :param timeout: the maximum waiting time (seconds)
+    :param delay: the delay between retries (seconds)
+    :param use_logging: whether to log the error
+    :param validator: the function to validate the result
+    :param args: the arguments to be passed to the function
+    :param kwargs: the keyword arguments to be passed to the function
+    :return: the result of the function
+    """
+    if timeout <= 0:
+        raise ValueError("timeout must be greater than zero")
+
+    if kwargs is None:
+        kwargs = {}
+
+    elapsed = 0.0
+    start = time.perf_counter()
+    while elapsed <= timeout:
+        res = func(*args, **kwargs)
+        if validator is not None:
+            if validator(res):
+                return res
+        else:
+            if res:
+                return res
+        if use_logging:
+            logging.debug("Unexpected result [%s] returned, %.3f seconds remaining", str(res), timeout - elapsed)
+        time.sleep(max(delay, 0))
+        elapsed = time.perf_counter() - start
+
+    if use_logging:
+        logging.error("Max timeout reached. Failed to waiting for the expected result")
