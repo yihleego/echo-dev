@@ -23,7 +23,7 @@ from pywinauto.controls.uiawrapper import UIAWrapper
 from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
-from ..driver import Driver, Element, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from ..driver import Driver, Element, match, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 
 
 class Role(str, Enum):
@@ -249,7 +249,7 @@ class UIAElement(Element):
         for child_window in self._window.children():
             child = UIAElement(app=self._app, window=child_window, driver=self._driver, root=self._root, parent=self)
             if filters or criteria:
-                matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
+                matched = child.match(*filters, ignore_case=ignore_case, **criteria)
                 if matched:
                     res.append(child)
             else:
@@ -323,7 +323,7 @@ class UIAElement(Element):
         self._window.set_focus()
         return True
 
-    def matches(self, *filters: Callable[['UIAElement'], bool], ignore_case=False, **criteria) -> bool:
+    def match(self, *filters: Callable[['UIAElement'], bool], ignore_case=False, **criteria) -> bool:
         """
         Match element by criteria.
         :param filters: filters
@@ -428,7 +428,7 @@ class UIAElement(Element):
             "selected": BOOL_EXPRS,
             "enabled": BOOL_EXPRS,
         }
-        return matches(snapshot, filters, rules, ignore_case, **criteria)
+        return match(snapshot, filters, rules, ignore_case, **criteria)
 
     def find_all_elements(self) -> list['UIAElement']:
         found = [self]
@@ -443,11 +443,11 @@ class UIAElement(Element):
             return []
         found = []
         if include_self:
-            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+            if self.match(*filters, ignore_case=ignore_case, **criteria):
                 found.append(self)
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
+            matched = child.match(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found.append(child)
             # looking for deep elements
@@ -459,11 +459,11 @@ class UIAElement(Element):
         if len(filters) == 0 and len(criteria) == 0:
             return None
         if include_self:
-            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+            if self.match(*filters, ignore_case=ignore_case, **criteria):
                 return self
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
+            matched = child.match(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 return child
         # looking for deep elements if not found

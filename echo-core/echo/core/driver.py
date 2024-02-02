@@ -44,7 +44,7 @@ INT_EXPRS = [Expr.EQ, Expr.NOT, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
 BOOL_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL]
 
 
-def matches(
+def match(
         obj: any,
         filters: Union[list[Callable[[any], bool]], tuple[Callable[[any], bool], ...]] = None,
         rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None,
@@ -130,7 +130,7 @@ def matches(
     return True
 
 
-def gen_matches_kwargs(rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None) -> str:
+def gen_match_docs(rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None) -> str:
     docs = []
     for name, exprs in rules.items():
         for expr in exprs:

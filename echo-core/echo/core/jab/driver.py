@@ -20,7 +20,7 @@ from enum import Enum
 from functools import cached_property
 
 from .jablib import *
-from ..driver import Driver, Element, matches, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from ..driver import Driver, Element, match, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 
 
 class Role(str, Enum):
@@ -394,7 +394,7 @@ class JABElement(JABElementProperties, Element):
             ctx = AccessibleContext(ctx)
             child = JABElement(lib=self._lib, vmid=self._vmid, ctx=ctx, driver=self._driver, root=self._root, parent=self)
             if filters or criteria:
-                matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
+                matched = child.match(*filters, ignore_case=ignore_case, **criteria)
                 if matched:
                     res.append(child)
                 else:
@@ -432,7 +432,7 @@ class JABElement(JABElementProperties, Element):
         res = self._lib.requestFocus(self._vmid, self._ctx)
         return bool(res)
 
-    def matches(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case=False, **criteria) -> bool:
+    def match(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case=False, **criteria) -> bool:
         """
         Match element by criteria.
         :param filters: filters
@@ -577,7 +577,7 @@ class JABElement(JABElementProperties, Element):
             "children_count": INT_EXPRS,
             "depth": INT_EXPRS,
         }
-        return matches(snapshot, filters, rules, ignore_case, **criteria)
+        return match(snapshot, filters, rules, ignore_case, **criteria)
 
     def find_all_elements(self) -> list['JABElement']:
         found = [self]
@@ -593,11 +593,11 @@ class JABElement(JABElementProperties, Element):
         found = []
         releasing = []
         if include_self:
-            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+            if self.match(*filters, ignore_case=ignore_case, **criteria):
                 found.append(self)
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
+            matched = child.match(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found.append(child)
             else:
@@ -614,13 +614,13 @@ class JABElement(JABElementProperties, Element):
         if len(filters) == 0 and len(criteria) == 0:
             return None
         if include_self:
-            if self.matches(*filters, ignore_case=ignore_case, **criteria):
+            if self.match(*filters, ignore_case=ignore_case, **criteria):
                 return self
         found = None
         releasing = []
         children = self.children()
         for child in children:
-            matched = child.matches(*filters, ignore_case=ignore_case, **criteria)
+            matched = child.match(*filters, ignore_case=ignore_case, **criteria)
             if matched:
                 found = child
                 break

@@ -18,7 +18,7 @@ import os
 import time
 from unittest import TestCase
 
-from echo.core.driver import matches, gen_matches_kwargs, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.core.driver import match, gen_match_docs, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
 from echo.utils.screenshot import screenshot
 from echo.utils.strings import deep_to_lower, deep_to_upper, deep_strip
 
@@ -83,7 +83,7 @@ class CommonTestSuite(TestCase):
         self.assertEqual(t4, {"Value1", "Value2"})
         self.assertEqual(t5, {"Key": "Value"})
 
-    def test_matches(self):
+    def test_match(self):
         class User:
             def __init__(self, name, age):
                 self.name = name
@@ -98,37 +98,37 @@ class CommonTestSuite(TestCase):
             "job": STR_EXPRS,
             "enabled": BOOL_EXPRS
         }
-        self.assertTrue(matches(user, filters=[lambda x: x.name == "Echo"]))
-        self.assertTrue(matches(user, filters=(lambda x: x.name == "Echo",)))
-        self.assertTrue(matches(user, rules=rules, name="Echo"))
-        self.assertTrue(matches(user, rules=rules, name="echo", ignore_case=True))
-        self.assertTrue(matches(user, rules=rules, name_like="ch"))
-        self.assertTrue(matches(user, rules=rules, name_in=["Echo", "RPA"]))
-        self.assertTrue(matches(user, rules=rules, name_in=["echo", "rpa"], ignore_case=True))
-        self.assertTrue(matches(user, rules=rules, name_in_like=["ch", "RPA"]))
-        self.assertTrue(matches(user, rules=rules, name_in_like=["echo", "rpa"], ignore_case=True))
-        self.assertTrue(matches(user, rules=rules, name_regex="^E.*o$"))
-        self.assertTrue(matches(user, rules=rules, age=18))
-        self.assertTrue(matches(user, rules=rules, age_gt=17))
-        self.assertTrue(matches(user, rules=rules, age_gte=17))
-        self.assertTrue(matches(user, rules=rules, age_gte=18))
-        self.assertFalse(matches(user, rules=rules, age_gte=19))
-        self.assertTrue(matches(user, rules=rules, age_lt=19))
-        self.assertTrue(matches(user, rules=rules, age_lte=19))
-        self.assertTrue(matches(user, rules=rules, age_lte=18))
-        self.assertFalse(matches(user, rules=rules, age_lte=17))
-        self.assertTrue(matches(user, rules=rules, job_null=True))
-        self.assertFalse(matches(user, rules=rules, job_null=False))
-        self.assertTrue(matches(user, rules=rules, job_null=1))
-        self.assertFalse(matches(user, rules=rules, job_null=0))
+        self.assertTrue(match(user, filters=[lambda x: x.name == "Echo"]))
+        self.assertTrue(match(user, filters=(lambda x: x.name == "Echo",)))
+        self.assertTrue(match(user, rules=rules, name="Echo"))
+        self.assertTrue(match(user, rules=rules, ignore_case=True, name="echo"))
+        self.assertTrue(match(user, rules=rules, name_like="ch"))
+        self.assertTrue(match(user, rules=rules, name_in=["Echo", "RPA"]))
+        self.assertTrue(match(user, rules=rules, ignore_case=True, name_in=["echo", "rpa"]))
+        self.assertTrue(match(user, rules=rules, name_in_like=["ch", "RPA"]))
+        self.assertTrue(match(user, rules=rules, ignore_case=True, name_in_like=["echo", "rpa"]))
+        self.assertTrue(match(user, rules=rules, name_regex="^E.*o$"))
+        self.assertTrue(match(user, rules=rules, age=18))
+        self.assertTrue(match(user, rules=rules, age_gt=17))
+        self.assertTrue(match(user, rules=rules, age_gte=17))
+        self.assertTrue(match(user, rules=rules, age_gte=18))
+        self.assertFalse(match(user, rules=rules, age_gte=19))
+        self.assertTrue(match(user, rules=rules, age_lt=19))
+        self.assertTrue(match(user, rules=rules, age_lte=19))
+        self.assertTrue(match(user, rules=rules, age_lte=18))
+        self.assertFalse(match(user, rules=rules, age_lte=17))
+        self.assertTrue(match(user, rules=rules, job_null=True))
+        self.assertFalse(match(user, rules=rules, job_null=False))
+        self.assertTrue(match(user, rules=rules, job_null=1))
+        self.assertFalse(match(user, rules=rules, job_null=0))
 
-    def test_matches_docs(self):
+    def test_match_docs(self):
         rules = {
             "name": STR_EXPRS,
             "size": INT_EXPRS,
             "enabled": BOOL_EXPRS,
         }
-        print(gen_matches_kwargs(rules))
+        print(gen_match_docs(rules))
 
     def test_retrying(self):
         from echo.utils.retrying import retryable
