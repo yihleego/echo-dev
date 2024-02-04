@@ -27,7 +27,7 @@ from echo.utils import win32
 class JABTestSuite(TestCase):
 
     def setUp(self):
-        self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Swing Example")
+        self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Java Swing Example")
         self.driver = JABDriver(self.handle)
         self.root = self.driver.root()
         self.assertIsNotNone(self.root)

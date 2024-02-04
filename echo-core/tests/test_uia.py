@@ -27,7 +27,7 @@ from echo.utils import win32
 class UIATestSuite(TestCase):
 
     def setUp(self):
-        self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="Simple FX")
+        self.handle = win32.find_window(class_name="GlassWndClass-GlassWindowClass-2", window_name="JavaFX Example")
         self.driver = UIADriver(self.handle)
         self.root = self.driver.root()
         self.assertIsNotNone(self.root)
