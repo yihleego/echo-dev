@@ -160,21 +160,12 @@ def gen_match_docs(rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] =
 
 
 class Driver(ABC):
-    def __init__(self, handle: int, process_id: int = None, process_name: str = None,
-                 window_name: str = None, class_name: str = None):
-        if not process_id:
-            process_id = win32.get_process_id_from_handle(handle)
-        if not process_name:
-            process_name = win32.get_process_name_by_process_id(process_id)
-        if not window_name:
-            window_name = win32.get_window_text(handle)
-        if not class_name:
-            class_name = win32.get_class_name(handle)
+    def __init__(self, handle: int, process_id: int = None, process_name: str = None, window_name: str = None, class_name: str = None):
         self._handle = handle
-        self._process_id = process_id
-        self._process_name = process_name
-        self._window_name = window_name
-        self._class_name = class_name
+        self._process_id = process_id or win32.get_process_id_from_handle(self.handle)
+        self._process_name = process_name or win32.get_process_name_by_process_id(self.process_id)
+        self._window_name = window_name or win32.get_window_text(self.handle)
+        self._class_name = class_name or win32.get_class_name(self.handle)
 
     @property
     def handle(self) -> int:
@@ -267,32 +258,23 @@ class Element(ABC):
         time.sleep(0.06)
         return screenshot.screenshot(self.rectangle, filename)
 
-    def wait(self, predicate: Callable[[any], bool], timeout=None, interval=None):
-        start = time.perf_counter()
-        while not predicate(self):
-            time_left = timeout - (time.perf_counter() - start)
-            if time_left > 0:
-                time.sleep(min(interval, time_left))
-            else:
-                err = TimeoutError("timed out")
-                raise err
-
     def simulate_click(self, button="left", coords: tuple[int, int] = None,
                        button_down=True, button_up=True, double=False,
                        wheel_dist=0, pressed="", key_down=True, key_up=True):
         from pywinauto import mouse
 
         if not coords:
+            # click the center of the element
             rect = self.rectangle
             coords = (int((rect[2] + rect[0]) / 2), int((rect[3] + rect[1]) / 2))
 
         mouse._perform_click_input(
-            button, coords, double, button_down, button_up,
-            wheel_dist=wheel_dist, pressed=pressed,
-            key_down=key_down, key_up=key_up)
+            button=button, coords=coords,
+            button_down=button_down, button_up=button_up, double=double,
+            wheel_dist=wheel_dist, pressed=pressed, key_down=key_down, key_up=key_up)
 
     def simulate_input(self, keys, pause=0.05, with_spaces=False, with_tabs=False, with_newlines=False,
-                       turn_off_numlock=False, set_foreground=False, vk_packet=True):
+                       turn_off_numlock=False, vk_packet=True, set_foreground=False):
         from pywinauto import keyboard
         import six
         import locale
@@ -309,10 +291,7 @@ class Element(ABC):
             aligned_keys = six.text_type(keys)
 
         keyboard.send_keys(
-            aligned_keys,
-            pause,
-            with_spaces,
-            with_tabs,
-            with_newlines,
-            turn_off_numlock,
-            vk_packet)
+            keys=aligned_keys, pause=pause,
+            with_spaces=with_spaces, with_tabs=with_tabs,
+            with_newlines=with_newlines, turn_off_numlock=turn_off_numlock,
+            vk_packet=vk_packet)

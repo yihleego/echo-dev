@@ -27,28 +27,7 @@ class InterruptException(Exception):
     pass
 
 
-def retryable(func=None, max_retries: int = 1, delay: float = 0.0, use_logging: bool = False, exception_type=Exception, error_message=None):
-    """
-    Retry if any error has occurred.
-    Default to retry once without delay.
-    :param func: the function to be wrapped
-    :param max_retries: the maximum number of retries, i.e. 1 means running at most 2 times
-    :param delay: the delay between retries (seconds)
-    :param use_logging: whether to log the error
-    :param exception_type: the exception type to be caught
-    :param error_message: the custom error message will replace the caught error message if it is present
-    :return: the wrapped function
-    """
-    if func is None:
-        return partial(retryable, max_retries=max_retries, delay=delay, use_logging=use_logging, exception_type=exception_type, error_message=error_message)
-    elif not callable(func) and isinstance(func, int):
-        return partial(retryable, max_retries=func, delay=delay, use_logging=use_logging, exception_type=exception_type, error_message=error_message)
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        return retry(func=func, max_retries=max_retries, delay=delay, use_logging=use_logging, exception_type=exception_type, error_message=error_message, args=args, kwargs=kwargs)
-
-    return wrapper
+_keys = ["max_retries", "delay", "use_logging", "exception_type", "error_message"]
 
 
 def retry(func: Callable, max_retries: int = 1, delay: float = 0.0, use_logging: bool = False, exception_type=Exception, error_message=None, args=(), kwargs=None) -> any:
@@ -98,3 +77,37 @@ def retry(func: Callable, max_retries: int = 1, delay: float = 0.0, use_logging:
         raise err
     else:
         raise Exception(f"Max retries reached. Failed to execute {func.__name__}")
+
+
+def retryable(*args, **kwargs):
+    """
+    A decorator for retrying if any error has occurred.
+    Default to retry once without delay.
+    :key max_retries: the maximum number of retries, i.e. 1 means running at most 2 times
+    :key delay: the delay between retries (seconds)
+    :key use_logging: whether to log the error
+    :key exception_type: the exception type to be caught
+    :key error_message: the custom error message will replace the caught error message if it is present
+    :return: the wrapped function
+    """
+    if not args:
+        return partial(retryable, **kwargs)
+
+    if callable(args[0]):
+        wrapped = args[0]
+        args = args[1:]
+        return _retryable_adapter(wrapped=wrapped, *args, **kwargs)
+    elif isinstance(args[0], (int, float)):
+        for i in range(min(len(args), len(_keys))):
+            kwargs[_keys[i]] = args[i]
+        return partial(retryable, **kwargs)
+
+    raise TypeError(repr(type(args[0])))
+
+
+def _retryable_adapter(wrapped=None, max_retries: int = 1, delay: float = 0.0, use_logging: bool = False, exception_type=Exception, error_message=None) -> any:
+    @wraps(wrapped)
+    def wrapper(*args, **kwargs):
+        return retry(func=wrapped, max_retries=max_retries, delay=delay, use_logging=use_logging, exception_type=exception_type, error_message=error_message, args=args, kwargs=kwargs)
+
+    return wrapper

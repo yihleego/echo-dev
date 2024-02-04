@@ -19,28 +19,7 @@ import time
 from functools import wraps, partial
 from typing import Callable
 
-
-def wait_until(func=None, timeout: float = 5.0, delay: float = 1.0, use_logging: bool = False, validator: Callable = None):
-    """
-    Wait until the function returns a truthy value, i.e. True, non-empty string, non-zero number, non-null object etc.
-    Default to wait 5 seconds and delay 1 second.
-    :param func: the function to be wrapped
-    :param timeout: the maximum waiting time (seconds)
-    :param delay: the delay between retries (seconds)
-    :param use_logging: whether to log the error
-    :param validator: the function to validate the result
-    :return: the wrapped function
-    """
-    if func is None:
-        return partial(wait_until, timeout=timeout, delay=delay, use_logging=use_logging, validator=validator)
-    elif not callable(func) and isinstance(func, (int, float)):
-        return partial(wait_until, timeout=func, delay=delay, use_logging=use_logging, validator=validator)
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        return wait(func=func, timeout=timeout, delay=delay, use_logging=use_logging, validator=validator, args=args, kwargs=kwargs)
-
-    return wrapper
+_keys = ["timeout", "delay", "use_logging", "validator"]
 
 
 def wait(func: Callable, timeout: float = 5.0, delay: float = 1.0, use_logging: bool = False, validator: Callable = None, args=(), kwargs=None) -> any:
@@ -79,3 +58,36 @@ def wait(func: Callable, timeout: float = 5.0, delay: float = 1.0, use_logging: 
 
     if use_logging:
         logging.error("Max timeout reached. Failed to waiting for the expected result")
+
+
+def wait_until(*args, **kwargs):
+    """
+    A decorator that waits until the function returns a truthy value, i.e. True, non-empty string, non-zero number, non-null object etc.
+    Default to wait 5 seconds and delay 1 second.
+    :key timeout: the maximum waiting time (seconds)
+    :key delay: the delay between retries (seconds)
+    :key use_logging: whether to log the error
+    :key validator: the function to validate the result
+    :return: the wrapped function
+    """
+    if not args:
+        return partial(wait_until, **kwargs)
+
+    if callable(args[0]):
+        wrapped = args[0]
+        args = args[1:]
+        return _wait_until_adapter(wrapped=wrapped, *args, **kwargs)
+    elif isinstance(args[0], (int, float)):
+        for i in range(min(len(args), len(_keys))):
+            kwargs[_keys[i]] = args[i]
+        return partial(wait_until, **kwargs)
+
+    raise TypeError(repr(type(args[0])))
+
+
+def _wait_until_adapter(wrapped=None, timeout: float = 5.0, delay: float = 1.0, use_logging: bool = False, validator: Callable = None):
+    @wraps(wrapped)
+    def wrapper(*args, **kwargs):
+        return wait(func=wrapped, timeout=timeout, delay=delay, use_logging=use_logging, validator=validator, args=args, kwargs=kwargs)
+
+    return wrapper

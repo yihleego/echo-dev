@@ -15,8 +15,6 @@
 
 
 import os
-import threading
-import time
 import uuid
 from unittest import TestCase
 
@@ -210,17 +208,3 @@ class UIATestSuite(TestCase):
         self.assertTrue(os.path.exists("./screenshots/uia/root.png"))
         self.assertTrue(os.path.exists("./screenshots/uia/edit.png"))
         self.assertTrue(os.path.exists("./screenshots/uia/button.png"))
-
-    def test_wait(self):
-        root = self.root
-
-        text_elem = root.find_element(role=Role.EDIT)
-        text_elem.input("nothing")
-
-        def _async_edit():
-            time.sleep(3)
-            text_elem.input("EXIT")
-
-        threading.Thread(target=_async_edit).start()
-
-        text_elem.wait(lambda x: x.text == "EXIT", timeout=5, interval=1)
