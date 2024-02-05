@@ -14,10 +14,13 @@
 # limitations under the License.
 
 
+import random
 from unittest import TestCase, skip
 
+from echo.core.cv import CVDriver
 from echo.core.cv.cv import imread
 from echo.core.cv.matching import *
+from echo.utils import win32
 
 
 class CVTestSuite(TestCase):
@@ -62,16 +65,29 @@ class CVTestSuite(TestCase):
             print(f'[{cls.__name__}] {c[0]} found best: {best}')
             print('')
 
+    def _test_random(self, clses):
+        train = imread("samples/QQ20240205-134306@2x.png")
+        h, w = train.shape[:2]
+        left, top = random.randint(0, w / 2), random.randint(0, h / 2)
+        right, bottom = left + 100, top + 100
+        rect = (left, top, right, bottom)
+        query = train[top:bottom, left:right]
+        print(f'rect: {rect}')
+        for cls in clses:
+            matching = cls(query, train)
+            best = matching.find_best()
+            print(f'[{cls.__name__}] found best: {best}')
+
     def test_template_matching(self):
         self._test_find_all(TemplateMatching)
         print('=' * 100, '\n')
         self._test_find_best(TemplateMatching)
 
-    def test_multi_scale_template_matching(self):
-        self._test_find_best(MultiScaleTemplateMatching)
+    def test_multiscale_template_matching(self):
+        self._test_find_best(MultiscaleTemplateMatching)
 
-    def test_preset_multi_scale_template_matching(self):
-        self._test_find_best(PresetMultiScaleTemplateMatching)
+    def test_preset_multiscale_template_matching(self):
+        self._test_find_best(PresetMultiscaleTemplateMatching)
 
     def test_kaze_matching(self):
         self._test_find_best(KAZEMatching)
@@ -94,3 +110,21 @@ class CVTestSuite(TestCase):
     @skip("surf is not supported")
     def test_surf_matching(self):
         self._test_find_best(SURFMatching)
+
+    def test_111(self):
+        self._test_random([
+            TemplateMatching,
+            MultiscaleTemplateMatching,
+            PresetMultiscaleTemplateMatching,
+            KAZEMatching,
+            BRISKMatching,
+            AKAZEMatching,
+            ORBMatching,
+            BRIEFMatching,
+            SIFTMatching, ])
+
+    def test_22(self):
+        self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Java Swing Example")
+        self.driver = CVDriver(self.handle)
+        # self.root = self.driver.root()
+        self.driver.find_element("")

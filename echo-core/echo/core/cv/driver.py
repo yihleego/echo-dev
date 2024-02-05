@@ -16,41 +16,104 @@
 
 from typing import Optional, Tuple, List
 
+import cv2
+import numpy as np
+from PIL import Image
+
+from .matching import TemplateMatching
 from ..driver import Driver, Element
 
 
 class CVDriver(Driver):
     def root(self) -> Optional['CVElement']:
-        return CVElement(driver=self)
+        return CVElement(driver=self, rectangle=self.rectangle, confidence=1.0)
 
-    def find_elements(self, filename: str) -> List['CVElement']:
-        # TODO
-        pass
+    def find_elements(self, image) -> List['CVElement']:
+        matching = self._gen_matching(image)
+        found = matching.find_all()
+        if not found:
+            return []
+        return [CVElement(driver=self, rectangle=f.rectangle, confidence=f.confidence) for f in found]
+
+    def find_element(self, image) -> Optional['CVElement']:
+        matching = self._gen_matching(image)
+        found = matching.find_best()
+        if not found:
+            return None
+        return CVElement(driver=self, rectangle=found.rectangle, confidence=found.confidence)
+
+    def _gen_matching(self, image):
+        if isinstance(image, str):
+            query = cv2.imread(image)
+        elif isinstance(image, Image.Image):
+            query = np.array(image)
+        elif isinstance(image, np.ndarray):
+            query = image
+        else:
+            raise ValueError(repr(type(image)))
+        train = np.array(self.screenshot())
+        matching = TemplateMatching(query, train)
+        return matching
 
     def close(self):
         pass
 
 
 class CVElement(Element):
-    def __init__(self, driver: CVDriver, root: 'CVElement' = None, parent: 'CVElement' = None):
+    def __init__(self, driver: CVDriver, rectangle: Tuple[int, int, int, int], confidence: float):
         self._driver: CVDriver = driver
-        self._root: CVElement = root or self  # TODO root
-        self._parent: Optional[CVElement] = parent
+        self._rectangle: Tuple[int, int, int, int] = rectangle
+        self._confidence: float = confidence
 
     @property
     def driver(self) -> CVDriver:
         return self._driver
 
     @property
-    def role(self) -> str:
-        # TODO
-        return ""
+    def rectangle(self) -> Tuple[int, int, int, int]:
+        return self._rectangle
 
     @property
-    def rectangle(self) -> Tuple[int, int, int, int]:
+    def confidence(self) -> float:
+        return self._confidence
+
+    @property
+    def x(self) -> int:
+        return self._rectangle[0]
+
+    @property
+    def y(self) -> int:
+        return self._rectangle[1]
+
+    @property
+    def width(self) -> int:
+        return self._rectangle[2] - self._rectangle[0]
+
+    @property
+    def height(self) -> int:
+        return self._rectangle[3] - self._rectangle[1]
+
+    @property
+    def position(self) -> Tuple[int, int]:
+        return self._rectangle[0], self._rectangle[1]
+
+    @property
+    def size(self) -> Tuple[int, int]:
+        return self._rectangle[2] - self._rectangle[0], self._rectangle[3] - self._rectangle[1]
+
+    def click(self, **kwargs):
+        return self.simulate_click(**kwargs)
+
+    def input(self, **kwargs):
+        return self.simulate_input(**kwargs)
+
+    def text(self):
+        return self.ocr()
+
+    def ocr(self):
         # TODO
-        return 0, 0, 0, 0
+        pass
 
     def __str__(self) -> str:
-        return f"role: {self.role}, " \
-               f"rectangle: {self.rectangle}"
+        return f"rectangle: {self.rectangle}, " \
+               f"confidence: {self.confidence}"
