@@ -17,7 +17,7 @@
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List, Tuple
 
 import cv2
 import numpy as np
@@ -25,7 +25,7 @@ import numpy as np
 
 @dataclass
 class Matched:
-    rectangle: tuple[int, int, int, int]  # left, top, right, bottom
+    rectangle: Tuple[int, int, int, int]  # left, top, right, bottom
     confidence: float  # 0.0 ~ 1.0
     cost: float  # seconds
 
@@ -40,7 +40,7 @@ class Matching(ABC):
         self.perf_count_last = 0
 
     @abstractmethod
-    def find_all(self) -> list[Matched]:
+    def find_all(self) -> List[Matched]:
         raise NotImplementedError
 
     @abstractmethod

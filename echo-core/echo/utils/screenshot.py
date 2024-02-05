@@ -15,11 +15,12 @@
 
 
 import os
+from typing import Tuple
 
 from PIL import Image, ImageGrab
 
 
-def screenshot(rect: tuple[int, int, int, int], filename: str = None) -> Image:
+def screenshot(rect: Tuple[int, int, int, int], filename: str = None) -> Image:
     image = ImageGrab.grab(rect)
     if filename:
         dirname = os.path.dirname(filename)

@@ -18,7 +18,7 @@ import os
 import time
 from ctypes import Structure, windll, sizeof, byref
 from ctypes.wintypes import HWND, DWORD, UINT, RECT, POINT
-from typing import Optional
+from typing import Optional, Tuple
 
 from PIL import Image
 
@@ -99,7 +99,7 @@ def set_foreground(handle: int, process_id: int = None) -> bool:
     return bool(res)
 
 
-def get_window_rect(handle: int) -> tuple[int, int, int, int]:
+def get_window_rect(handle: int) -> Tuple[int, int, int, int]:
     # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowrect
     rect = RECT()
     windll.user32.GetWindowRect(handle, byref(rect))
@@ -171,7 +171,7 @@ def get_process_name_by_process_id(process_id):
         return f"Access denied to process with PID {process_id}"
 
 
-def get_cursor_pos() -> Optional[tuple[int, int]]:
+def get_cursor_pos() -> Optional[Tuple[int, int]]:
     # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getcursorpos
     point = POINT()
     res = windll.user32.GetCursorPos(byref(point))
@@ -181,7 +181,7 @@ def get_cursor_pos() -> Optional[tuple[int, int]]:
         return None
 
 
-def window_from_point(point: tuple[int, int]) -> int:
+def window_from_point(point: Tuple[int, int]) -> int:
     # https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-windowfrompoint
     return windll.user32.WindowFromPoint(POINT(point[0], point[1]))
 
@@ -261,7 +261,7 @@ def screenshot(handle: int = None, filename: str = None) -> Image:
     return image
 
 
-def draw_outline(rect: tuple[int, int, int, int], msg=None, color=0x0000ff):
+def draw_outline(rect: Tuple[int, int, int, int], msg=None, color=0x0000ff):
     import ctypes
     import win32gui
     from pywinauto import win32structures

@@ -18,6 +18,7 @@ import asyncio
 import threading
 from enum import Enum
 from functools import wraps
+from typing import Dict, Tuple
 
 from pynput import mouse, keyboard
 
@@ -36,10 +37,10 @@ class Event(str, Enum):
     SCROLL = "scroll"
 
 
-_keyboard_states: dict[Key, bool] = {}  # key -> pressed
-_mouse_states: dict[Button, tuple[int, int]] = {}  # key -> position
-_mouse_position: tuple[int, int] = (0, 0)
-_registrations: dict[Event, list] = {
+_keyboard_states: Dict[Key, bool] = {}  # key -> pressed
+_mouse_states: Dict[Button, Tuple[int, int]] = {}  # key -> position
+_mouse_position: Tuple[int, int] = (0, 0)
+_registrations: Dict[Event, list] = {
     Event.KEYDOWN: [],
     Event.KEYUP: [],
     Event.CLICK: [],

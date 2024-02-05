@@ -15,7 +15,7 @@
 
 
 from enum import Enum
-from typing import Optional, Callable
+from typing import Optional, Callable, List, Tuple
 
 from pywinauto.application import Application
 from pywinauto.controls.uia_controls import EditWrapper, ButtonWrapper, ListItemWrapper, TreeItemWrapper
@@ -77,7 +77,7 @@ class UIADriver(Driver):
         window = app.top_window().wrapper_object()
         return UIAElement(app=app, window=window, driver=self)
 
-    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
+    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> List['UIAElement']:
         root = self.root()
         if root is None:
             return []
@@ -169,17 +169,17 @@ class UIAElement(Element):
         return self.info.rectangle.bottom - self.info.rectangle.top
 
     @property
-    def position(self) -> tuple[int, int]:
+    def position(self) -> Tuple[int, int]:
         info = self.info
         return info.rectangle.left, info.rectangle.top
 
     @property
-    def size(self) -> tuple[int, int]:
+    def size(self) -> Tuple[int, int]:
         info = self.info
         return info.rectangle.right - info.rectangle.left, info.rectangle.bottom - info.rectangle.top
 
     @property
-    def rectangle(self) -> tuple[int, int, int, int]:
+    def rectangle(self) -> Tuple[int, int, int, int]:
         info = self.info
         return info.rectangle.left, info.rectangle.top, info.rectangle.right, info.rectangle.bottom
 
@@ -244,7 +244,7 @@ class UIAElement(Element):
             return None
         return UIAElement(app=self._app, window=children[index], driver=self._driver, root=self._root, parent=self)
 
-    def children(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> list['UIAElement']:
+    def children(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, **criteria) -> List['UIAElement']:
         res = []
         for child_window in self._window.children():
             child = UIAElement(app=self._app, window=child_window, driver=self._driver, root=self._root, parent=self)
@@ -430,14 +430,14 @@ class UIAElement(Element):
         }
         return match(snapshot, filters, rules, ignore_case, **criteria)
 
-    def find_all_elements(self) -> list['UIAElement']:
+    def find_all_elements(self) -> List['UIAElement']:
         found = [self]
         children = self.children()
         for child in children:
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> list['UIAElement']:
+    def find_elements(self, *filters: Callable[['UIAElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> List['UIAElement']:
         # return empty list if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return []

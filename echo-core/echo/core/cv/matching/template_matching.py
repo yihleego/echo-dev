@@ -15,7 +15,7 @@
 
 
 import time
-from typing import Optional
+from typing import Optional, List
 
 import cv2
 
@@ -27,7 +27,7 @@ class TemplateMatching(Matching):
         super().__init__(im_search, im_source, threshold, rgb)
         self.max_result_size = max_result_size
 
-    def find_all(self) -> list[Matched]:
+    def find_all(self) -> List[Matched]:
         """基于模板匹配查找多个目标区域的方法."""
         # 第一步：校验图像输入
         if not self.check_image_size(self.im_source, self.im_search):
@@ -105,7 +105,7 @@ class MultiScaleTemplateMatching(Matching):
         self.scale_step = scale_step
         self.deviation = deviation
 
-    def find_all(self) -> list[Matched]:
+    def find_all(self) -> List[Matched]:
         raise NotImplementedError
 
     def find_best(self) -> Optional[Matched]:

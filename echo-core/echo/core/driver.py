@@ -18,7 +18,7 @@ import re
 import time
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Callable, Union
+from typing import Callable, Union, Tuple, List, Dict
 
 from PIL import Image
 
@@ -46,8 +46,8 @@ BOOL_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL]
 
 def match(
         obj: any,
-        filters: Union[list[Callable[[any], bool]], tuple[Callable[[any], bool], ...]] = None,
-        rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None,
+        filters: Union[List[Callable[[any], bool]], Tuple[Callable[[any], bool], ...]] = None,
+        rules: Dict[str, Union[List[Expr], Tuple[str, List[Expr]]]] = None,
         ignore_case: bool = False,
         **criteria) -> bool:
     if not filters and not criteria:
@@ -130,7 +130,7 @@ def match(
     return True
 
 
-def gen_match_docs(rules: dict[str, Union[list[Expr], tuple[str, list[Expr]]]] = None) -> str:
+def gen_match_docs(rules: Dict[str, Union[List[Expr], Tuple[str, List[Expr]]]] = None) -> str:
     docs = []
     for name, exprs in rules.items():
         for expr in exprs:
@@ -188,7 +188,7 @@ class Driver(ABC):
         return self._class_name
 
     @property
-    def rectangle(self) -> tuple[int, int, int, int]:
+    def rectangle(self) -> Tuple[int, int, int, int]:
         return win32.get_window_rect(self.handle)
 
     def screenshot(self, filename: str = None) -> Image:
@@ -247,7 +247,7 @@ class Element(ABC):
 
     @property
     @abstractmethod
-    def rectangle(self) -> tuple[int, int, int, int]:
+    def rectangle(self) -> Tuple[int, int, int, int]:
         raise NotImplementedError
 
     def set_foreground(self) -> bool:
@@ -258,7 +258,7 @@ class Element(ABC):
         time.sleep(0.06)
         return screenshot.screenshot(self.rectangle, filename)
 
-    def simulate_click(self, button="left", coords: tuple[int, int] = None,
+    def simulate_click(self, button="left", coords: Tuple[int, int] = None,
                        button_down=True, button_up=True, double=False,
                        wheel_dist=0, pressed="", key_down=True, key_up=True):
         from pywinauto import mouse

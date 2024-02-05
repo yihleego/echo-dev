@@ -120,7 +120,7 @@ class JABDriver(Driver):
                 return JABElement(lib=self._lib, vmid=vmid, ctx=ctx, driver=self)
         return None
 
-    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
+    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, **criteria) -> List['JABElement']:
         root = self.root()
         if root is None:
             return []
@@ -192,23 +192,23 @@ class JABElementProperties(ABC):
         return int(self.info.height)
 
     @property
-    def position(self) -> tuple[int, int]:
+    def position(self) -> Tuple[int, int]:
         info = self.info
         return int(info.x), int(info.y)
 
     @property
-    def size(self) -> tuple[int, int]:
+    def size(self) -> Tuple[int, int]:
         info = self.info
         return int(info.width), int(info.height)
 
     @property
-    def rectangle(self) -> tuple[int, int, int, int]:
+    def rectangle(self) -> Tuple[int, int, int, int]:
         info = self.info
         x, y, w, h = int(info.x), int(info.y), int(info.width), int(info.height)
         return x, y, x + w, y + h  # left, top, right, bottom
 
     @property
-    def states(self) -> list[str]:
+    def states(self) -> List[str]:
         states = self.info.states_en_US
         if not states:
             return []
@@ -301,7 +301,7 @@ class JABElementSnapshot(JABElementProperties):
         parent = self._elem.parent()
         return parent.snapshot() if parent else None
 
-    def children(self) -> list['JABElementSnapshot']:
+    def children(self) -> List['JABElementSnapshot']:
         children = self._elem.children()
         return [child.snapshot() for child in children]
 
@@ -384,7 +384,7 @@ class JABElement(JABElementProperties, Element):
         ctx = AccessibleContext(ctx)
         return JABElement(lib=self._lib, vmid=self._vmid, ctx=ctx, driver=self._driver, root=self._root, parent=self)
 
-    def children(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case: bool = False, **criteria) -> list['JABElement']:
+    def children(self, *filters: Callable[[JABElementSnapshot], bool], ignore_case: bool = False, **criteria) -> List['JABElement']:
         res = []
         count = self.children_count
         for index in range(count):
@@ -579,14 +579,14 @@ class JABElement(JABElementProperties, Element):
         }
         return match(snapshot, filters, rules, ignore_case, **criteria)
 
-    def find_all_elements(self) -> list['JABElement']:
+    def find_all_elements(self) -> List['JABElement']:
         found = [self]
         children = self.children()
         for child in children:
             found.extend(child.find_all_elements())
         return found
 
-    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> list['JABElement']:
+    def find_elements(self, *filters: Callable[['JABElement'], bool], ignore_case: bool = False, include_self=False, **criteria) -> List['JABElement']:
         # return empty list if no filters or criteria
         if len(filters) == 0 and len(criteria) == 0:
             return []
@@ -644,7 +644,7 @@ class JABElement(JABElementProperties, Element):
         self._lib.releaseJavaObject(self._vmid, self._ctx)
         self._released = True
 
-    def _do_action(self, action_names: list[str]) -> bool:
+    def _do_action(self, action_names: List[str]) -> bool:
         aa = AccessibleActions()
         res = self._lib.getAccessibleActions(self._vmid, self._ctx, aa)
         if not res:

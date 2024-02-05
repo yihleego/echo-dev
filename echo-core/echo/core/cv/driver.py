@@ -14,7 +14,7 @@
 # limitations under the License.
 
 
-from typing import Optional
+from typing import Optional, Tuple, List
 
 from ..driver import Driver, Element
 
@@ -23,7 +23,7 @@ class CVDriver(Driver):
     def root(self) -> Optional['CVElement']:
         return CVElement(driver=self)
 
-    def find_elements(self, filename: str) -> list['CVElement']:
+    def find_elements(self, filename: str) -> List['CVElement']:
         # TODO
         pass
 
@@ -47,7 +47,7 @@ class CVElement(Element):
         return ""
 
     @property
-    def rectangle(self) -> tuple[int, int, int, int]:
+    def rectangle(self) -> Tuple[int, int, int, int]:
         # TODO
         return 0, 0, 0, 0
 

@@ -22,7 +22,7 @@ import subprocess
 import zipfile
 from ctypes import c_char, c_wchar, c_wchar_p, c_int, c_int64, c_float, c_long, c_short, c_void_p, cdll, byref, CFUNCTYPE, Structure, POINTER
 from ctypes.wintypes import BOOL, HWND
-from typing import Generator, Callable, Optional
+from typing import Generator, Callable, Optional, Tuple, List
 
 from echo.utils.singleton import singleton
 
@@ -682,7 +682,7 @@ class JABLib:
     def __init__(self, dll_path=None):
         self._loaded: bool = False
         self._started: bool = False
-        self._paths: list[tuple[str, str]] = []
+        self._paths: List[Tuple[str, str]] = []
         self._dll = None
         self.init()
         self.install()

@@ -25,11 +25,12 @@ setup(
     install_requires=[
         'opencv-python==4.9.0.80',
         'opencv-contrib-python==4.9.0.80',
-        'numpy==1.26.3',
-        'pillow==10.1.0',
-        'pywinauto==0.6.8',
+        'numpy==1.24.4',
+        'six==1.16.0',
+        'pillow==10.2.0',
         'psutil==5.9.7',
         'pynput==1.7.6',
+        'pywinauto==0.6.8',
     ],
     packages=find_packages(),
 )

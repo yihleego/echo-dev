@@ -15,7 +15,7 @@
 
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 
 import cv2
 import numpy as np
@@ -41,7 +41,7 @@ class KeypointMatching(Matching, ABC):
     def init_detector(self):
         raise NotImplementedError
 
-    def find_all(self) -> list[Matched]:
+    def find_all(self) -> List[Matched]:
         raise NotImplementedError
 
     def find_best(self) -> Optional[Matched]:
