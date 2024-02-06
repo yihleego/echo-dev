@@ -14,35 +14,65 @@
 # limitations under the License.
 
 
-from typing import Optional, Tuple, List
+from typing import Optional, Type, Tuple, List
 
 import cv2
 import numpy as np
 from PIL import Image
 
-from .matching import TemplateMatching
+from .matching import Matching, TemplateMatching, MultiscaleTemplateMatching, PresetMultiscaleTemplateMatching, KAZEMatching, BRISKMatching, AKAZEMatching, ORBMatching, BRIEFMatching, SIFTMatching, SURFMatching
 from ..driver import Driver, Element
+
+RECOMMENDED_MATCHING_TYPES = [
+    PresetMultiscaleTemplateMatching,
+    TemplateMatching,
+    SIFTMatching,
+    BRISKMatching,
+]
+
+ALL_MATCHING_TYPES = [
+    TemplateMatching,
+    MultiscaleTemplateMatching,
+    PresetMultiscaleTemplateMatching,
+    KAZEMatching,
+    BRISKMatching,
+    AKAZEMatching,
+    ORBMatching,
+    BRIEFMatching,
+    SIFTMatching,
+    SURFMatching,
+]
 
 
 class CVDriver(Driver):
+    def __init__(self, handle: int, process_id: int = None, process_name: str = None, window_name: str = None, class_name: str = None,
+                 matching_types: List[Type[Matching]] = None):
+        super().__init__(handle, process_id, process_name, window_name, class_name)
+        self._matching_types: List[Type[Matching]] = matching_types or RECOMMENDED_MATCHING_TYPES
+
     def root(self) -> Optional['CVElement']:
         return CVElement(driver=self, rectangle=self.rectangle, confidence=1.0)
 
     def find_elements(self, image) -> List['CVElement']:
-        matching = self._gen_matching(image)
-        found = matching.find_all()
-        if not found:
-            return []
-        return [CVElement(driver=self, rectangle=f.rectangle, confidence=f.confidence) for f in found]
+        result = []
+        query, train = self._read_images(image)
+        for matching_type in self._matching_types:
+            matching = matching_type(query, train)
+            found = matching.find_all()
+            if found:
+                result.extend([CVElement(driver=self, rectangle=f.rectangle, confidence=f.confidence) for f in found])
+        return result
 
     def find_element(self, image) -> Optional['CVElement']:
-        matching = self._gen_matching(image)
-        found = matching.find_best()
-        if not found:
-            return None
-        return CVElement(driver=self, rectangle=found.rectangle, confidence=found.confidence)
+        query, train = self._read_images(image)
+        for matching_type in self._matching_types:
+            matching = matching_type(query, train)
+            found = matching.find_best()
+            if found:
+                return CVElement(driver=self, rectangle=found.rectangle, confidence=found.confidence)
+        return None
 
-    def _gen_matching(self, image):
+    def _read_images(self, image):
         if isinstance(image, str):
             query = cv2.imread(image)
         elif isinstance(image, Image.Image):
@@ -52,11 +82,7 @@ class CVDriver(Driver):
         else:
             raise ValueError(repr(type(image)))
         train = np.array(self.screenshot())
-        matching = TemplateMatching(query, train)
-        return matching
-
-    def close(self):
-        pass
+        return query, train
 
 
 class CVElement(Element):
@@ -108,11 +134,7 @@ class CVElement(Element):
         return self.simulate_input(**kwargs)
 
     def text(self):
-        return self.ocr()
-
-    def ocr(self):
-        # TODO
-        pass
+        raise NotImplementedError
 
     def __str__(self) -> str:
         return f"rectangle: {self.rectangle}, " \

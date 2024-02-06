@@ -23,7 +23,24 @@ from pywinauto.controls.uiawrapper import UIAWrapper
 from pywinauto.uia_defines import NoPatternInterfaceError
 from pywinauto.uia_element_info import UIAElementInfo
 
-from ..driver import Driver, Element, match, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from ..driver import Driver, Element, STR_EXPRS, NUM_EXPRS, BOOL_EXPRS
+
+MATCH_RULES = {
+    "role": STR_EXPRS,
+    "name": STR_EXPRS,
+    "description": STR_EXPRS,
+    "text": STR_EXPRS,
+    "automation_id": STR_EXPRS,
+    "class_name": STR_EXPRS,
+    "x": NUM_EXPRS,
+    "y": NUM_EXPRS,
+    "width": NUM_EXPRS,
+    "height": NUM_EXPRS,
+    "visible": BOOL_EXPRS,
+    "checked": BOOL_EXPRS,
+    "selected": BOOL_EXPRS,
+    "enabled": BOOL_EXPRS,
+}
 
 
 class Role(str, Enum):
@@ -88,10 +105,6 @@ class UIADriver(Driver):
         if root is None:
             return None
         return root.find_element(*filters, ignore_case=ignore_case, include_self=False, **criteria)
-
-    def close(self):
-        pass
-
 
 class UIAElement(Element):
     def __init__(self, app: Application, window: UIAWrapper, driver: UIADriver, root: 'UIAElement' = None, parent: 'UIAElement' = None):
@@ -412,23 +425,8 @@ class UIAElement(Element):
         :key enabled_null: enabled is None (bool)
         """
         snapshot = self
-        rules = {
-            "role": STR_EXPRS,
-            "name": STR_EXPRS,
-            "description": STR_EXPRS,
-            "text": STR_EXPRS,
-            "automation_id": STR_EXPRS,
-            "class_name": STR_EXPRS,
-            "x": INT_EXPRS,
-            "y": INT_EXPRS,
-            "width": INT_EXPRS,
-            "height": INT_EXPRS,
-            "visible": BOOL_EXPRS,
-            "checked": BOOL_EXPRS,
-            "selected": BOOL_EXPRS,
-            "enabled": BOOL_EXPRS,
-        }
-        return match(snapshot, filters, rules, ignore_case, **criteria)
+        rules = MATCH_RULES
+        return self._match(snapshot, filters, rules, ignore_case, **criteria)
 
     def find_all_elements(self) -> List['UIAElement']:
         found = [self]

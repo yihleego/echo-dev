@@ -20,7 +20,33 @@ from enum import Enum
 from functools import cached_property
 
 from .jablib import *
-from ..driver import Driver, Element, match, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from ..driver import Driver, Element, STR_EXPRS, NUM_EXPRS, BOOL_EXPRS
+
+MATCH_RULES = {
+    "role": STR_EXPRS,
+    "name": STR_EXPRS,
+    "description": STR_EXPRS,
+    "text": STR_EXPRS,
+    "x": NUM_EXPRS,
+    "y": NUM_EXPRS,
+    "width": NUM_EXPRS,
+    "height": NUM_EXPRS,
+    "editable": BOOL_EXPRS,
+    "focusable": BOOL_EXPRS,
+    "resizable": BOOL_EXPRS,
+    "visible": BOOL_EXPRS,
+    "selectable": BOOL_EXPRS,
+    "multiselectable": BOOL_EXPRS,
+    "collapsed": BOOL_EXPRS,
+    "checked": BOOL_EXPRS,
+    "enabled": BOOL_EXPRS,
+    "focused": BOOL_EXPRS,
+    "selected": BOOL_EXPRS,
+    "showing": BOOL_EXPRS,
+    "index_in_parent": NUM_EXPRS,
+    "children_count": NUM_EXPRS,
+    "depth": NUM_EXPRS,
+}
 
 
 class Role(str, Enum):
@@ -552,32 +578,8 @@ class JABElement(JABElementProperties, Element):
         :key depth_null: depth is None (bool)
         """
         snapshot = self.snapshot()
-        rules = {
-            "role": STR_EXPRS,
-            "name": STR_EXPRS,
-            "description": STR_EXPRS,
-            "text": STR_EXPRS,
-            "x": INT_EXPRS,
-            "y": INT_EXPRS,
-            "width": INT_EXPRS,
-            "height": INT_EXPRS,
-            "editable": BOOL_EXPRS,
-            "focusable": BOOL_EXPRS,
-            "resizable": BOOL_EXPRS,
-            "visible": BOOL_EXPRS,
-            "selectable": BOOL_EXPRS,
-            "multiselectable": BOOL_EXPRS,
-            "collapsed": BOOL_EXPRS,
-            "checked": BOOL_EXPRS,
-            "enabled": BOOL_EXPRS,
-            "focused": BOOL_EXPRS,
-            "selected": BOOL_EXPRS,
-            "showing": BOOL_EXPRS,
-            "index_in_parent": INT_EXPRS,
-            "children_count": INT_EXPRS,
-            "depth": INT_EXPRS,
-        }
-        return match(snapshot, filters, rules, ignore_case, **criteria)
+        rules = MATCH_RULES
+        return self._match(snapshot, filters, rules, ignore_case, **criteria)
 
     def find_all_elements(self) -> List['JABElement']:
         found = [self]

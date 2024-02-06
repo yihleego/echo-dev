@@ -40,126 +40,60 @@ class Expr(str, Enum):
 
 
 STR_EXPRS = [Expr.EQ, Expr.NOT, Expr.LIKE, Expr.IN, Expr.IN_LIKE, Expr.REGEX, Expr.NULL]
-INT_EXPRS = [Expr.EQ, Expr.NOT, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
+NUM_EXPRS = [Expr.EQ, Expr.NOT, Expr.GT, Expr.GTE, Expr.LT, Expr.LTE, Expr.NULL]
 BOOL_EXPRS = [Expr.EQ, Expr.NOT, Expr.NULL]
 
 
-def match(
-        obj: any,
-        filters: Union[List[Callable[[any], bool]], Tuple[Callable[[any], bool], ...]] = None,
-        rules: Dict[str, Union[List[Expr], Tuple[str, List[Expr]]]] = None,
-        ignore_case: bool = False,
-        **criteria) -> bool:
-    if not filters and not criteria:
-        return False
+class _Common(ABC):
+    @property
+    @abstractmethod
+    def rectangle(self) -> Tuple[int, int, int, int]:
+        raise NotImplementedError
 
-    def _do_expr(expr, fixed, value):
-        if fixed is None:
-            if expr == Expr.NULL:
-                return bool(value)
-            else:
-                return False
-        if ignore_case:
-            fixed = strings.deep_to_lower(fixed)
-            value = strings.deep_to_lower(value)
-        if expr == Expr.EQ:
-            return fixed == value
-        if expr == Expr.NOT:
-            return fixed != value
-        elif expr == Expr.LIKE:
-            return fixed.find(value) >= 0
-        elif expr == Expr.IN:
-            return fixed in value
-        elif expr == Expr.IN_LIKE:
-            for v in value:
-                if fixed.find(v) >= 0:
-                    return True
-            return False
-        elif expr == Expr.REGEX:
-            return re.match(value, fixed) is not None
-        elif expr == Expr.GT:
-            return fixed > value
-        elif expr == Expr.GTE:
-            return fixed >= value
-        elif expr == Expr.LT:
-            return fixed < value
-        elif expr == Expr.LTE:
-            return fixed <= value
-        raise ValueError(f"unknown expression: {expr}")
+    @abstractmethod
+    def set_foreground(self) -> bool:
+        raise NotImplementedError
 
-    def _do_prop(obj, prop):
-        if "." not in prop:
-            return getattr(obj, prop)
-        val = obj
-        levels = prop.split(".")
-        for level in levels:
-            if not val:
-                return None
-            val = getattr(val, level)
-        return val
+    def simulate_click(self, button="left", coords: Tuple[int, int] = None,
+                       button_down=True, button_up=True, double=False,
+                       wheel_dist=0, pressed="", key_down=True, key_up=True):
+        from pywinauto import mouse
 
-    if filters:
-        for f in filters:
-            if not f(obj):
-                return False
-    if criteria:
-        data = {}
-        for key, item in rules.items():
-            if isinstance(item, list):
-                prop, exprs = key, item
-            elif isinstance(item, tuple) and len(tuple) == 2:
-                prop, exprs = item
-            else:
-                raise ValueError(f"invalid rules, must be 'dict[str, list]' or 'dict[str, tuple[str, list]]', but given {rules}")
-            for expr in exprs:
-                _key = key if expr == Expr.EQ else key + "_" + expr
-                if _key in criteria:
-                    data[_key] = (prop, expr)
-                    break
-        if len(criteria) != len(data):
-            diff = criteria.keys() - data.keys()
-            if len(diff) > 0:
-                raise ValueError(f"unsupported key(s): {', '.join(diff)}")
-        for key, (prop, expr) in data.items():
-            cri_val = criteria.get(key)
-            if cri_val is None:
-                continue
-            prop_val = _do_prop(obj, prop)
-            if not _do_expr(expr, prop_val, cri_val):
-                return False
-    return True
+        if not coords:
+            # click the center of the element
+            rect = self.rectangle
+            coords = (int((rect[2] + rect[0]) / 2), int((rect[3] + rect[1]) / 2))
+
+        mouse._perform_click_input(
+            button=button, coords=coords,
+            button_down=button_down, button_up=button_up, double=double,
+            wheel_dist=wheel_dist, pressed=pressed, key_down=key_down, key_up=key_up)
+
+    def simulate_input(self, keys, pause=0.05, with_spaces=False, with_tabs=False, with_newlines=False,
+                       turn_off_numlock=False, vk_packet=True, set_foreground=False):
+        from pywinauto import keyboard
+        import six
+        import locale
+
+        if isinstance(keys, six.text_type):
+            aligned_keys = keys
+        elif isinstance(keys, six.binary_type):
+            aligned_keys = keys.decode(locale.getpreferredencoding())
+        else:
+            # convert a non-string input
+            aligned_keys = six.text_type(keys)
+
+        if set_foreground:
+            self.set_foreground()
+
+        keyboard.send_keys(
+            keys=aligned_keys, pause=pause,
+            with_spaces=with_spaces, with_tabs=with_tabs,
+            with_newlines=with_newlines, turn_off_numlock=turn_off_numlock,
+            vk_packet=vk_packet)
 
 
-def gen_match_docs(rules: Dict[str, Union[List[Expr], Tuple[str, List[Expr]]]] = None) -> str:
-    docs = []
-    for name, exprs in rules.items():
-        for expr in exprs:
-            if expr == Expr.EQ:
-                docs.append(f":key {name}: {name} == value")
-            elif expr == Expr.NOT:
-                docs.append(f":key {name}_{expr}: {name} != value")
-            elif expr == Expr.LIKE:
-                docs.append(f":key {name}_{expr}: {name} like *value*")
-            elif expr == Expr.IN:
-                docs.append(f":key {name}_{expr}: {name} in [value1, value2]")
-            elif expr == Expr.IN_LIKE:
-                docs.append(f":key {name}_{expr}: {name} in like [*value1*, *value2*]")
-            elif expr == Expr.REGEX:
-                docs.append(f":key {name}_{expr}: {name} regex pattern (str)")
-            elif expr == Expr.GT:
-                docs.append(f":key {name}_{expr}: {name} > value")
-            elif expr == Expr.GTE:
-                docs.append(f":key {name}_{expr}: {name} >= value")
-            elif expr == Expr.LT:
-                docs.append(f":key {name}_{expr}: {name} < value")
-            elif expr == Expr.LTE:
-                docs.append(f":key {name}_{expr}: {name} <= value")
-            elif expr == Expr.NULL:
-                docs.append(f":key {name}_{expr}: {name} is None (bool)")
-    return "\n".join(docs)
-
-
-class Driver(ABC):
+class Driver(_Common, ABC):
     def __init__(self, handle: int, process_id: int = None, process_name: str = None, window_name: str = None, class_name: str = None):
         self._handle = handle
         self._process_id = process_id or win32.get_process_id_from_handle(self.handle)
@@ -231,15 +165,25 @@ class Driver(ABC):
     def is_normal(self) -> bool:
         return win32.get_window_placement(self.handle).showCmd == win32.SW_SHOWNORMAL
 
+    def click(self, **kwargs):
+        return self.simulate_click(**kwargs)
+
+    def input(self, **kwargs):
+        return self.simulate_input(**kwargs)
+
+    def close(self):
+        pass
+
     def __str__(self) -> str:
         return f"handle: {self.handle}, " \
                f"process_id: {self.process_id}, " \
                f"process_name: {self.process_name}, " \
                f"window_name: {self.window_name}, " \
-               f"class_name: {self.class_name}"
+               f"class_name: {self.class_name}," \
+               f"rectangle: {self.rectangle}"
 
 
-class Element(ABC):
+class Element(_Common, ABC):
     @property
     @abstractmethod
     def driver(self) -> Driver:
@@ -258,40 +202,120 @@ class Element(ABC):
         time.sleep(0.06)
         return screenshot.screenshot(self.rectangle, filename)
 
-    def simulate_click(self, button="left", coords: Tuple[int, int] = None,
-                       button_down=True, button_up=True, double=False,
-                       wheel_dist=0, pressed="", key_down=True, key_up=True):
-        from pywinauto import mouse
+    @staticmethod
+    def _match(
+            obj: any,
+            filters: Union[List[Callable[[any], bool]], Tuple[Callable[[any], bool], ...]] = None,
+            rules: Dict[str, Union[List[Expr], Tuple[str, List[Expr]]]] = None,
+            ignore_case: bool = False,
+            **criteria) -> bool:
+        if not filters and not criteria:
+            return False
 
-        if not coords:
-            # click the center of the element
-            rect = self.rectangle
-            coords = (int((rect[2] + rect[0]) / 2), int((rect[3] + rect[1]) / 2))
+        def _do_expr(expr, fixed, value):
+            if fixed is None:
+                if expr == Expr.NULL:
+                    return bool(value)
+                else:
+                    return False
+            if ignore_case:
+                fixed = strings.deep_to_lower(fixed)
+                value = strings.deep_to_lower(value)
+            if expr == Expr.EQ:
+                return fixed == value
+            if expr == Expr.NOT:
+                return fixed != value
+            elif expr == Expr.LIKE:
+                return fixed.find(value) >= 0
+            elif expr == Expr.IN:
+                return fixed in value
+            elif expr == Expr.IN_LIKE:
+                for v in value:
+                    if fixed.find(v) >= 0:
+                        return True
+                return False
+            elif expr == Expr.REGEX:
+                return re.match(value, fixed) is not None
+            elif expr == Expr.GT:
+                return fixed > value
+            elif expr == Expr.GTE:
+                return fixed >= value
+            elif expr == Expr.LT:
+                return fixed < value
+            elif expr == Expr.LTE:
+                return fixed <= value
+            raise ValueError(f"unknown expression: {expr}")
 
-        mouse._perform_click_input(
-            button=button, coords=coords,
-            button_down=button_down, button_up=button_up, double=double,
-            wheel_dist=wheel_dist, pressed=pressed, key_down=key_down, key_up=key_up)
+        def _do_prop(obj, prop):
+            if "." not in prop:
+                return getattr(obj, prop)
+            val = obj
+            levels = prop.split(".")
+            for level in levels:
+                if not val:
+                    return None
+                val = getattr(val, level)
+            return val
 
-    def simulate_input(self, keys, pause=0.05, with_spaces=False, with_tabs=False, with_newlines=False,
-                       turn_off_numlock=False, vk_packet=True, set_foreground=False):
-        from pywinauto import keyboard
-        import six
-        import locale
+        if filters:
+            for f in filters:
+                if not f(obj):
+                    return False
+        if criteria:
+            data = {}
+            for key, item in rules.items():
+                if isinstance(item, list):
+                    prop, exprs = key, item
+                elif isinstance(item, tuple) and len(tuple) == 2:
+                    prop, exprs = item
+                else:
+                    raise ValueError(f"invalid rules, must be 'dict[str, list]' or 'dict[str, tuple[str, list]]', but given {rules}")
+                for expr in exprs:
+                    _key = key if expr == Expr.EQ else key + "_" + expr
+                    if _key in criteria:
+                        data[_key] = (prop, expr)
+                        break
+            if len(criteria) != len(data):
+                diff = criteria.keys() - data.keys()
+                if len(diff) > 0:
+                    raise ValueError(f"unsupported key(s): {', '.join(diff)}")
+            for key, (prop, expr) in data.items():
+                cri_val = criteria.get(key)
+                if cri_val is None:
+                    continue
+                prop_val = _do_prop(obj, prop)
+                if not _do_expr(expr, prop_val, cri_val):
+                    return False
+        return True
 
-        if set_foreground:
-            self.driver.set_foreground()
+    @staticmethod
+    def _gen_match_docs(rules: Dict[str, Union[List[Expr], Tuple[str, List[Expr]]]] = None) -> str:
+        docs = []
+        for name, exprs in rules.items():
+            for expr in exprs:
+                if expr == Expr.EQ:
+                    docs.append(f":key {name}: {name} == value")
+                elif expr == Expr.NOT:
+                    docs.append(f":key {name}_{expr}: {name} != value")
+                elif expr == Expr.LIKE:
+                    docs.append(f":key {name}_{expr}: {name} like *value*")
+                elif expr == Expr.IN:
+                    docs.append(f":key {name}_{expr}: {name} in [value1, value2]")
+                elif expr == Expr.IN_LIKE:
+                    docs.append(f":key {name}_{expr}: {name} in like [*value1*, *value2*]")
+                elif expr == Expr.REGEX:
+                    docs.append(f":key {name}_{expr}: {name} regex pattern (str)")
+                elif expr == Expr.GT:
+                    docs.append(f":key {name}_{expr}: {name} > value")
+                elif expr == Expr.GTE:
+                    docs.append(f":key {name}_{expr}: {name} >= value")
+                elif expr == Expr.LT:
+                    docs.append(f":key {name}_{expr}: {name} < value")
+                elif expr == Expr.LTE:
+                    docs.append(f":key {name}_{expr}: {name} <= value")
+                elif expr == Expr.NULL:
+                    docs.append(f":key {name}_{expr}: {name} is None (bool)")
+        return "\n".join(docs)
 
-        if isinstance(keys, six.text_type):
-            aligned_keys = keys
-        elif isinstance(keys, six.binary_type):
-            aligned_keys = keys.decode(locale.getpreferredencoding())
-        else:
-            # convert a non-string input
-            aligned_keys = six.text_type(keys)
-
-        keyboard.send_keys(
-            keys=aligned_keys, pause=pause,
-            with_spaces=with_spaces, with_tabs=with_tabs,
-            with_newlines=with_newlines, turn_off_numlock=turn_off_numlock,
-            vk_packet=vk_packet)
+    def __str__(self) -> str:
+        return f"rectangle: {self.rectangle}"

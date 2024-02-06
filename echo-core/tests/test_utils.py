@@ -17,7 +17,7 @@
 import os
 from unittest import TestCase
 
-from echo.core.driver import match, gen_match_docs, STR_EXPRS, INT_EXPRS, BOOL_EXPRS
+from echo.core.driver import Element, STR_EXPRS, NUM_EXPRS, BOOL_EXPRS
 from echo.utils.screenshot import screenshot
 from echo.utils.strings import deep_to_lower, deep_to_upper, deep_strip
 
@@ -93,10 +93,11 @@ class CommonTestSuite(TestCase):
         user = User('Echo', 18)
         rules = {
             "name": STR_EXPRS,
-            "age": INT_EXPRS,
+            "age": NUM_EXPRS,
             "job": STR_EXPRS,
             "enabled": BOOL_EXPRS
         }
+        match = Element._match
         self.assertTrue(match(user, filters=[lambda x: x.name == "Echo"]))
         self.assertTrue(match(user, filters=(lambda x: x.name == "Echo",)))
         self.assertTrue(match(user, rules=rules, name="Echo"))
@@ -124,9 +125,10 @@ class CommonTestSuite(TestCase):
     def test_match_docs(self):
         rules = {
             "name": STR_EXPRS,
-            "size": INT_EXPRS,
+            "size": NUM_EXPRS,
             "enabled": BOOL_EXPRS,
         }
+        gen_match_docs = Element._gen_match_docs
         print(gen_match_docs(rules))
 
     def test_screenshot(self):
