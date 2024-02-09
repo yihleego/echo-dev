@@ -462,7 +462,7 @@ class KeypointMatching(Matching, ABC):
         pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
         dst = cv2.perspectiveTransform(pts, M)
 
-        # trans numpy arrary to python list: [(a, b), (a1, b1), ...]
+        # trans numpy array to python list: [(a, b), (a1, b1), ...]
         def cal_rect_pts(dst):
             return [tuple(npt[0]) for npt in dst.astype(int).tolist()]
 
@@ -555,35 +555,35 @@ class KAZEMatching(KeypointMatching):
     def init_detector(self):
         """Init keypoint detector object."""
         self.detector = cv2.KAZE_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not useable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
 
 
 class BRISKMatching(KeypointMatching):
     def init_detector(self):
         """Init keypoint detector object."""
         self.detector = cv2.BRISK_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not useable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
 
 
 class AKAZEMatching(KeypointMatching):
     def init_detector(self):
         """Init keypoint detector object."""
         self.detector = cv2.AKAZE_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not useable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
 
 
 class ORBMatching(KeypointMatching):
     def init_detector(self):
         """Init keypoint detector object."""
         self.detector = cv2.ORB_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not useable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
 
 
 class BRIEFMatching(KeypointMatching):
     def init_detector(self):
         """Init keypoint detector object."""
-        # BRIEF is a feature descriptor, recommand CenSurE as a fast detector:
-        # OpenCV3/4, star/brief is in contrib module, you need to compile it seperately.
+        # BRIEF is a feature descriptor, recommend CenSurE as a fast detector:
+        # OpenCV3/4, star/brief is in contrib module, you need to compile it separately.
         try:
             self.star_detector = cv2.xfeatures2d.StarDetector_create()
             self.brief_extractor = cv2.xfeatures2d.BriefDescriptorExtractor_create()
@@ -594,7 +594,7 @@ class BRIEFMatching(KeypointMatching):
             raise NoModuleError("There is no BRIEF module in your OpenCV environment !")
 
         # create BFMatcher object:
-        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not useable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
 
     def get_keypoints_and_descriptors(self, image):
         """获取图像特征点和描述符."""
@@ -654,7 +654,7 @@ class SURFMatching(KeypointMatching):
         try:
             self.detector = cv2.xfeatures2d.SURF_create(self.HESSIAN_THRESHOLD, upright=self.UPRIGHT)
         except:
-            raise NoModuleError("There is no SURF module in your OpenCV environment, need contribmodule!")
+            raise NoModuleError("There is no SURF module in your OpenCV environment, need contrib module!")
 
         self.matcher = cv2.FlannBasedMatcher({'algorithm': self.FLANN_INDEX_KDTREE, 'trees': 5}, dict(checks=50))
 
