@@ -228,7 +228,7 @@ class PresetMultiscaleTemplateMatching(MultiscaleTemplateMatching):
 
     DEVIATION = 150
 
-    def find_best_result(self):
+    def find_best(self):
         """函数功能：找到最优结果."""
         if not self.resolution:
             return None
