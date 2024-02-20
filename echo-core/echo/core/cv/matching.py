@@ -153,7 +153,7 @@ class MultiscaleTemplateMatching(Matching):
         r = ratio_min
         t = time.time()
         while r <= ratio_max:
-            _image, _templ, tr, sr = self._resize_by_ratio(image.copy(), templ.copy(), r, src_max=self.scale_max)
+            _image, _templ, tr, sr = self._resize_by_ratio(image.copy(), templ.copy(), r, self.scale_max)
             if min(_templ.shape) > templ_min:
                 _image[0, 0] = _templ[0, 0] = 0
                 _image[0, 1] = _templ[0, 1] = 255
@@ -188,11 +188,8 @@ class MultiscaleTemplateMatching(Matching):
         return confidence
 
     def _resize_by_ratio(self, src, templ, ratio=1.0, templ_min=10, src_max=800):
-        """根据模板相对屏幕的长边 按比例缩放屏幕"""
-        # 截屏最大尺寸限制
         sr = min(src_max / max(src.shape), 1.0)
         src = cv2.resize(src, (int(src.shape[1] * sr), int(src.shape[0] * sr)))
-        # 截图尺寸缩放
         h, w = src.shape[0], src.shape[1]
         th, tw = templ.shape[0], templ.shape[1]
         if th / h >= tw / w:
@@ -203,7 +200,6 @@ class MultiscaleTemplateMatching(Matching):
         return src, templ, tr, sr
 
     def _org_size(self, max_loc, w, h, tr, sr):
-        """获取原始比例的框"""
         max_loc = (int((max_loc[0] / sr)), int((max_loc[1] / sr)))
         w, h = int((w / sr)), int((h / sr))
         return max_loc, w, h
