@@ -106,6 +106,7 @@ class UIADriver(Driver):
             return None
         return root.find_element(*filters, ignore_case=ignore_case, include_self=False, **criteria)
 
+
 class UIAElement(Element):
     def __init__(self, app: Application, window: UIAWrapper, driver: UIADriver, root: 'UIAElement' = None, parent: 'UIAElement' = None):
         self._app: Application = app
