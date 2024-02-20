@@ -53,12 +53,13 @@ class Matching(ABC):
     def _start_perf_count(self):
         self.perf_elapsed = time.perf_counter()
 
-    def _stop_perf_count(self) -> float:
+    def _stop_perf_count(self, reset=True) -> float:
         if self.perf_elapsed == -1:
             raise ValueError("start_perf_count() must be called before stop_perf_count()")
         cur = time.perf_counter()
         res = cur - self.perf_elapsed
-        self.perf_elapsed = cur
+        if reset:
+            self.perf_elapsed = cur
         return res
 
     def _cal_ccoeff_confidence(self, query, train) -> float:
@@ -122,62 +123,53 @@ class TemplateMatching(Matching):
     def _get_confidence(self, max_loc, max_val, w, h):
         if self.rgb:
             img_crop = self.train[max_loc[1]:max_loc[1] + h, max_loc[0]: max_loc[0] + w]
-            return self._cal_rgb_confidence(self.query, img_crop)
+            confidence = self._cal_rgb_confidence(self.query, img_crop)
         else:
-            return max_val
+            confidence = max_val
+        return confidence
 
 
 class MultiscaleTemplateMatching(Matching):
-    """多尺度模板匹配."""
-
-    def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True, record_pos=None, resolution=(), scale_max=800, scale_step=0.005, deviation=150):
+    def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True, scale_max=800, scale_step=0.005):
         super().__init__(query, train, threshold, rgb)
-        self.record_pos = record_pos
-        self.resolution = resolution
         self.scale_max = scale_max
         self.scale_step = scale_step
-        self.deviation = deviation
 
     def find_best(self) -> Optional[Matched]:
-        """函数功能：找到最优结果."""
-        if not self.check_image_size():
+        if not self._check_image_size():
             return None
-        self.start_perf_count()
-        # 计算模板匹配的结果矩阵
+        self._start_perf_count()
         image = cv2.cvtColor(self.train, cv2.COLOR_BGR2GRAY)
-        template = cv2.cvtColor(self.query, cv2.COLOR_BGR2GRAY)
-        confidence, max_loc, w, h, _ = self._multiscale_search(image, template, ratio_min=0.01, ratio_max=0.99, src_max=self.scale_max, step=self.scale_step, threshold=self.threshold)
+        templ = cv2.cvtColor(self.query, cv2.COLOR_BGR2GRAY)
+        confidence, max_loc, width, height, _ = self._multiscale_search(image, templ)
         if confidence < self.threshold:
             return None
-        # 求取识别位置
-        rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
-        return Matched(rectangle, confidence, self.stop_perf_count())
+        rectangle = max_loc[0], max_loc[1], max_loc[0] + width, max_loc[1] + height
+        return Matched(rectangle, confidence, self._stop_perf_count())
 
-    def _multiscale_search(self, image, template, templ_min=10, src_max=800, ratio_min=0.01, ratio_max=0.99, step=0.01, threshold=0.8, time_out=3.0):
-        """多尺度模板匹配"""
+    def _multiscale_search(self, image, templ, templ_min=10, ratio_min=0.01, ratio_max=0.99, timeout=10.0):
         mmax_val = 0
         max_info = None
         r = ratio_min
         t = time.time()
         while r <= ratio_max:
-            src, templ, tr, sr = self._resize_by_ratio(
-                image.copy(), template.copy(), r, src_max=src_max)
-            if min(templ.shape) > templ_min:
-                src[0, 0] = templ[0, 0] = 0
-                src[0, 1] = templ[0, 1] = 255
-                result = cv2.matchTemplate(src, templ, cv2.TM_CCOEFF_NORMED)
+            _image, _templ, tr, sr = self._resize_by_ratio(image.copy(), templ.copy(), r, src_max=self.scale_max)
+            if min(_templ.shape) > templ_min:
+                _image[0, 0] = _templ[0, 0] = 0
+                _image[0, 1] = _templ[0, 1] = 255
+                result = cv2.matchTemplate(_image, _templ, cv2.TM_CCOEFF_NORMED)
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                h, w = templ.shape
+                h, w = _templ.shape
                 if mmax_val < max_val:
                     mmax_val = max_val
                     max_info = (r, max_val, max_loc, w, h, tr, sr)
                 time_cost = time.time() - t
-                if time_cost > time_out and max_val >= threshold:
+                if time_cost > timeout and max_val >= self.threshold:
                     omax_loc, ow, oh = self._org_size(max_loc, w, h, tr, sr)
                     confidence = self._get_confidence(omax_loc, ow, oh)
-                    if confidence >= threshold:
+                    if confidence >= self.threshold:
                         return confidence, omax_loc, ow, oh, r
-            r += step
+            r += self.scale_step
         if max_info is None:
             return 0, (0, 0), 0, 0, 0
         max_r, max_val, max_loc, w, h, tr, sr = max_info
@@ -186,15 +178,13 @@ class MultiscaleTemplateMatching(Matching):
         return confidence, omax_loc, ow, oh, max_r
 
     def _get_confidence(self, max_loc, w, h):
-        """根据结果矩阵求出confidence."""
-        sch_h, sch_w = self.query.shape[0], self.query.shape[1]
+        qh, qw = self.query.shape[:2]
+        train = self.train[max_loc[1]:max_loc[1] + h, max_loc[0]: max_loc[0] + w]
+        train = cv2.resize(train, (qw, qh))
         if self.rgb:
-            # 如果有颜色校验,对目标区域进行BGR三通道校验:
-            img_crop = self.train[max_loc[1]:max_loc[1] + h, max_loc[0]: max_loc[0] + w]
-            confidence = cal_rgb_confidence(self.query, cv2.resize(img_crop, (sch_w, sch_h)))
+            confidence = self._cal_rgb_confidence(self.query, train)
         else:
-            img_crop = self.train[max_loc[1]:max_loc[1] + h, max_loc[0]: max_loc[0] + w]
-            confidence = cal_ccoeff_confidence(self.query, cv2.resize(img_crop, (sch_w, sch_h)))
+            confidence = self._cal_ccoeff_confidence(self.query, train)
         return confidence
 
     def _resize_by_ratio(self, src, templ, ratio=1.0, templ_min=10, src_max=800):
@@ -238,7 +228,7 @@ class KeypointMatching(Matching, ABC):
 
     def find_best(self) -> Optional[Matched]:
         """基于kaze进行图像识别，只筛选出最优区域."""
-        self.start_perf_count()
+        self._start_perf_count()
         # 第二步：获取特征点集并匹配出特征点对: 返回值 good, pypts, kp_sch, kp_src
         kp_sch, kp_src, good = self._get_key_points()
         good_len = len(good)
@@ -272,15 +262,15 @@ class KeypointMatching(Matching, ABC):
         if confidence < self.threshold:
             return None
         rectangle = (x_min, y_min, x_max, y_max)
-        best_match = Matched(rectangle, confidence, self.stop_perf_count())
+        best_match = Matched(rectangle, confidence, self._stop_perf_count())
         return best_match
 
     def _cal_confidence(self, resize_img):
         """计算confidence."""
         if self.rgb:
-            confidence = cal_rgb_confidence(self.query, resize_img)
+            confidence = self._cal_rgb_confidence(self.query, resize_img)
         else:
-            confidence = cal_ccoeff_confidence(self.query, resize_img)
+            confidence = self._cal_ccoeff_confidence(self.query, resize_img)
         # confidence修正
         confidence = (1 + confidence) / 2
         return confidence
@@ -573,45 +563,3 @@ class SURFMatching(KeypointMatching):
         """Match descriptors (特征值匹配)."""
         # 匹配两个图片中的特征点集，k=2表示每个特征点取出2个最匹配的对应点:
         return self.matcher.knnMatch(des_sch, des_src, k=2)
-
-
-def cal_ccoeff_confidence(query, train) -> float:
-    """求取两张图片的可信度，使用TM_CCOEFF_NORMED方法."""
-    # 扩展置信度计算区域
-    train = cv2.copyMakeBorder(train, 10, 10, 10, 10, cv2.BORDER_REPLICATE)
-    # 加入取值范围干扰，防止算法过于放大微小差异
-    train[0, 0] = 0
-    train[0, 1] = 255
-
-    image = cv2.cvtColor(train, cv2.COLOR_BGR2GRAY)
-    template = cv2.cvtColor(query, cv2.COLOR_BGR2GRAY)
-    res = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-
-    return max_val
-
-
-def cal_rgb_confidence(query, train) -> float:
-    """同大小彩图计算相似度."""
-    # 减少极限值对hsv角度计算的影响
-    train = np.clip(train, 10, 245)
-    query = np.clip(query, 10, 245)
-    # 转HSV强化颜色的影响
-    train = cv2.cvtColor(train, cv2.COLOR_BGR2HSV)
-    query = cv2.cvtColor(query, cv2.COLOR_BGR2HSV)
-
-    # 扩展置信度计算区域
-    train = cv2.copyMakeBorder(train, 10, 10, 10, 10, cv2.BORDER_REPLICATE)
-    # 加入取值范围干扰，防止算法过于放大微小差异
-    train[0, 0] = 0
-    train[0, 1] = 255
-
-    # 计算BGR三通道的confidence，存入bgr_confidence
-    image_bgr, template_bgr = cv2.split(train), cv2.split(query)
-    bgr_confidence = [0, 0, 0]
-    for i in range(3):
-        res_temp = cv2.matchTemplate(image_bgr[i], template_bgr[i], cv2.TM_CCOEFF_NORMED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res_temp)
-        bgr_confidence[i] = max_val
-
-    return min(bgr_confidence)
