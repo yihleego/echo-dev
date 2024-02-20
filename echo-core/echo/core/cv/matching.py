@@ -17,7 +17,7 @@
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -40,10 +40,6 @@ class Matching(ABC):
         self.threshold: float = threshold
         self.rgb: bool = rgb
         self.perf_elapsed: float = -1
-
-    @abstractmethod
-    def find_all(self) -> List[Matched]:
-        raise NotImplementedError
 
     @abstractmethod
     def find_best(self) -> Optional[Matched]:
@@ -69,30 +65,6 @@ class Matching(ABC):
 class TemplateMatching(Matching):
     def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True):
         super().__init__(query, train, threshold, rgb)
-
-    def find_all(self) -> List[Matched]:
-        """基于模板匹配查找多个目标区域的方法."""
-        if not self.check_image_size():
-            return []
-        result = []
-        h, w = self.query.shape[:2]
-        # 计算模板匹配的结果矩阵
-        matrix = self._get_template_matrix()
-        # 依次获取匹配结果
-        while True:
-            self.start_perf_count()
-            # 本次循环中取出当前结果矩阵中的最优值
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(matrix)
-            # 求取可信度
-            confidence = self._get_confidence(max_loc, max_val, w, h)
-            if confidence < self.threshold:
-                break
-            # 求取识别位置
-            rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
-            result.append(Matched(rectangle, confidence, self.stop_perf_count()))
-            # 屏蔽已经取出的最优结果,进入下轮循环继续寻找
-            cv2.rectangle(matrix, (int(max_loc[0] - w / 2), int(max_loc[1] - h / 2)), (int(max_loc[0] + w / 2), int(max_loc[1] + h / 2)), (0, 0, 0), -1)
-        return result
 
     def find_best(self) -> Optional[Matched]:
         """基于kaze进行图像识别，只筛选出最优区域."""
@@ -138,9 +110,6 @@ class MultiscaleTemplateMatching(Matching):
         self.scale_max = scale_max
         self.scale_step = scale_step
         self.deviation = deviation
-
-    def find_all(self) -> List[Matched]:
-        raise NotImplementedError
 
     def find_best(self) -> Optional[Matched]:
         """函数功能：找到最优结果."""
@@ -238,9 +207,6 @@ class KeypointMatching(Matching, ABC):
 
     @abstractmethod
     def init_detector(self):
-        raise NotImplementedError
-
-    def find_all(self) -> List[Matched]:
         raise NotImplementedError
 
     def find_best(self) -> Optional[Matched]:
