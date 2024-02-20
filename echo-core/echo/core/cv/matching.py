@@ -45,15 +45,15 @@ class Matching(ABC):
     def find_best(self) -> Optional[Matched]:
         raise NotImplementedError
 
-    def check_image_size(self) -> bool:
+    def _check_image_size(self) -> bool:
         qh, qw = self.query.shape[:2]
         th, tw = self.train.shape[:2]
         return qh <= th and qw <= tw
 
-    def start_perf_count(self):
+    def _start_perf_count(self):
         self.perf_elapsed = time.perf_counter()
 
-    def stop_perf_count(self) -> float:
+    def _stop_perf_count(self) -> float:
         if self.perf_elapsed == -1:
             raise ValueError("start_perf_count() must be called before stop_perf_count()")
         cur = time.perf_counter()
@@ -61,41 +61,68 @@ class Matching(ABC):
         self.perf_elapsed = cur
         return res
 
+    def _cal_ccoeff_confidence(self, query, train) -> float:
+        """
+        Calculate the confidence of two images, Use the TM_CCOEFF_NORMED method.
+        """
+        train = cv2.copyMakeBorder(train, 10, 10, 10, 10, cv2.BORDER_REPLICATE)
+        train[0, 0] = 0
+        train[0, 1] = 255
+
+        image = cv2.cvtColor(train, cv2.COLOR_BGR2GRAY)
+        templ = cv2.cvtColor(query, cv2.COLOR_BGR2GRAY)
+        res = cv2.matchTemplate(image, templ, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        return max_val
+
+    def _cal_rgb_confidence(self, query, train) -> float:
+        """
+        Calculate the confidence of two RGB images of the same size.
+        """
+        train = np.clip(train, 10, 245)
+        query = np.clip(query, 10, 245)
+        train = cv2.cvtColor(train, cv2.COLOR_BGR2HSV)
+        query = cv2.cvtColor(query, cv2.COLOR_BGR2HSV)
+
+        train = cv2.copyMakeBorder(train, 10, 10, 10, 10, cv2.BORDER_REPLICATE)
+        train[0, 0] = 0
+        train[0, 1] = 255
+
+        image_bgr, template_bgr = cv2.split(train), cv2.split(query)
+        bgr_confidence = [0, 0, 0]
+        for i in range(3):
+            res = cv2.matchTemplate(image_bgr[i], template_bgr[i], cv2.TM_CCOEFF_NORMED)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+            bgr_confidence[i] = max_val
+        return min(bgr_confidence)
+
 
 class TemplateMatching(Matching):
     def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True):
         super().__init__(query, train, threshold, rgb)
 
     def find_best(self) -> Optional[Matched]:
-        """基于kaze进行图像识别，只筛选出最优区域."""
-        # 校验图像输入
-        if not self.check_image_size():
+        if not self._check_image_size():
             return None
-        self.start_perf_count()
-        h, w = self.query.shape[:2]
-        # 计算模板匹配的结果矩阵
-        matrix = self._get_template_matrix()
-        # 依次获取匹配结果
+        self._start_perf_count()
+        matrix = self._get_matrix()
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(matrix)
-        # 求取可信度
-        confidence = self._get_confidence(max_loc, max_val, w, h)
+        height, width = self.query.shape[:2]
+        confidence = self._get_confidence(max_loc, max_val, width, height)
         if confidence < self.threshold:
             return None
-        # 求取识别位置
-        rectangle = max_loc[0], max_loc[1], max_loc[0] + w, max_loc[1] + h
-        return Matched(rectangle, confidence, self.stop_perf_count())
+        rectangle = max_loc[0], max_loc[1], max_loc[0] + width, max_loc[1] + height
+        return Matched(rectangle, confidence, self._stop_perf_count())
 
-    def _get_template_matrix(self):
-        """求取模板匹配的结果矩阵"""
+    def _get_matrix(self):
         image = cv2.cvtColor(self.train, cv2.COLOR_BGR2GRAY)
-        template = cv2.cvtColor(self.query, cv2.COLOR_BGR2GRAY)
-        return cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
+        templ = cv2.cvtColor(self.query, cv2.COLOR_BGR2GRAY)
+        return cv2.matchTemplate(image, templ, cv2.TM_CCOEFF_NORMED)
 
     def _get_confidence(self, max_loc, max_val, w, h):
-        """根据结果矩阵求出Confidence"""
         if self.rgb:
             img_crop = self.train[max_loc[1]:max_loc[1] + h, max_loc[0]: max_loc[0] + w]
-            return cal_rgb_confidence(self.query, img_crop)
+            return self._cal_rgb_confidence(self.query, img_crop)
         else:
             return max_val
 
