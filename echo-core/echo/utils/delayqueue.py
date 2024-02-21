@@ -21,7 +21,7 @@ from collections import namedtuple
 from typing import Union
 
 
-class Delayed(namedtuple('Delayed', 'value, time, priority')):
+class Delayed(namedtuple('Delayed', ['value', 'time', 'priority'])):
     __slots__ = []
 
     def __eq__(self, o): return (self.value, self.time, self.priority) == (o.value, o.time, o.priority)
