@@ -45,11 +45,6 @@ class Matching(ABC):
     def find_best(self) -> Optional[Matched]:
         raise NotImplementedError
 
-    def _check_image_size(self) -> bool:
-        qh, qw = self.query.shape[:2]
-        th, tw = self.train.shape[:2]
-        return qh <= th and qw <= tw
-
     def _start_perf_count(self):
         self.perf_elapsed = time.perf_counter()
 
@@ -96,113 +91,6 @@ class Matching(ABC):
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
             bgr_confidence[i] = max_val
         return min(bgr_confidence)
-
-
-class TemplateMatching(Matching):
-    def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True):
-        super().__init__(query, train, threshold, rgb)
-
-    def find_best(self) -> Optional[Matched]:
-        if not self._check_image_size():
-            return None
-        self._start_perf_count()
-        matrix = self._get_matrix()
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(matrix)
-        height, width = self.query.shape[:2]
-        confidence = self._get_confidence(max_loc, max_val, width, height)
-        if confidence < self.threshold:
-            return None
-        rectangle = max_loc[0], max_loc[1], max_loc[0] + width, max_loc[1] + height
-        return Matched(rectangle, confidence, self._stop_perf_count())
-
-    def _get_matrix(self):
-        image = cv2.cvtColor(self.train, cv2.COLOR_BGR2GRAY)
-        templ = cv2.cvtColor(self.query, cv2.COLOR_BGR2GRAY)
-        return cv2.matchTemplate(image, templ, cv2.TM_CCOEFF_NORMED)
-
-    def _get_confidence(self, max_loc, max_val, w, h):
-        if self.rgb:
-            img_crop = self.train[max_loc[1]:max_loc[1] + h, max_loc[0]: max_loc[0] + w]
-            confidence = self._cal_rgb_confidence(self.query, img_crop)
-        else:
-            confidence = max_val
-        return confidence
-
-
-class MultiscaleTemplateMatching(Matching):
-    def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True, scale_max=800, scale_step=0.005):
-        super().__init__(query, train, threshold, rgb)
-        self.scale_max = scale_max
-        self.scale_step = scale_step
-
-    def find_best(self) -> Optional[Matched]:
-        if not self._check_image_size():
-            return None
-        self._start_perf_count()
-        image = cv2.cvtColor(self.train, cv2.COLOR_BGR2GRAY)
-        templ = cv2.cvtColor(self.query, cv2.COLOR_BGR2GRAY)
-        confidence, max_loc, width, height, _ = self._multiscale_search(image, templ)
-        if confidence < self.threshold:
-            return None
-        rectangle = max_loc[0], max_loc[1], max_loc[0] + width, max_loc[1] + height
-        return Matched(rectangle, confidence, self._stop_perf_count())
-
-    def _multiscale_search(self, image, templ, templ_min=10, ratio_min=0.01, ratio_max=0.99, timeout=10.0):
-        mmax_val = 0
-        max_info = None
-        r = ratio_min
-        t = time.time()
-        while r <= ratio_max:
-            _image, _templ, tr, sr = self._resize_by_ratio(image.copy(), templ.copy(), r, self.scale_max)
-            if min(_templ.shape) > templ_min:
-                _image[0, 0] = _templ[0, 0] = 0
-                _image[0, 1] = _templ[0, 1] = 255
-                result = cv2.matchTemplate(_image, _templ, cv2.TM_CCOEFF_NORMED)
-                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-                h, w = _templ.shape
-                if mmax_val < max_val:
-                    mmax_val = max_val
-                    max_info = (r, max_val, max_loc, w, h, tr, sr)
-                time_cost = time.time() - t
-                if time_cost > timeout and max_val >= self.threshold:
-                    omax_loc, ow, oh = self._org_size(max_loc, w, h, tr, sr)
-                    confidence = self._get_confidence(omax_loc, ow, oh)
-                    if confidence >= self.threshold:
-                        return confidence, omax_loc, ow, oh, r
-            r += self.scale_step
-        if max_info is None:
-            return 0, (0, 0), 0, 0, 0
-        max_r, max_val, max_loc, w, h, tr, sr = max_info
-        omax_loc, ow, oh = self._org_size(max_loc, w, h, tr, sr)
-        confidence = self._get_confidence(omax_loc, ow, oh)
-        return confidence, omax_loc, ow, oh, max_r
-
-    def _get_confidence(self, max_loc, w, h):
-        qh, qw = self.query.shape[:2]
-        train = self.train[max_loc[1]:max_loc[1] + h, max_loc[0]: max_loc[0] + w]
-        train = cv2.resize(train, (qw, qh))
-        if self.rgb:
-            confidence = self._cal_rgb_confidence(self.query, train)
-        else:
-            confidence = self._cal_ccoeff_confidence(self.query, train)
-        return confidence
-
-    def _resize_by_ratio(self, src, templ, ratio=1.0, templ_min=10, src_max=800):
-        sr = min(src_max / max(src.shape), 1.0)
-        src = cv2.resize(src, (int(src.shape[1] * sr), int(src.shape[0] * sr)))
-        h, w = src.shape[0], src.shape[1]
-        th, tw = templ.shape[0], templ.shape[1]
-        if th / h >= tw / w:
-            tr = (h * ratio) / th
-        else:
-            tr = (w * ratio) / tw
-        templ = cv2.resize(templ, (max(int(tw * tr), 1), max(int(th * tr), 1)))
-        return src, templ, tr, sr
-
-    def _org_size(self, max_loc, w, h, tr, sr):
-        max_loc = (int((max_loc[0] / sr)), int((max_loc[1] / sr)))
-        w, h = int((w / sr)), int((h / sr))
-        return max_loc, w, h
 
 
 class KeypointMatching(Matching, ABC):
