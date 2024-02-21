@@ -55,17 +55,18 @@ class DelayQueue:
                  an expired delay becomes available
         """
         lock = self._lock
+        cond = self._cond
         queue = self._queue
         if timeout is None:
             while True:
                 with lock:
                     if not queue:
-                        self._cond.wait()
+                        cond.wait()
                         continue
                     _value, _time, _priority = queue[0]
                     now = time.time()
                     if _time > now:
-                        self._cond.wait(_time - now)
+                        cond.wait(_time - now)
                     else:
                         heapq.heappop(queue)
                         return _value
@@ -79,12 +80,12 @@ class DelayQueue:
                     if _ct > _et:
                         return None
                     if not queue:
-                        self._cond.wait(_et - _ct)
+                        cond.wait(_et - _ct)
                         continue
                     _value, _time, _priority = queue[0]
                     now = time.time()
                     if _time > now:
-                        self._cond.wait(min(_et - _ct, _time - now))
+                        cond.wait(min(_et - _ct, _time - now))
                     else:
                         heapq.heappop(queue)
                         return _value
