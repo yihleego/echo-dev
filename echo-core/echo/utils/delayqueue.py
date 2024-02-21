@@ -105,11 +105,8 @@ class DelayQueue:
         else:
             e = Delayed(item, time, priority)
         with lock:
-            head = queue[0] if queue else None
             heapq.heappush(queue, e)
-            # wake up any thread if the queue is empty or the new element is ahead of the first element
-            if not head or e < head:
-                cond.notify()
+            cond.notify()
         return e
 
     def remove(self, item: Union[Delayed, any]) -> bool:
