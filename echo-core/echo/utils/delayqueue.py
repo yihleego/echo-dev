@@ -63,32 +63,31 @@ class DelayQueue:
                     if not queue:
                         cond.wait()
                         continue
-                    _value, _time, _priority = queue[0]
+                    head = queue[0]
                     now = time.time()
-                    if _time > now:
-                        cond.wait(_time - now)
+                    if head.time > now:
+                        cond.wait(head.time - now)
                     else:
                         heapq.heappop(queue)
-                        return _value
+                        return head.value
         else:
-            _st = time.perf_counter()
-            _et = _st + timeout
-            _ct = _st
+            st = time.perf_counter()
+            et = st + timeout
             while True:
                 with lock:
-                    _ct = time.perf_counter()
-                    if _ct > _et:
+                    ct = time.perf_counter()
+                    if ct > et:
                         return None
                     if not queue:
-                        cond.wait(_et - _ct)
+                        cond.wait(et - ct)
                         continue
-                    _value, _time, _priority = queue[0]
+                    head = queue[0]
                     now = time.time()
-                    if _time > now:
-                        cond.wait(min(_et - _ct, _time - now))
+                    if head.time > now:
+                        cond.wait(min(et - ct, head.time - now))
                     else:
                         heapq.heappop(queue)
-                        return _value
+                        return head.value
 
     def add(self, item: Union[Delayed, any], time: Union[int, float], priority: int = 0) -> Delayed:
         """
@@ -98,34 +97,43 @@ class DelayQueue:
         :param priority: the priority of the element
         :return: the Delayed instance
         """
+        lock = self._lock
+        cond = self._cond
+        queue = self._queue
         if isinstance(item, Delayed):
             e = item
         else:
             e = Delayed(item, time, priority)
-        with self._lock:
-            heapq.heappush(self._queue, e)
-            self._cond.notify()
+        with lock:
+            head = queue[0] if queue else None
+            heapq.heappush(queue, e)
+            # wake up any thread if the queue is empty or the new element is ahead of the first element
+            if not head or e < head:
+                cond.notify()
         return e
 
     def remove(self, item: Union[Delayed, any]) -> bool:
         """
         Remove the specified element from this delay queue.
         """
-        with self._lock:
+        lock = self._lock
+        cond = self._cond
+        queue = self._queue
+        with lock:
             if isinstance(item, Delayed):
                 try:
-                    self._queue.remove(item)
-                    heapq.heapify(self._queue)
-                    self._cond.notify()
+                    queue.remove(item)
+                    heapq.heapify(queue)
+                    cond.notify()
                     return True
                 except ValueError:
                     return False
             else:
-                for e in self._queue:
+                for e in queue:
                     if e.value == item:
-                        self._queue.remove(e)
-                        heapq.heapify(self._queue)
-                        self._cond.notify()
+                        queue.remove(e)
+                        heapq.heapify(queue)
+                        cond.notify()
                         return True
                 return False
 
