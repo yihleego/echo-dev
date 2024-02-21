@@ -48,11 +48,11 @@ class _Common(ABC):
     @property
     @abstractmethod
     def rectangle(self) -> Tuple[int, int, int, int]:
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def set_foreground(self) -> bool:
-        raise NotImplementedError
+        pass
 
     def simulate_click(self, button="left", coords: Tuple[int, int] = None,
                        button_down=True, button_up=True, double=False,
@@ -187,12 +187,12 @@ class Element(_Common, ABC):
     @property
     @abstractmethod
     def driver(self) -> Driver:
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def rectangle(self) -> Tuple[int, int, int, int]:
-        raise NotImplementedError
+        pass
 
     def set_foreground(self) -> bool:
         return self.driver.set_foreground()

@@ -168,22 +168,22 @@ class JABElementProperties(ABC):
     @property
     @abstractmethod
     def info(self) -> AccessibleContextInfo:
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def text(self) -> Optional[str]:
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def children_count(self) -> int:
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def depth(self) -> int:
-        raise NotImplementedError
+        pass
 
     @property
     def role(self) -> str:
