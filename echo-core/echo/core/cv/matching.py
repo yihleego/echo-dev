@@ -22,7 +22,7 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 
-from .errors import HomographyError, MatchResultCheckError, NoModuleError
+from .errors import HomographyError, MatchResultCheckError
 
 
 @dataclass
@@ -43,7 +43,7 @@ class Matching(ABC):
 
     @abstractmethod
     def find_best(self) -> Optional[Matched]:
-        raise NotImplementedError
+        pass
 
     def _start_perf_count(self):
         self.perf_elapsed = time.perf_counter()
@@ -94,27 +94,22 @@ class Matching(ABC):
 
 
 class KeypointMatching(Matching, ABC):
-    """基于特征点的识别基类: KAZE."""
-
-    # 参数: FILTER_RATIO为SIFT优秀特征点过滤比例值(0-1范围，建议值0.4-0.6)
-    FILTER_RATIO = 0.59
-    # 参数: SIFT识别时只找出一对相似特征点时的置信度(confidence)
-    ONE_POINT_CONFI = 0.5
-
-    def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True):
+    def __init__(self, query, train, threshold: float = 0.8, rgb: bool = True, filter_ratio: float = 0.59):
         super().__init__(query, train, threshold, rgb)
+        self.filter_ratio = filter_ratio  # FILTER_RATIO为SIFT优秀特征点过滤比例值(0-1范围，建议值0.4-0.6)
         self.detector = None
         self.matcher = None
+        self._init_detector()
 
     @abstractmethod
-    def init_detector(self):
-        raise NotImplementedError
+    def _init_detector(self):
+        pass
 
     def find_best(self) -> Optional[Matched]:
         """基于kaze进行图像识别，只筛选出最优区域."""
         self._start_perf_count()
         # 第二步：获取特征点集并匹配出特征点对: 返回值 good, pypts, kp_sch, kp_src
-        kp_sch, kp_src, good = self._get_key_points()
+        kp_sch, kp_src, good = self._get_keypoints()
         good_len = len(good)
 
         # 第三步：根据匹配点对(good),提取出来识别区域:
@@ -155,39 +150,34 @@ class KeypointMatching(Matching, ABC):
             confidence = self._cal_rgb_confidence(self.query, resize_img)
         else:
             confidence = self._cal_ccoeff_confidence(self.query, resize_img)
-        # confidence修正
-        confidence = (1 + confidence) / 2
-        return confidence
+        return (1 + confidence) / 2
 
-    def get_keypoints_and_descriptors(self, image):
+    def _get_keypoints_and_descriptors(self, image):
         """获取图像特征点和描述符."""
         keypoints, descriptors = self.detector.detectAndCompute(image, None)
         return keypoints, descriptors
 
-    def match_keypoints(self, des_sch, des_src):
+    def _match_keypoints(self, des_sch, des_src):
         """Match descriptors (特征值匹配)."""
         # 匹配两个图片中的特征点集，k=2表示每个特征点取出2个最匹配的对应点:
         return self.matcher.knnMatch(des_sch, des_src, k=2)
 
-    def _get_key_points(self):
+    def _get_keypoints(self):
         """根据传入图像,计算图像所有的特征点,并得到匹配特征点对."""
-        # 准备工作: 初始化算子
-        self.init_detector()
         # 第一步：获取特征点集，并匹配出特征点对: 返回值 good, pypts, kp_sch, kp_src
-        kp_sch, des_sch = self.get_keypoints_and_descriptors(self.query)
-        kp_src, des_src = self.get_keypoints_and_descriptors(self.train)
+        kp_sch, des_sch = self._get_keypoints_and_descriptors(self.query)
+        kp_src, des_src = self._get_keypoints_and_descriptors(self.train)
         # When apply knnmatch , make sure that number of features in both test and
         #       query image is greater than or equal to number of nearest neighbors in knn match.
-        # FIXME
         # if len(kp_sch) < 2 or len(kp_src) < 2:
-        #    raise NoMatchPointError("Not enough feature points in input images !")
+        #     raise NoMatchPointError("Not enough feature points in input images !")
         # match descriptors (特征值匹配)
-        matches = self.match_keypoints(des_sch, des_src)
+        matches = self._match_keypoints(des_sch, des_src)
 
         # good为特征点初选结果，剔除掉前两名匹配太接近的特征点，不是独特优秀的特征点直接筛除(多目标识别情况直接不适用)
         good = []
         for m, n in matches:
-            if m.distance < self.FILTER_RATIO * n.distance:
+            if m.distance < self.filter_ratio * n.distance:
                 good.append(m)
         # good点需要去除重复的部分，（设定源图像不能有重复点）去重时将src图像中的重复点找出即可
         # 去重策略：允许搜索图像对源图像的特征点映射一对多，不允许多对一重复（即不能源图像上一个点对应搜索图像的多个点）
@@ -332,118 +322,66 @@ class KeypointMatching(Matching, ABC):
 
 
 class KAZEMatching(KeypointMatching):
-    def init_detector(self):
-        """Init keypoint detector object."""
+    def _init_detector(self):
         self.detector = cv2.KAZE_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_L1)
 
 
 class BRISKMatching(KeypointMatching):
-    def init_detector(self):
-        """Init keypoint detector object."""
+    def _init_detector(self):
         self.detector = cv2.BRISK_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
 
 
 class AKAZEMatching(KeypointMatching):
-    def init_detector(self):
-        """Init keypoint detector object."""
+    def _init_detector(self):
         self.detector = cv2.AKAZE_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_L1)
 
 
 class ORBMatching(KeypointMatching):
-    def init_detector(self):
-        """Init keypoint detector object."""
+    def _init_detector(self):
         self.detector = cv2.ORB_create()
-        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
+        self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
 
 
 class BRIEFMatching(KeypointMatching):
-    def init_detector(self):
-        """Init keypoint detector object."""
-        # BRIEF is a feature descriptor, recommend CenSurE as a fast detector:
-        # OpenCV3/4, star/brief is in contrib module, you need to compile it separately.
+    def _init_detector(self):
         try:
             self.star_detector = cv2.xfeatures2d.StarDetector_create()
             self.brief_extractor = cv2.xfeatures2d.BriefDescriptorExtractor_create()
         except:
-            import traceback
-            traceback.print_exc()
-            print("to use BRIEF, you should build contrib with opencv3.0")
-            raise NoModuleError("There is no BRIEF module in your OpenCV environment !")
+            raise ModuleNotFoundError("There is no BRIEF module in your OpenCV environment, please install contrib module!")
+        self.matcher = cv2.BFMatcher(cv2.NORM_L1)
 
-        # create BFMatcher object:
-        self.matcher = cv2.BFMatcher(cv2.NORM_L1)  # cv2.NORM_L1 cv2.NORM_L2 cv2.NORM_HAMMING(not usable)
-
-    def get_keypoints_and_descriptors(self, image):
-        """获取图像特征点和描述符."""
+    def _get_keypoints_and_descriptors(self, image):
         # find the keypoints with STAR
-        kp = self.star_detector.detect(image, None)
+        keypoints = self.star_detector.detect(image, None)
         # compute the descriptors with BRIEF
-        keypoints, descriptors = self.brief_extractor.compute(image, kp)
+        keypoints, descriptors = self.brief_extractor.compute(image, keypoints)
         return keypoints, descriptors
-
-    def match_keypoints(self, des_sch, des_src):
-        """Match descriptors (特征值匹配)."""
-        # 匹配两个图片中的特征点集，k=2表示每个特征点取出2个最匹配的对应点:
-        return self.matcher.knnMatch(des_sch, des_src, k=2)
 
 
 class SIFTMatching(KeypointMatching):
-    # SIFT识别特征点匹配，参数设置:
-    FLANN_INDEX_KDTREE = 0
-
-    def init_detector(self):
-        """Init keypoint detector object."""
+    def _init_detector(self):
+        FLANN_INDEX_KDTREE = 0
         try:
-            # opencv3 >= 3.4.12 or opencv4 >=4.5.0, sift is in main repository
             self.detector = cv2.SIFT_create(edgeThreshold=10)
         except AttributeError:
             try:
                 self.detector = cv2.xfeatures2d.SIFT_create(edgeThreshold=10)
             except:
-                raise NoModuleError(
-                    "There is no SIFT module in your OpenCV environment, need contrib module!")
-
-        self.matcher = cv2.FlannBasedMatcher({'algorithm': self.FLANN_INDEX_KDTREE, 'trees': 5}, dict(checks=50))
-
-    def get_keypoints_and_descriptors(self, image):
-        """获取图像特征点和描述符."""
-        keypoints, descriptors = self.detector.detectAndCompute(image, None)
-        return keypoints, descriptors
-
-    def match_keypoints(self, des_sch, des_src):
-        """Match descriptors (特征值匹配)."""
-        # 匹配两个图片中的特征点集，k=2表示每个特征点取出2个最匹配的对应点:
-        return self.matcher.knnMatch(des_sch, des_src, k=2)
+                raise ModuleNotFoundError("There is no SIFT module in your OpenCV environment, please install contrib module!")
+        self.matcher = cv2.FlannBasedMatcher({'algorithm': FLANN_INDEX_KDTREE, 'trees': 5}, dict(checks=50))
 
 
 class SURFMatching(KeypointMatching):
-    # 是否检测方向不变性:0检测/1不检测
-    UPRIGHT = 0
-    # SURF算子的Hessian Threshold
-    HESSIAN_THRESHOLD = 400
-    # SURF识别特征点匹配方法设置:
-    FLANN_INDEX_KDTREE = 0
-
-    def init_detector(self):
-        """Init keypoint detector object."""
-        # BRIEF is a feature descriptor, recommend CenSurE as a fast detector:
-        # OpenCV3/4, surf is in contrib module, you need to compile it separately.
+    def _init_detector(self):
+        FLANN_INDEX_KDTREE = 0
+        HESSIAN_THRESHOLD = 400
+        UPRIGHT = 0
         try:
-            self.detector = cv2.xfeatures2d.SURF_create(self.HESSIAN_THRESHOLD, upright=self.UPRIGHT)
+            self.detector = cv2.xfeatures2d.SURF_create(HESSIAN_THRESHOLD, upright=UPRIGHT)
         except:
-            raise NoModuleError("There is no SURF module in your OpenCV environment, need contrib module!")
-
-        self.matcher = cv2.FlannBasedMatcher({'algorithm': self.FLANN_INDEX_KDTREE, 'trees': 5}, dict(checks=50))
-
-    def get_keypoints_and_descriptors(self, image):
-        """获取图像特征点和描述符."""
-        keypoints, descriptors = self.detector.detectAndCompute(image, None)
-        return keypoints, descriptors
-
-    def match_keypoints(self, des_sch, des_src):
-        """Match descriptors (特征值匹配)."""
-        # 匹配两个图片中的特征点集，k=2表示每个特征点取出2个最匹配的对应点:
-        return self.matcher.knnMatch(des_sch, des_src, k=2)
+            raise ModuleNotFoundError("There is no SURF module in your OpenCV environment, please install contrib module!")
+        self.matcher = cv2.FlannBasedMatcher({'algorithm': FLANN_INDEX_KDTREE, 'trees': 5}, dict(checks=50))
