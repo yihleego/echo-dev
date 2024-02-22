@@ -20,20 +20,15 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from .matching import Matching, TemplateMatching, MultiscaleTemplateMatching, PresetMultiscaleTemplateMatching, KAZEMatching, BRISKMatching, AKAZEMatching, ORBMatching, BRIEFMatching, SIFTMatching, SURFMatching
+from .matching import Matching, KAZEMatching, BRISKMatching, AKAZEMatching, ORBMatching, BRIEFMatching, SIFTMatching, SURFMatching
 from ..driver import Driver, Element
 
 RECOMMENDED_MATCHING_TYPES = [
-    PresetMultiscaleTemplateMatching,
-    TemplateMatching,
     SIFTMatching,
     BRISKMatching,
 ]
 
 ALL_MATCHING_TYPES = [
-    TemplateMatching,
-    MultiscaleTemplateMatching,
-    PresetMultiscaleTemplateMatching,
     KAZEMatching,
     BRISKMatching,
     AKAZEMatching,
@@ -53,18 +48,8 @@ class CVDriver(Driver):
     def root(self) -> Optional['CVElement']:
         return CVElement(driver=self, rectangle=self.rectangle, confidence=1.0)
 
-    def find_elements(self, image) -> List['CVElement']:
-        result = []
-        query, train = self._read_images(image)
-        for matching_type in self._matching_types:
-            matching = matching_type(query, train)
-            found = matching.find_all()
-            if found:
-                result.extend([CVElement(driver=self, rectangle=f.rectangle, confidence=f.confidence) for f in found])
-        return result
-
     def find_element(self, image) -> Optional['CVElement']:
-        query, train = self._read_images(image)
+        query, train = self._read(image)
         for matching_type in self._matching_types:
             matching = matching_type(query, train)
             found = matching.find_best()
@@ -72,7 +57,7 @@ class CVDriver(Driver):
                 return CVElement(driver=self, rectangle=found.rectangle, confidence=found.confidence)
         return None
 
-    def _read_images(self, image):
+    def _read(self, image):
         if isinstance(image, str):
             query = cv2.imread(image)
         elif isinstance(image, Image.Image):
@@ -134,6 +119,7 @@ class CVElement(Element):
         return self.simulate_input(**kwargs)
 
     def text(self):
+        # TODO OCR
         raise NotImplementedError
 
     def __str__(self) -> str:

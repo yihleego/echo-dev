@@ -54,6 +54,9 @@ class _Common(ABC):
     def set_foreground(self) -> bool:
         pass
 
+    def draw_outline(self, color=0x0000ff):
+        win32.draw_outline(self.rectangle, color=color)
+
     def simulate_click(self, button="left", coords: Tuple[int, int] = None,
                        button_down=True, button_up=True, double=False,
                        wheel_dist=0, pressed="", key_down=True, key_up=True):
@@ -164,12 +167,6 @@ class Driver(_Common, ABC):
 
     def is_normal(self) -> bool:
         return win32.get_window_placement(self.handle).showCmd == win32.SW_SHOWNORMAL
-
-    def click(self, **kwargs):
-        return self.simulate_click(**kwargs)
-
-    def input(self, **kwargs):
-        return self.simulate_input(**kwargs)
 
     def close(self):
         pass
