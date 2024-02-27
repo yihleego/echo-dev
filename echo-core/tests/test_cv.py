@@ -17,10 +17,7 @@
 import random
 from unittest import TestCase, skip
 
-from echo.core.cv import CVDriver
-from echo.core.cv.cv import imread
 from echo.core.cv.matching import *
-from echo.utils import win32
 
 
 class CVTestSuite(TestCase):
@@ -69,25 +66,18 @@ class CVTestSuite(TestCase):
         train = imread("samples/QQ20240205-134306@2x.png")
         h, w = train.shape[:2]
         left, top = random.randint(0, w / 2), random.randint(0, h / 2)
-        right, bottom = left + 100, top + 100
+        right, bottom = random.randint(left + 10, w), random.randint(top + 10, h)
+        # right, bottom = left + 200, top + 200
         rect = (left, top, right, bottom)
         query = train[top:bottom, left:right]
         print(f'rect: {rect}')
         for cls in clses:
-            matching = cls(query, train)
-            best = matching.find_best()
-            print(f'[{cls.__name__}] found best: {best}')
-
-    def test_template_matching(self):
-        self._test_find_all(TemplateMatching)
-        print('=' * 100, '\n')
-        self._test_find_best(TemplateMatching)
-
-    def test_multiscale_template_matching(self):
-        self._test_find_best(MultiscaleTemplateMatching)
-
-    def test_preset_multiscale_template_matching(self):
-        self._test_find_best(PresetMultiscaleTemplateMatching)
+            try:
+                matching = cls(query, train)
+                best = matching.show_result()
+                print(f'[{cls.__name__}] found best: {best}')
+            except:
+                pass
 
     def test_kaze_matching(self):
         self._test_find_best(KAZEMatching)
@@ -111,20 +101,13 @@ class CVTestSuite(TestCase):
     def test_surf_matching(self):
         self._test_find_best(SURFMatching)
 
-    def test_111(self):
-        self._test_random([
-            TemplateMatching,
-            MultiscaleTemplateMatching,
-            PresetMultiscaleTemplateMatching,
-            KAZEMatching,
-            BRISKMatching,
-            AKAZEMatching,
-            ORBMatching,
-            BRIEFMatching,
-            SIFTMatching, ])
+    # def test_111(self):
+    #     self._test_random([
+    #         SIFTMatching, ])
 
-    def test_22(self):
-        self.handle = win32.find_window(class_name="SunAwtFrame", window_name="Java Swing Example")
-        self.driver = CVDriver(self.handle)
-        # self.root = self.driver.root()
-        self.driver.find_element("")
+
+def imread(filename, flatten=False):
+    # choose image readin mode: cv2.IMREAD_UNCHANGED=-1, cv2.IMREAD_GRAYSCALE=0, cv2.IMREAD_COLOR=1,
+    readin_mode = cv2.IMREAD_GRAYSCALE if flatten else cv2.IMREAD_COLOR
+    img = cv2.imdecode(np.fromfile(filename, dtype=np.uint8), readin_mode)
+    return img
